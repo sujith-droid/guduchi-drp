@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+
+const ADMIN_EMAIL = "sujith@guduchiayurveda";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,8 +21,17 @@ export default function AdminPanel() {
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
 
+  const [currentUser, setCurrentUser] = useState(null);
+
   useEffect(() => {
-    loadData();
+    base44.auth.me().then((me) => {
+      setCurrentUser(me);
+      if (!me.email?.includes(ADMIN_EMAIL)) {
+        setLoading(false);
+        return;
+      }
+      loadData();
+    });
   }, []);
 
   const loadData = async () => {
@@ -54,6 +65,12 @@ export default function AdminPanel() {
     loadData();
   };
 
+  const changeUserRole = async (userId, newRole) => {
+    await base44.entities.User.update(userId, { role: newRole });
+    toast.success(`Role updated to ${newRole}`);
+    loadData();
+  };
+
   const removeAssignment = async (id) => {
     await base44.entities.PatientDoctorAssignment.update(id, { status: "inactive" });
     toast.success("Assignment removed");
@@ -64,6 +81,16 @@ export default function AdminPanel() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentUser?.email?.includes(ADMIN_EMAIL)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+        <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
+        <p className="font-semibold">Access Denied</p>
+        <p className="text-sm text-muted-foreground">Only the admin can access this panel.</p>
       </div>
     );
   }
@@ -193,7 +220,7 @@ export default function AdminPanel() {
       {/* Users List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">All Users</CardTitle>
+          <CardTitle className="text-base">All Users — Manage Roles</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -203,9 +230,19 @@ export default function AdminPanel() {
                   <p className="text-sm font-medium">{u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
-                <Badge variant="outline" className="capitalize text-xs">
-                  {u.role || "patient"}
-                </Badge>
+                <Select
+                  value={u.role || "patient"}
+                  onValueChange={(val) => changeUserRole(u.id, val)}
+                >
+                  <SelectTrigger className="w-28 h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="patient">Patient</SelectItem>
+                    <SelectItem value="doctor">Doctor</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>
