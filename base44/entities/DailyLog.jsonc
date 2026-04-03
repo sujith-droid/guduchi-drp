@@ -1,0 +1,43 @@
+{
+  "name": "DailyLog",
+  "type": "object",
+  "properties": {
+    "patient_email": {
+      "type": "string",
+      "description": "Email of the patient"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the log entry"
+    },
+    "fasting_sugar": {
+      "type": "number",
+      "description": "Fasting blood sugar (mg/dL)"
+    },
+    "post_breakfast_sugar": {
+      "type": "number",
+      "description": "Post breakfast blood sugar (mg/dL)"
+    },
+    "post_dinner_sugar": {
+      "type": "number",
+      "description": "Post dinner blood sugar (mg/dL)"
+    },
+    "weight": {
+      "type": "number",
+      "description": "Weight in kg (optional)"
+    },
+    "step_count": {
+      "type": "number",
+      "description": "Daily step count"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "patient_email",
+    "date"
+  ]
+}

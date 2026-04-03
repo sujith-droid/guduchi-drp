@@ -1,0 +1,42 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user to notify"
+    },
+    "title": {
+      "type": "string",
+      "description": "Notification title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Notification message"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "reminder",
+        "alert",
+        "achievement",
+        "info"
+      ],
+      "description": "Type of notification"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "related_patient_email": {
+      "type": "string",
+      "description": "Related patient email (for doctor notifications)"
+    }
+  },
+  "required": [
+    "user_email",
+    "title",
+    "message",
+    "type"
+  ]
+}

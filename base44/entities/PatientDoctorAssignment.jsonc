@@ -1,0 +1,34 @@
+{
+  "name": "PatientDoctorAssignment",
+  "type": "object",
+  "properties": {
+    "patient_email": {
+      "type": "string",
+      "description": "Email of the patient"
+    },
+    "doctor_email": {
+      "type": "string",
+      "description": "Email of the assigned doctor"
+    },
+    "patient_name": {
+      "type": "string",
+      "description": "Display name of patient"
+    },
+    "doctor_name": {
+      "type": "string",
+      "description": "Display name of doctor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "patient_email",
+    "doctor_email"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "HbA1cRecord",
+  "type": "object",
+  "properties": {
+    "patient_email": {
+      "type": "string",
+      "description": "Email of the patient"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of HbA1c test"
+    },
+    "value": {
+      "type": "number",
+      "description": "HbA1c percentage value"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "patient_email",
+    "date",
+    "value"
+  ]
+}

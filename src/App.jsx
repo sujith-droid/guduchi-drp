@@ -5,7 +5,16 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import Layout from './components/Layout';
+import PatientDashboard from './pages/PatientDashboard';
+import Logbook from './pages/Logbook';
+import Progress from './pages/Progress';
+import Chat from './pages/Chat';
+import Notifications from './pages/Notifications';
+import DoctorDashboard from './pages/DoctorDashboard';
+import PatientDetail from './pages/PatientDetail';
+import AdminPanel from './pages/AdminPanel';
+import ProfileSetup from './pages/ProfileSetup';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,8 +42,18 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
+      <Route path="/setup" element={<ProfileSetup />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<PatientDashboard />} />
+        <Route path="/logbook" element={<Logbook />} />
+        <Route path="/progress" element={<Progress />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/doctor" element={<DoctorDashboard />} />
+        <Route path="/patient-detail" element={<PatientDetail />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 };

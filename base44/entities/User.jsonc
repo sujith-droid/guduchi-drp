@@ -1,0 +1,40 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "doctor",
+        "patient"
+      ],
+      "default": "patient"
+    },
+    "age": {
+      "type": "number",
+      "description": "Patient age"
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female",
+        "other"
+      ],
+      "description": "Gender"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "patient_id": {
+      "type": "string",
+      "description": "Auto-generated patient ID"
+    },
+    "profile_complete": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
