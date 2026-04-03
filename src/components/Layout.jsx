@@ -65,9 +65,6 @@ export default function Layout() {
   };
 
   const getNavItems = () => {
-    if (!user) return patientNav;
-    if (user.role === "admin") return adminNav;
-    if (user.role === "doctor") return doctorNav;
     return patientNav;
   };
 
