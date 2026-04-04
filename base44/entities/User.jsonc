@@ -5,15 +5,19 @@
     "role": {
       "type": "string",
       "enum": [
-        "admin",
+        "patient",
         "doctor",
-        "patient"
+        "admin"
       ],
       "default": "patient"
     },
+    "phone": {
+      "type": "string",
+      "description": "Mobile phone number"
+    },
     "age": {
       "type": "number",
-      "description": "Patient age"
+      "description": "Age of the user"
     },
     "gender": {
       "type": "string",
@@ -21,16 +25,11 @@
         "male",
         "female",
         "other"
-      ],
-      "description": "Gender"
-    },
-    "phone": {
-      "type": "string",
-      "description": "Phone number"
+      ]
     },
     "patient_id": {
       "type": "string",
-      "description": "Auto-generated patient ID"
+      "description": "Unique patient ID"
     },
     "profile_complete": {
       "type": "boolean",

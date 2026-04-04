@@ -69,13 +69,15 @@ export default function ProfileSetup() {
             <Input value={user?.full_name || ""} disabled className="mt-1 opacity-60" />
           </div>
           <div>
-            <Label>Phone Number</Label>
+            <Label>Mobile Number <span className="text-destructive">*</span></Label>
             <Input
               placeholder="e.g., +91 9876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-1"
+              type="tel"
             />
+            <p className="text-xs text-muted-foreground mt-1">Required for calls between patients and doctors</p>
           </div>
           <div>
             <Label>Age (optional)</Label>
