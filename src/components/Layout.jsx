@@ -8,12 +8,12 @@ import {
   MessageCircle,
   Users,
   Bell,
-  Settings,
   LogOut,
   Menu,
   X,
   Heart,
-  Shield
+  Shield,
+  UserCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,18 +24,21 @@ const patientNav = [
   { path: "/progress", label: "Progress", icon: TrendingUp },
   { path: "/chat", label: "Chat", icon: MessageCircle },
   { path: "/notifications", label: "Alerts", icon: Bell },
+  { path: "/profile", label: "Profile", icon: UserCircle },
 ];
 
 const doctorNav = [
   { path: "/doctor", label: "Patients", icon: Users },
   { path: "/chat", label: "Messages", icon: MessageCircle },
   { path: "/notifications", label: "Alerts", icon: Bell },
+  { path: "/profile", label: "Profile", icon: UserCircle },
 ];
 
 const adminNav = [
   { path: "/admin", label: "Admin", icon: Shield },
   { path: "/doctor", label: "Patients", icon: Users },
   { path: "/notifications", label: "Alerts", icon: Bell },
+  { path: "/profile", label: "Profile", icon: UserCircle },
 ];
 
 export default function Layout() {

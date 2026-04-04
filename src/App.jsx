@@ -15,6 +15,7 @@ import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDetail from './pages/PatientDetail';
 import AdminPanel from './pages/AdminPanel';
 import ProfileSetup from './pages/ProfileSetup';
+import Profile from './pages/Profile';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/setup" element={<ProfileSetup />} />
+      <Route path="/profile" element={<Profile />} />
       <Route element={<Layout />}>
         <Route path="/" element={<PatientDashboard />} />
         <Route path="/logbook" element={<Logbook />} />
