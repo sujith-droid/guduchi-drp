@@ -22,12 +22,17 @@
       "type": "string",
       "description": "URL of uploaded image (food photo etc)"
     },
+    "audio_url": {
+      "type": "string",
+      "description": "URL of uploaded voice message"
+    },
     "message_type": {
       "type": "string",
       "enum": [
         "text",
         "image",
-        "text_image"
+        "text_image",
+        "audio"
       ],
       "description": "Type of message"
     }

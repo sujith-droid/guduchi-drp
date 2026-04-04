@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, MicOff, Square } from "lucide-react";
 import moment from "moment";
 import { motion } from "framer-motion";
 
@@ -17,6 +17,11 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
   const fileInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef(null);
 
   useEffect(() => {
     loadUser();
@@ -71,8 +76,8 @@ export default function Chat() {
     );
   };
 
-  const sendMessage = async (imageUrl) => {
-    if (!newMsg.trim() && !imageUrl) return;
+  const sendMessage = async (imageUrl, audioUrl) => {
+    if (!newMsg.trim() && !imageUrl && !audioUrl) return;
     setSending(true);
 
     const partnerEmail = chatPartner.email;
@@ -96,8 +101,48 @@ export default function Chat() {
     if (!file) return;
     setSending(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await sendMessage(file_url);
+    await sendMessage(file_url, null);
     setSending(false);
+  };
+
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+    mediaRecorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+    mediaRecorder.start();
+    setIsRecording(true);
+    setRecordingSeconds(0);
+    recordingTimerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+  };
+
+  const stopRecording = () => {
+    return new Promise((resolve) => {
+      mediaRecorderRef.current.onstop = () => resolve();
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      clearInterval(recordingTimerRef.current);
+      setIsRecording(false);
+    });
+  };
+
+  const sendVoiceMessage = async () => {
+    await stopRecording();
+    setSending(true);
+    const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    const file = new File([blob], "voice.webm", { type: "audio/webm" });
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const partnerEmail = chatPartner.email;
+    await base44.entities.ChatMessage.create({
+      sender_email: user.email,
+      receiver_email: partnerEmail,
+      conversation_id: activeConvId,
+      message_type: "audio",
+      audio_url: file_url,
+    });
+    setSending(false);
+    loadMessages();
   };
 
   if (loading) {
@@ -187,6 +232,9 @@ export default function Chat() {
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-card border border-border rounded-bl-sm"
                 }`}>
+                  {msg.audio_url && (
+                    <audio controls src={msg.audio_url} className="max-w-full h-8" />
+                  )}
                   {msg.image_url && (
                     <img
                       src={msg.image_url}
@@ -209,19 +257,36 @@ export default function Chat() {
       {/* Input */}
       <div className="flex items-center gap-2 pt-3 border-t border-border">
         <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
-        <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending}>
-          <ImagePlus className="h-5 w-5" />
-        </Button>
-        <Input
-          value={newMsg}
-          onChange={(e) => setNewMsg(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1"
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-        />
-        <Button size="icon" onClick={() => sendMessage()} disabled={sending || !newMsg.trim()}>
-          <Send className="h-4 w-4" />
-        </Button>
+        {!isRecording ? (
+          <>
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+              <ImagePlus className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={startRecording} disabled={sending}>
+              <Mic className="h-5 w-5" />
+            </Button>
+            <Input
+              value={newMsg}
+              onChange={(e) => setNewMsg(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(null, null)}
+            />
+            <Button size="icon" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 flex items-center gap-3 px-3 py-2 bg-red-50 rounded-lg border border-red-200">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm text-red-600 font-medium">Recording... {recordingSeconds}s</span>
+            </div>
+            <Button size="icon" variant="destructive" onClick={sendVoiceMessage} disabled={sending}>
+              <Square className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
