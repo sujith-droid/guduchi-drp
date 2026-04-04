@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import SugarChart from "../components/SugarChart";
 import WeightStepChart from "../components/WeightStepChart";
 import StatCard from "../components/StatCard";
-import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle } from "lucide-react";
+import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone } from "lucide-react";
 import moment from "moment";
 
 export default function PatientDetail() {
@@ -18,10 +18,18 @@ export default function PatientDetail() {
   const [logs, setLogs] = useState([]);
   const [period, setPeriod] = useState("30");
   const [loading, setLoading] = useState(true);
+  const [patientPhone, setPatientPhone] = useState(null);
 
   useEffect(() => {
     loadLogs();
+    loadPatientPhone();
   }, [period]);
+
+  const loadPatientPhone = async () => {
+    const allUsers = await base44.entities.User.list("-created_date", 200);
+    const patient = allUsers.find((u) => u.email === patientEmail);
+    setPatientPhone(patient?.phone || null);
+  };
 
   const loadLogs = async () => {
     setLoading(true);
@@ -74,6 +82,17 @@ export default function PatientDetail() {
               <MessageCircle className="h-3 w-3" /> Chat
             </Button>
           </Link>
+          {patientPhone ? (
+            <a href={`tel:${patientPhone}`}>
+              <Button size="sm" className="gap-1 bg-emerald-500 hover:bg-emerald-600">
+                <Phone className="h-3 w-3" /> Call
+              </Button>
+            </a>
+          ) : (
+            <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
+              <Phone className="h-3 w-3" /> No Phone
+            </Button>
+          )}
         </div>
       </div>
 

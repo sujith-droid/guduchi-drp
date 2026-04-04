@@ -56,11 +56,10 @@ export default function PatientDashboard() {
       const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
       if (assignments.length > 0) {
         const a = assignments[0];
-        setDoctorName(a.doctor_name);
-        const allUsers = await base44.entities.User.filter({ email: a.doctor_email });
-        if (allUsers.length > 0 && allUsers[0].phone) {
-          setDoctorPhone(allUsers[0].phone);
-        }
+        setDoctorName(a.doctor_name || a.doctor_email);
+        const allUsers = await base44.entities.User.list("-created_date", 200);
+        const doctor = allUsers.find((u) => u.email === a.doctor_email);
+        setDoctorPhone(doctor?.phone || null);
       }
     } catch (e) {
       console.error(e);
@@ -142,21 +141,33 @@ export default function PatientDashboard() {
       )}
 
       {/* Call Doctor */}
-      {doctorPhone && (
-        <motion.a
-          href={`tel:${doctorPhone}`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 hover:bg-emerald-100 transition-colors"
-        >
-          <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-            <Phone className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <p className="font-semibold text-emerald-800 text-sm">Call Dr. {doctorName}</p>
-            <p className="text-xs text-emerald-600">{doctorPhone} — tap to call</p>
-          </div>
-        </motion.a>
+      {doctorName && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          {doctorPhone ? (
+            <a
+              href={`tel:${doctorPhone}`}
+              className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 hover:bg-emerald-100 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-emerald-800 text-sm">Call Dr. {doctorName}</p>
+                <p className="text-xs text-emerald-600">{doctorPhone} — tap to dial</p>
+              </div>
+            </a>
+          ) : (
+            <div className="flex items-center gap-3 bg-muted border border-border rounded-xl p-4">
+              <div className="h-10 w-10 rounded-full bg-muted-foreground/20 flex items-center justify-center flex-shrink-0">
+                <Phone className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Call Dr. {doctorName}</p>
+                <p className="text-xs text-muted-foreground">Doctor hasn't added a phone number yet</p>
+              </div>
+            </div>
+          )}
+        </motion.div>
       )}
 
       {/* Quick Actions */}
