@@ -6,7 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
-import PatientDashboard from './pages/PatientDashboard';
+import Home from './pages/Home';
 import Logbook from './pages/Logbook';
 import Progress from './pages/Progress';
 import Chat from './pages/Chat';
@@ -46,7 +46,7 @@ const AuthenticatedApp = () => {
       <Route path="/setup" element={<ProfileSetup />} />
       <Route path="/profile" element={<Profile />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<PatientDashboard />} />
+        <Route path="/" element={<Home />} />
         <Route path="/logbook" element={<Logbook />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/chat" element={<Chat />} />
