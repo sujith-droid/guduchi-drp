@@ -5,6 +5,7 @@ import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone } fro
 import { Button } from "@/components/ui/button";
 import StatCard from "../components/StatCard";
 import SmartFeedback from "../components/SmartFeedback";
+import StepCalculator from "../components/StepCalculator";
 import SugarChart from "../components/SugarChart";
 import moment from "moment";
 import { motion } from "framer-motion";
@@ -142,6 +143,9 @@ export default function PatientDashboard() {
           <SugarChart logs={recentLogs.slice(0, 7)} height={220} />
         </div>
       )}
+
+      {/* Step Calculator */}
+      <StepCalculator todaySteps={todayLog?.step_count || 0} goal={10000} />
 
       {/* Call Doctor */}
       {doctorName && (
