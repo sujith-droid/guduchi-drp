@@ -57,9 +57,12 @@ export default function PatientDashboard() {
       if (assignments.length > 0) {
         const a = assignments[0];
         setDoctorName(a.doctor_name || a.doctor_email);
-        const allUsers = await base44.entities.User.list("-created_date", 200);
-        const doctor = allUsers.find((u) => u.email === a.doctor_email);
-        setDoctorPhone(doctor?.phone || null);
+        try {
+          const res = await base44.functions.invoke('getUserPhone', { target_email: a.doctor_email });
+          setDoctorPhone(res.data.phone || null);
+        } catch (e) {
+          console.error("Failed to load doctor phone", e);
+        }
       }
     } catch (e) {
       console.error(e);

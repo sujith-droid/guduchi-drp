@@ -26,9 +26,12 @@ export default function PatientDetail() {
   }, [period]);
 
   const loadPatientPhone = async () => {
-    const allUsers = await base44.entities.User.list("-created_date", 200);
-    const patient = allUsers.find((u) => u.email === patientEmail);
-    setPatientPhone(patient?.phone || null);
+    try {
+      const res = await base44.functions.invoke('getUserPhone', { target_email: patientEmail });
+      setPatientPhone(res.data.phone || null);
+    } catch (e) {
+      console.error("Failed to load patient phone", e);
+    }
   };
 
   const loadLogs = async () => {
