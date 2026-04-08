@@ -1,32 +1,78 @@
-import { useState } from "react";
-import { Footprints, Flame, MapPin, Clock, Plus, Minus } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Footprints, Flame, MapPin, Clock, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 
-const STEP_LENGTH_M = 0.762; // avg step length in meters
-const CALORIES_PER_STEP = 0.04; // approx calories per step
+const STEP_LENGTH_M = 0.762;
+const CALORIES_PER_STEP = 0.04;
+const STEP_THRESHOLD = 12; // acceleration magnitude threshold
+const STEP_COOLDOWN_MS = 400; // minimum ms between steps
 
 export default function StepCalculator({ todaySteps = 0, goal = 10000 }) {
-  const [steps, setSteps] = useState(todaySteps || 0);
-  const [manualInput, setManualInput] = useState("");
+  const [steps, setSteps] = useState(0);
+  const [isTracking, setIsTracking] = useState(false);
+  const [permitted, setPermitted] = useState(null); // null=unknown, true=yes, false=no
+  const [elapsed, setElapsed] = useState(0);
+  const lastStepTime = useRef(0);
+  const timerRef = useRef(null);
+  const stepsRef = useRef(0);
 
   const distance = ((steps * STEP_LENGTH_M) / 1000).toFixed(2);
   const calories = Math.round(steps * CALORIES_PER_STEP);
-  const duration = Math.round((steps / 100) * 1); // ~100 steps per minute
-  const progress = Math.min((steps / goal) * 100, 100);
+  const progress = Math.min(((steps + todaySteps) / goal) * 100, 100);
+  const totalSteps = steps + todaySteps;
 
-  const addSteps = () => {
-    const val = parseInt(manualInput);
-    if (!isNaN(val) && val > 0) {
-      setSteps((prev) => prev + val);
-      setManualInput("");
+  useEffect(() => {
+    return () => {
+      stopTracking();
+    };
+  }, []);
+
+  const handleMotion = (event) => {
+    const acc = event.accelerationIncludingGravity;
+    if (!acc) return;
+    const magnitude = Math.sqrt(acc.x ** 2 + acc.y ** 2 + acc.z ** 2);
+    const now = Date.now();
+    if (magnitude > STEP_THRESHOLD && now - lastStepTime.current > STEP_COOLDOWN_MS) {
+      lastStepTime.current = now;
+      stepsRef.current += 1;
+      setSteps(stepsRef.current);
     }
   };
 
-  const quickAdd = (amount) => {
-    setSteps((prev) => prev + amount);
+  const startTracking = async () => {
+    // iOS requires permission for DeviceMotionEvent
+    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+      try {
+        const permission = await DeviceMotionEvent.requestPermission();
+        if (permission !== "granted") {
+          setPermitted(false);
+          return;
+        }
+      } catch {
+        setPermitted(false);
+        return;
+      }
+    }
+    setPermitted(true);
+    setIsTracking(true);
+    setElapsed(0);
+    stepsRef.current = 0;
+    setSteps(0);
+    window.addEventListener("devicemotion", handleMotion);
+    timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+  };
+
+  const stopTracking = () => {
+    setIsTracking(false);
+    window.removeEventListener("devicemotion", handleMotion);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
   };
 
   return (
@@ -37,35 +83,37 @@ export default function StepCalculator({ todaySteps = 0, goal = 10000 }) {
     >
       <div className="flex items-center justify-between">
         <h3 className="font-heading font-semibold flex items-center gap-2">
-          <Footprints className="h-5 w-5 text-primary" /> Step Calculator
+          <Footprints className="h-5 w-5 text-primary" /> Step Counter
         </h3>
         <span className="text-xs text-muted-foreground">
-          Goal: {goal.toLocaleString()} steps
+          Daily goal: {goal.toLocaleString()}
         </span>
       </div>
 
       {/* Progress Ring */}
       <div className="flex items-center gap-5">
-        <div className="relative h-24 w-24 flex-shrink-0">
-          <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
+        <div className="relative h-28 w-28 flex-shrink-0">
+          <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--border))" strokeWidth="8" />
             <circle
               cx="50" cy="50" r="42"
               fill="none"
-              stroke="hsl(var(--primary))"
+              stroke={isTracking ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
               strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={`${progress * 2.64} ${264 - progress * 2.64}`}
-              className="transition-all duration-500"
+              className="transition-all duration-300"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-lg font-bold font-heading">{steps.toLocaleString()}</span>
-            <span className="text-[10px] text-muted-foreground">steps</span>
+            <span className="text-xl font-bold font-heading leading-none">{totalSteps.toLocaleString()}</span>
+            <span className="text-[10px] text-muted-foreground mt-0.5">/ {goal.toLocaleString()}</span>
+            {isTracking && (
+              <span className="text-[10px] text-primary font-semibold mt-0.5 animate-pulse">LIVE</span>
+            )}
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 flex-1">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
@@ -90,8 +138,8 @@ export default function StepCalculator({ todaySteps = 0, goal = 10000 }) {
               <Clock className="h-4 w-4 text-purple-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold">{duration}</p>
-              <p className="text-[10px] text-muted-foreground">min</p>
+              <p className="text-sm font-semibold">{formatTime(elapsed)}</p>
+              <p className="text-[10px] text-muted-foreground">time</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -106,39 +154,36 @@ export default function StepCalculator({ todaySteps = 0, goal = 10000 }) {
         </div>
       </div>
 
-      {/* Quick Add Buttons */}
-      <div className="flex gap-2">
-        {[500, 1000, 2000, 5000].map((amt) => (
-          <Button
-            key={amt}
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={() => quickAdd(amt)}
-          >
-            +{amt >= 1000 ? `${amt / 1000}k` : amt}
-          </Button>
-        ))}
-      </div>
+      {/* Session steps */}
+      {isTracking && (
+        <div className="text-center py-2 bg-primary/10 rounded-lg">
+          <p className="text-sm text-primary font-medium">
+            +{steps.toLocaleString()} steps this session
+          </p>
+        </div>
+      )}
 
-      {/* Manual Input */}
-      <div className="flex gap-2">
-        <Input
-          type="number"
-          placeholder="Enter steps..."
-          value={manualInput}
-          onChange={(e) => setManualInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addSteps()}
-          className="flex-1"
-        />
-        <Button onClick={addSteps} size="sm" className="gap-1">
-          <Plus className="h-4 w-4" /> Add
+      {/* Permission denied message */}
+      {permitted === false && (
+        <div className="text-center py-2 bg-destructive/10 rounded-lg">
+          <p className="text-xs text-destructive">Motion sensor permission denied. Please allow access in browser settings.</p>
+        </div>
+      )}
+
+      {/* Control Button */}
+      {!isTracking ? (
+        <Button onClick={startTracking} className="w-full gap-2">
+          <Play className="h-4 w-4" /> Start Counting Steps
         </Button>
-      </div>
+      ) : (
+        <Button onClick={stopTracking} variant="destructive" className="w-full gap-2">
+          <Square className="h-4 w-4" /> Stop
+        </Button>
+      )}
 
       {progress >= 100 && (
         <div className="text-center py-2 bg-primary/10 rounded-lg">
-          <p className="text-sm font-semibold text-primary">🎉 Goal reached! Great job!</p>
+          <p className="text-sm font-semibold text-primary">🎉 Daily goal reached! Great job!</p>
         </div>
       )}
     </motion.div>
