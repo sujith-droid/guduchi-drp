@@ -13,7 +13,9 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
+  const [groupConv, setGroupConv] = useState(null);
   const [activeConvId, setActiveConvId] = useState(null);
+  const [isGroupChat, setIsGroupChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
   const fileInputRef = useRef(null);
@@ -59,6 +61,17 @@ export default function Chat() {
     );
     setConversations(assignments);
 
+    // For patients with multiple doctors, create a group conversation
+    if (me.role === "patient" && assignments.length > 1) {
+      const groupId = `group_${me.email}`;
+      setGroupConv({
+        id: groupId,
+        convId: groupId,
+        name: "Care Team",
+        members: assignments.map((a) => ({ name: a.doctor_name, email: a.doctor_email })),
+      });
+    }
+
     if (assignments.length === 1) {
       const a = assignments[0];
       const convId = [a.patient_email, a.doctor_email].sort().join("_");
@@ -74,6 +87,13 @@ export default function Chat() {
   };
 
   const selectConversation = (assignment) => {
+    if (assignment.isGroup) {
+      setActiveConvId(assignment.convId);
+      setChatPartner({ name: assignment.name, email: null });
+      setIsGroupChat(true);
+      return;
+    }
+    setIsGroupChat(false);
     const convId = [assignment.patient_email, assignment.doctor_email].sort().join("_");
     setActiveConvId(convId);
     setChatPartner(
@@ -87,10 +107,9 @@ export default function Chat() {
     if (!newMsg.trim() && !imageUrl && !audioUrl) return;
     setSending(true);
 
-    const partnerEmail = chatPartner.email;
     const msgData = {
       sender_email: user.email,
-      receiver_email: partnerEmail,
+      receiver_email: isGroupChat ? "group" : chatPartner.email,
       conversation_id: activeConvId,
       message: newMsg.trim() || undefined,
       message_type: imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text",
@@ -205,6 +224,21 @@ export default function Chat() {
           </div>
         ) : (
           <div className="space-y-2">
+            {/* Group conversation for patients with multiple doctors */}
+            {groupConv && (
+              <button
+                onClick={() => selectConversation({ ...groupConv, isGroup: true })}
+                className="w-full bg-gradient-to-r from-primary/10 to-accent border border-primary/30 rounded-xl p-4 flex items-center gap-3 hover:border-primary/50 transition-colors text-left"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                  👥
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Care Team Group</p>
+                  <p className="text-xs text-muted-foreground">{groupConv.members.map((m) => `Dr. ${m.name}`).join(", ")}</p>
+                </div>
+              </button>
+            )}
             {conversations.map((a) => (
               <button
                 key={a.id}
@@ -234,8 +268,8 @@ export default function Chat() {
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] pb-16 md:pb-0">
       {/* Chat Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-border">
-        {conversations.length > 1 && (
-          <Button variant="ghost" size="icon" onClick={() => { setActiveConvId(null); setChatPartner(null); }}>
+        {(conversations.length > 1 || groupConv) && (
+          <Button variant="ghost" size="icon" onClick={() => { setActiveConvId(null); setChatPartner(null); setIsGroupChat(false); }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}

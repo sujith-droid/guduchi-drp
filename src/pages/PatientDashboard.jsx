@@ -17,8 +17,7 @@ export default function PatientDashboard() {
   const [recentLogs, setRecentLogs] = useState([]);
   const [hba1cImproved, setHba1cImproved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [doctorPhone, setDoctorPhone] = useState(null);
-  const [doctorName, setDoctorName] = useState(null);
+  const [assignedDoctors, setAssignedDoctors] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -53,18 +52,19 @@ export default function PatientDashboard() {
         setHba1cImproved(true);
       }
 
-      // Load assigned doctor's phone
+      // Load all assigned doctors' phones
       const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
-      if (assignments.length > 0) {
-        const a = assignments[0];
-        setDoctorName(a.doctor_name || a.doctor_email);
-        try {
-          const res = await base44.functions.invoke('getUserPhone', { target_email: a.doctor_email });
-          setDoctorPhone(res.data.phone || null);
-        } catch (e) {
-          console.error("Failed to load doctor phone", e);
-        }
-      }
+      const doctorList = await Promise.all(
+        assignments.map(async (a) => {
+          let phone = null;
+          try {
+            const res = await base44.functions.invoke('getUserPhone', { target_email: a.doctor_email });
+            phone = res.data.phone || null;
+          } catch {}
+          return { name: a.doctor_name || a.doctor_email, email: a.doctor_email, phone };
+        })
+      );
+      setAssignedDoctors(doctorList);
     } catch (e) {
       console.error(e);
     } finally {
@@ -147,33 +147,34 @@ export default function PatientDashboard() {
       {/* Step Calculator */}
       <StepCalculator todaySteps={todayLog?.step_count || 0} goal={10000} />
 
-      {/* Call Doctor */}
-      {doctorName && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {doctorPhone ? (
-            <a
-              href={`tel:${doctorPhone}`}
-              className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 hover:bg-emerald-100 transition-colors"
-            >
-              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                <Phone className="h-5 w-5 text-white" />
+      {/* Call Doctors */}
+      {assignedDoctors.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+          <h3 className="text-sm font-semibold text-muted-foreground">Your Care Team</h3>
+          {assignedDoctors.map((doc) => (
+            doc.phone ? (
+              <a key={doc.email} href={`tel:${doc.phone}`}
+                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 hover:bg-emerald-100 transition-colors">
+                <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-800 text-sm">Dr. {doc.name}</p>
+                  <p className="text-xs text-emerald-600">{doc.phone} — tap to dial</p>
+                </div>
+              </a>
+            ) : (
+              <div key={doc.email} className="flex items-center gap-3 bg-muted border border-border rounded-xl p-4">
+                <div className="h-10 w-10 rounded-full bg-muted-foreground/20 flex items-center justify-center flex-shrink-0">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Dr. {doc.name}</p>
+                  <p className="text-xs text-muted-foreground">No phone number added yet</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-emerald-800 text-sm">Call Dr. {doctorName}</p>
-                <p className="text-xs text-emerald-600">{doctorPhone} — tap to dial</p>
-              </div>
-            </a>
-          ) : (
-            <div className="flex items-center gap-3 bg-muted border border-border rounded-xl p-4">
-              <div className="h-10 w-10 rounded-full bg-muted-foreground/20 flex items-center justify-center flex-shrink-0">
-                <Phone className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Call Dr. {doctorName}</p>
-                <p className="text-xs text-muted-foreground">Doctor hasn't added a phone number yet</p>
-              </div>
-            </div>
-          )}
+            )
+          ))}
         </motion.div>
       )}
 
