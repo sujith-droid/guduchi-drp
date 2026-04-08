@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, UserPlus, Link2, Trash2 } from "lucide-react";
+import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -20,6 +21,10 @@ export default function AdminPanel() {
   const [assignDialog, setAssignDialog] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [templates, setTemplates] = useState([]);
+  const [newTplName, setNewTplName] = useState("");
+  const [newTplContent, setNewTplContent] = useState("");
+  const [savingTpl, setSavingTpl] = useState(false);
 
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -39,6 +44,8 @@ export default function AdminPanel() {
     setUsers(allUsers);
     const allAssignments = await base44.entities.PatientDoctorAssignment.filter({ status: "active" });
     setAssignments(allAssignments);
+    const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
+    setTemplates(tmpl);
     setLoading(false);
   };
 
@@ -47,9 +54,18 @@ export default function AdminPanel() {
 
   const assignPatient = async () => {
     if (!selectedPatient || !selectedDoctor) return;
+    const patientAssignments = assignments.filter((a) => a.patient_email === selectedPatient);
+    if (patientAssignments.length >= 3) {
+      toast.error("A patient can only be assigned to a maximum of 3 doctors.");
+      return;
+    }
+    const alreadyAssigned = patientAssignments.some((a) => a.doctor_email === selectedDoctor);
+    if (alreadyAssigned) {
+      toast.error("This patient is already assigned to this doctor.");
+      return;
+    }
     const patient = users.find((u) => u.email === selectedPatient);
     const doctor = users.find((u) => u.email === selectedDoctor);
-
     await base44.entities.PatientDoctorAssignment.create({
       patient_email: selectedPatient,
       doctor_email: selectedDoctor,
@@ -57,12 +73,32 @@ export default function AdminPanel() {
       doctor_name: doctor?.full_name || selectedDoctor,
       status: "active",
     });
-
     toast.success("Patient assigned to doctor!");
     setAssignDialog(false);
     setSelectedPatient("");
     setSelectedDoctor("");
     loadData();
+  };
+
+  const addTemplate = async () => {
+    if (!newTplName.trim() || !newTplContent.trim()) return;
+    setSavingTpl(true);
+    await base44.entities.MessageTemplate.create({
+      name: newTplName.trim(),
+      content: newTplContent.trim(),
+    });
+    setNewTplName("");
+    setNewTplContent("");
+    setSavingTpl(false);
+    toast.success("Template added!");
+    const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
+    setTemplates(tmpl);
+  };
+
+  const deleteTemplate = async (id) => {
+    await base44.entities.MessageTemplate.delete(id);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    toast.success("Template deleted");
   };
 
   const changeUserRole = async (userId, newRole) => {
@@ -211,6 +247,41 @@ export default function AdminPanel() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Message Templates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> Message Templates (Doctors Only)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Input placeholder="Template name..." value={newTplName} onChange={(e) => setNewTplName(e.target.value)} />
+            <Textarea placeholder="Template message content..." value={newTplContent} onChange={(e) => setNewTplContent(e.target.value)} rows={3} />
+            <Button onClick={addTemplate} disabled={savingTpl || !newTplName.trim() || !newTplContent.trim()} className="w-full gap-2">
+              <Plus className="h-4 w-4" /> Add Template
+            </Button>
+          </div>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">No templates yet</p>
+          ) : (
+            <div className="space-y-2">
+              {templates.map((t) => (
+                <div key={t.id} className="flex items-start justify-between p-3 bg-muted/50 rounded-lg gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.content}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => deleteTemplate(t.id)} className="text-destructive hover:text-destructive flex-shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           )}

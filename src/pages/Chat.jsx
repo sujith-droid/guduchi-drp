@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, MicOff, Square } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X } from "lucide-react";
 import moment from "moment";
 import { motion } from "framer-motion";
 
@@ -17,6 +17,9 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
   const fileInputRef = useRef(null);
+  const fileDocRef = useRef(null);
+  const [templates, setTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const [isRecording, setIsRecording] = useState(false);
@@ -43,6 +46,10 @@ export default function Chat() {
     const me = await base44.auth.me();
     setUser(me);
     await loadConversations(me);
+    if (me.role === 'doctor') {
+      const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
+      setTemplates(tmpl);
+    }
     setLoading(false);
   };
 
@@ -103,6 +110,39 @@ export default function Chat() {
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     await sendMessage(file_url, null);
     setSending(false);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSending(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const partnerEmail = chatPartner.email;
+    await base44.entities.ChatMessage.create({
+      sender_email: user.email,
+      receiver_email: partnerEmail,
+      conversation_id: activeConvId,
+      message: file.name,
+      message_type: 'text',
+      image_url: file_url,
+    });
+    setSending(false);
+    loadMessages();
+  };
+
+  const sendTemplate = async (template) => {
+    setShowTemplates(false);
+    setSending(true);
+    const partnerEmail = chatPartner.email;
+    await base44.entities.ChatMessage.create({
+      sender_email: user.email,
+      receiver_email: partnerEmail,
+      conversation_id: activeConvId,
+      message: template.content,
+      message_type: 'text',
+    });
+    setSending(false);
+    loadMessages();
   };
 
   const startRecording = async () => {
@@ -255,16 +295,37 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="flex items-center gap-2 pt-3 border-t border-border">
+      <div className="relative flex items-center gap-2 pt-3 border-t border-border">
         <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+        <input type="file" ref={fileDocRef} className="hidden" onChange={handleFileUpload} />
+        {showTemplates && templates.length > 0 && (
+          <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground">Templates</p>
+              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setShowTemplates(false)}><X className="h-3 w-3" /></Button>
+            </div>
+            {templates.map((t) => (
+              <button key={t.id} onClick={() => sendTemplate(t)}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted text-sm mb-1 border border-transparent hover:border-border transition-colors">
+                <p className="font-medium text-xs">{t.name}</p>
+                <p className="text-muted-foreground text-xs truncate mt-0.5">{t.content}</p>
+              </button>
+            ))}
+          </div>
+        )}
         {!isRecording ? (
           <>
             <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending}>
               <ImagePlus className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={startRecording} disabled={sending}>
-              <Mic className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={() => fileDocRef.current?.click()} disabled={sending}>
+              <Paperclip className="h-5 w-5" />
             </Button>
+            {user?.role === 'doctor' && (
+              <Button variant="ghost" size="icon" onClick={() => setShowTemplates((v) => !v)} disabled={sending}>
+                <LayoutTemplate className="h-5 w-5" />
+              </Button>
+            )}
             <Input
               value={newMsg}
               onChange={(e) => setNewMsg(e.target.value)}

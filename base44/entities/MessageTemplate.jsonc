@@ -1,0 +1,22 @@
+{
+  "name": "MessageTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name/title"
+    },
+    "content": {
+      "type": "string",
+      "description": "Template message content"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Full name of the doctor who created it"
+    }
+  },
+  "required": [
+    "name",
+    "content"
+  ]
+}
