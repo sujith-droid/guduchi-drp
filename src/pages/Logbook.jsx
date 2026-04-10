@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Droplets, Weight, Footprints, Save, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Droplets, Weight, Footprints, Save, Calendar, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import moment from "moment";
 import { motion } from "framer-motion";
@@ -26,6 +26,7 @@ export default function Logbook() {
   const [recentLogs, setRecentLogs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -77,12 +78,12 @@ export default function Logbook() {
 
     if (existingLog) {
       await base44.entities.DailyLog.update(existingLog.id, data);
-      toast.success("Log updated!");
     } else {
       await base44.entities.DailyLog.create(data);
-      toast.success("Log saved!");
     }
     setSaving(false);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 2500);
     loadLogForDate();
     const logs = await base44.entities.DailyLog.filter({ patient_email: user.email }, "-date", 14);
     setRecentLogs(logs);
@@ -104,6 +105,23 @@ export default function Logbook() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      {/* Success Popup */}
+      {showSuccess && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+        >
+          <div className="bg-white border border-emerald-200 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-3">
+            <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            </div>
+            <p className="text-lg font-heading font-bold text-emerald-700">Entry Saved!</p>
+            <p className="text-sm text-muted-foreground">Your health data has been recorded.</p>
+          </div>
+        </motion.div>
+      )}
       <div>
         <h1 className="text-2xl font-heading font-bold">Daily Logbook</h1>
         <p className="text-sm text-muted-foreground mt-1">Record your daily health metrics</p>
