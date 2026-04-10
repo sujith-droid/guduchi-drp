@@ -17,12 +17,15 @@ export default function JoinDoctor() {
 
   const handleAssign = async () => {
     try {
+      const isAuthed = await base44.auth.isAuthenticated();
+      if (!isAuthed) {
+        base44.auth.redirectToLogin(window.location.href);
+        return;
+      }
       const me = await base44.auth.me();
 
-      // Find doctor info
-      const allUsers = await base44.entities.User.filter({ email: doctorEmail });
-      const doctor = allUsers[0];
-      setDoctorName(doctor?.full_name || doctorEmail);
+      // Find doctor info from assignments or use email directly
+      setDoctorName(doctorEmail);
 
       // Check existing assignments
       const existing = await base44.entities.PatientDoctorAssignment.filter({
@@ -51,7 +54,7 @@ export default function JoinDoctor() {
         patient_email: me.email,
         doctor_email: doctorEmail,
         patient_name: me.full_name || me.email,
-        doctor_name: doctor?.full_name || doctorEmail,
+        doctor_name: doctorEmail,
         status: "active",
       });
 
