@@ -310,11 +310,20 @@ export default function Chat() {
                     <audio controls src={msg.audio_url} className="max-w-full h-8" />
                   )}
                   {msg.image_url && (
-                    <img
-                      src={msg.image_url}
-                      alt="Shared"
-                      className="rounded-lg max-w-full max-h-48 object-cover mb-2"
-                    />
+                    /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(msg.image_url) ? (
+                      <img src={msg.image_url} alt="Shared" className="rounded-lg max-w-full max-h-48 object-cover mb-2" />
+                    ) : (
+                      <a
+                        href={msg.image_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="flex items-center gap-2 px-3 py-2 bg-white/20 rounded-lg text-sm underline mb-2"
+                      >
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        {msg.message || "Download file"}
+                      </a>
+                    )
                   )}
                   {msg.message && <p className="text-sm">{msg.message}</p>}
                 </div>
@@ -367,6 +376,9 @@ export default function Chat() {
               className="flex-1"
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(null, null)}
             />
+            <Button size="icon" variant="ghost" onClick={startRecording} disabled={sending}>
+              <Mic className="h-5 w-5" />
+            </Button>
             <Button size="icon" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()}>
               <Send className="h-4 w-4" />
             </Button>
