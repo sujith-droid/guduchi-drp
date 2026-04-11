@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Droplets, Weight, Footprints, Save, Calendar, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Droplets, Weight, Save, Calendar, ChevronLeft, ChevronRight, CheckCircle2, FileText, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import moment from "moment";
 import { motion } from "framer-motion";
@@ -27,6 +28,11 @@ export default function Logbook() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hba1cRecords, setHba1cRecords] = useState([]);
+  const [hba1cValue, setHba1cValue] = useState("");
+  const [hba1cDate, setHba1cDate] = useState("");
+  const [hba1cDialogOpen, setHba1cDialogOpen] = useState(false);
+  const [savingHba1c, setSavingHba1c] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -41,7 +47,25 @@ export default function Logbook() {
     setUser(me);
     const logs = await base44.entities.DailyLog.filter({ patient_email: me.email }, "-date", 14);
     setRecentLogs(logs);
+    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: me.email }, "-date", 10);
+    setHba1cRecords(hba1c);
+    setHba1cDate(moment().format("YYYY-MM-DD"));
     setLoading(false);
+  };
+
+  const saveHba1c = async () => {
+    if (!hba1cValue) return;
+    setSavingHba1c(true);
+    await base44.entities.HbA1cRecord.create({
+      patient_email: user.email,
+      date: hba1cDate,
+      value: Number(hba1cValue),
+    });
+    setHba1cValue("");
+    setHba1cDialogOpen(false);
+    setSavingHba1c(false);
+    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: user.email }, "-date", 10);
+    setHba1cRecords(hba1c);
   };
 
   const loadLogForDate = async () => {
@@ -152,15 +176,12 @@ export default function Logbook() {
       </div>
 
       <Tabs defaultValue="sugar" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-full grid grid-cols-2">
           <TabsTrigger value="sugar" className="gap-1 text-xs">
             <Droplets className="h-3 w-3" /> Sugar
           </TabsTrigger>
           <TabsTrigger value="body" className="gap-1 text-xs">
             <Weight className="h-3 w-3" /> Body
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-1 text-xs">
-            <Footprints className="h-3 w-3" /> Activity
           </TabsTrigger>
         </TabsList>
 
@@ -224,18 +245,6 @@ export default function Logbook() {
                     step="0.1"
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">Step Count</Label>
                   <Input
@@ -266,6 +275,63 @@ export default function Logbook() {
         <Save className="h-4 w-4" />
         {saving ? "Saving..." : existingLog ? "Update Entry" : "Save Entry"}
       </Button>
+
+      {/* HbA1c Section */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4" /> HbA1c Records
+            </CardTitle>
+            <Dialog open={hba1cDialogOpen} onOpenChange={setHba1cDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Plus className="h-3 w-3" /> Add
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add HbA1c Reading</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Date</Label>
+                    <Input type="date" value={hba1cDate} onChange={(e) => setHba1cDate(e.target.value)} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label>HbA1c Value (%)</Label>
+                    <Input type="number" placeholder="e.g., 6.5" value={hba1cValue} onChange={(e) => setHba1cValue(e.target.value)} className="mt-1" step="0.1" />
+                  </div>
+                  <Button onClick={saveHba1c} className="w-full" disabled={savingHba1c}>Save</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {hba1cRecords.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No HbA1c records yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {hba1cRecords.map((rec, i) => (
+                <div key={rec.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm">{moment(rec.date).format("MMM D, YYYY")}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold">{rec.value}%</span>
+                    {i < hba1cRecords.length - 1 && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        rec.value < hba1cRecords[i + 1].value ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      }`}>
+                        {rec.value < hba1cRecords[i + 1].value ? "↓" : "↑"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Entries */}
       {recentLogs.length > 0 && (

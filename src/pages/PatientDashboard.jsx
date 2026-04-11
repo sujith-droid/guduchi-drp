@@ -16,6 +16,7 @@ export default function PatientDashboard() {
   const [previousLog, setPreviousLog] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
   const [hba1cImproved, setHba1cImproved] = useState(false);
+  const [latestHba1c, setLatestHba1c] = useState(null);
   const [loading, setLoading] = useState(true);
   const [assignedDoctors, setAssignedDoctors] = useState([]);
 
@@ -48,6 +49,7 @@ export default function PatientDashboard() {
         "-date",
         2
       );
+      if (hba1c.length > 0) setLatestHba1c(hba1c[0]);
       if (hba1c.length >= 2 && hba1c[0].value < hba1c[1].value) {
         setHba1cImproved(true);
       }
@@ -128,6 +130,20 @@ export default function PatientDashboard() {
           <StatCard icon={Activity} label="Post Breakfast" value={todayLog.post_breakfast_sugar} unit="mg/dL" />
           <StatCard icon={Weight} label="Weight" value={todayLog.weight} unit="kg" />
           <StatCard icon={Footprints} label="Steps" value={todayLog.step_count?.toLocaleString()} />
+        </div>
+      )}
+
+      {/* HbA1c */}
+      {latestHba1c && (
+        <div className="bg-card rounded-xl border border-border p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">Latest HbA1c</p>
+            <p className="text-2xl font-bold font-heading text-primary">{latestHba1c.value}%</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{new Date(latestHba1c.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+          </div>
+          {hba1cImproved && (
+            <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-1 rounded-full font-medium">↓ Improving</span>
+          )}
         </div>
       )}
 

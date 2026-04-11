@@ -3,25 +3,18 @@ import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 import SugarChart from "../components/SugarChart";
 import WeightStepChart from "../components/WeightStepChart";
-import { Droplets, Weight, Footprints, Plus, FileText } from "lucide-react";
-import { toast } from "sonner";
+import { Droplets, Weight, Footprints } from "lucide-react";
+
 import moment from "moment";
 
 export default function Progress() {
   const [user, setUser] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [hba1cRecords, setHba1cRecords] = useState([]);
   const [period, setPeriod] = useState("30");
   const [loading, setLoading] = useState(true);
-  const [hba1cValue, setHba1cValue] = useState("");
-  const [hba1cDate, setHba1cDate] = useState(moment().format("YYYY-MM-DD"));
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -34,8 +27,6 @@ export default function Progress() {
   const loadData = async () => {
     const me = await base44.auth.me();
     setUser(me);
-    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: me.email }, "-date", 10);
-    setHba1cRecords(hba1c);
     setLoading(false);
   };
 
@@ -48,19 +39,7 @@ export default function Progress() {
     setLogs(allLogs);
   };
 
-  const saveHba1c = async () => {
-    if (!hba1cValue) return;
-    await base44.entities.HbA1cRecord.create({
-      patient_email: user.email,
-      date: hba1cDate,
-      value: Number(hba1cValue),
-    });
-    toast.success("HbA1c record saved!");
-    setDialogOpen(false);
-    setHba1cValue("");
-    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: user.email }, "-date", 10);
-    setHba1cRecords(hba1c);
-  };
+
 
   if (loading) {
     return (
@@ -142,78 +121,6 @@ export default function Progress() {
         </TabsContent>
       </Tabs>
 
-      {/* HbA1c Section */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4" /> HbA1c Records
-            </CardTitle>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1">
-                  <Plus className="h-3 w-3" /> Add
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add HbA1c Reading</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Date</Label>
-                    <Input
-                      type="date"
-                      value={hba1cDate}
-                      onChange={(e) => setHba1cDate(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label>HbA1c Value (%)</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g., 6.5"
-                      value={hba1cValue}
-                      onChange={(e) => setHba1cValue(e.target.value)}
-                      className="mt-1"
-                      step="0.1"
-                    />
-                  </div>
-                  <Button onClick={saveHba1c} className="w-full">Save</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {hba1cRecords.length > 0 ? (
-            <div className="space-y-2">
-              {hba1cRecords.map((rec) => (
-                <div key={rec.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm">{moment(rec.date).format("MMM D, YYYY")}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold">{rec.value}%</span>
-                    {hba1cRecords.indexOf(rec) < hba1cRecords.length - 1 && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        rec.value < hba1cRecords[hba1cRecords.indexOf(rec) + 1].value
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-red-100 text-red-700"
-                      }`}>
-                        {rec.value < hba1cRecords[hba1cRecords.indexOf(rec) + 1].value ? "↓" : "↑"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No HbA1c records yet. Add your latest reading.
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
