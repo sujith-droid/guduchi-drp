@@ -25,6 +25,16 @@
         "inactive"
       ],
       "default": "active"
+    },
+    "program_duration": {
+      "type": "string",
+      "enum": [
+        "1 month",
+        "3 months",
+        "6 months",
+        "9 months"
+      ],
+      "description": "Program duration selected for the patient"
     }
   },
   "required": [

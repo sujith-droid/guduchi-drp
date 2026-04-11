@@ -116,6 +116,12 @@ export default function AdminPanel() {
     loadData();
   };
 
+  const updateProgram = async (id, program_duration) => {
+    await base44.entities.PatientDoctorAssignment.update(id, { program_duration });
+    toast.success("Program updated");
+    loadData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -241,14 +247,30 @@ export default function AdminPanel() {
                       <p className="text-xs text-muted-foreground">→ Dr. {a.doctor_name || a.doctor_email}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeAssignment(a.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={a.program_duration || ""}
+                      onValueChange={(val) => updateProgram(a.id, val)}
+                    >
+                      <SelectTrigger className="w-28 h-7 text-xs">
+                        <SelectValue placeholder="Program" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1 month">1 Month</SelectItem>
+                        <SelectItem value="3 months">3 Months</SelectItem>
+                        <SelectItem value="6 months">6 Months</SelectItem>
+                        <SelectItem value="9 months">9 Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAssignment(a.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </motion.div>
               ))}
             </div>
