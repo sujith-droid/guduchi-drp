@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Phone, Save, QrCode } from "lucide-react";
+import { User, Phone, Save, QrCode, MapPin, Stethoscope } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -16,15 +16,22 @@ export default function Profile() {
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
+  const [address, setAddress] = useState("");
+  const [assignedDoctors, setAssignedDoctors] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.auth.me().then((me) => {
+    base44.auth.me().then(async (me) => {
       setUser(me);
       setPhone(me.phone || "");
       setAge(me.age ? String(me.age) : "");
       setGender(me.gender || "");
+      setAddress(me.address || "");
+      if (me.role === "patient") {
+        const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
+        setAssignedDoctors(assignments);
+      }
       setLoading(false);
     });
   }, []);
@@ -39,6 +46,7 @@ export default function Profile() {
       phone: phone.trim(),
       age: age ? Number(age) : undefined,
       gender: gender || undefined,
+      address: address.trim() || undefined,
     });
     toast.success("Profile updated!");
     setSaving(false);
@@ -131,6 +139,17 @@ export default function Profile() {
           </div>
 
           <div>
+            <Label>Address <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Input
+              type="text"
+              placeholder="e.g., 12 MG Road, Chennai"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
+          <div>
             <Label>Age <span className="text-muted-foreground text-xs">(optional)</span></Label>
             <Input
               type="number"
@@ -168,6 +187,36 @@ export default function Profile() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Assigned Doctors (patients only) */}
+      {user?.role === "patient" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 text-primary" /> Assigned Doctors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignedDoctors.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-3">No doctors assigned yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {assignedDoctors.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                      {(a.doctor_name || a.doctor_email)[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Dr. {a.doctor_name || a.doctor_email}</p>
+                      <p className="text-xs text-muted-foreground">{a.doctor_email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
