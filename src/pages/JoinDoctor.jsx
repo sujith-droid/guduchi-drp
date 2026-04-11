@@ -66,6 +66,11 @@ export default function JoinDoctor() {
         type: "info",
         related_patient_email: me.email,
       });
+      await base44.integrations.Core.SendEmail({
+        to: doctorEmail,
+        subject: "New Patient Joined Your Care",
+        body: `Hello,\n\n${me.full_name || me.email} has scanned your QR code and joined your care on the Guduchi Diabetes Reversal Program.\n\nLog in to your dashboard to view their profile.\n\n— Guduchi Health Team`,
+      });
 
       // Notify patient
       await base44.entities.Notification.create({
@@ -73,6 +78,11 @@ export default function JoinDoctor() {
         title: "Welcome to the Program!",
         message: `You have been successfully connected to Dr. ${doctorEmail}. Your diabetes reversal journey begins now!`,
         type: "achievement",
+      });
+      await base44.integrations.Core.SendEmail({
+        to: me.email,
+        subject: "Welcome to Guduchi Diabetes Reversal Program!",
+        body: `Hello ${me.full_name || ""},\n\nYou have been successfully connected to Dr. ${doctorEmail}.\n\nStart logging your daily health metrics and track your progress toward reversing diabetes!\n\n— Guduchi Health Team`,
       });
 
       setStatus("done");

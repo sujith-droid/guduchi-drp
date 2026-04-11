@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   BookOpen,
@@ -53,6 +54,18 @@ export default function Layout() {
 
   useEffect(() => {
     if (user) loadNotifications();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = base44.entities.Notification.subscribe((event) => {
+      if (event.type === "create" && event.data?.user_email === user.email) {
+        const n = event.data;
+        toast(n.title, { description: n.message });
+        setUnreadCount((c) => c + 1);
+      }
+    });
+    return unsubscribe;
   }, [user]);
 
   const loadUser = async () => {
