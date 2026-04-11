@@ -77,6 +77,12 @@ export default function Chat() {
       const convId = [a.patient_email, a.doctor_email].sort().join("_");
       setActiveConvId(convId);
       setChatPartner(me.role === "doctor" ? { name: a.patient_name, email: a.patient_email } : { name: a.doctor_name, email: a.doctor_email });
+    } else if (me.role === "patient" && assignments.length > 1) {
+      // Auto-open group chat for patients with multiple doctors
+      const groupId = `group_${me.email}`;
+      setActiveConvId(groupId);
+      setChatPartner({ name: "Care Team", email: null });
+      setIsGroupChat(true);
     }
   };
 
@@ -239,7 +245,8 @@ export default function Chat() {
                 </div>
               </button>
             )}
-            {conversations.map((a) => (
+            {/* Show individual chats only if no group chat (i.e. single doctor) */}
+            {!groupConv && conversations.map((a) => (
               <button
                 key={a.id}
                 onClick={() => selectConversation(a)}
