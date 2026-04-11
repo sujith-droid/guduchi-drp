@@ -193,10 +193,10 @@ export default function Profile() {
             </Select>
           </div>
 
-          {user?.patient_id && (
-            <div className="p-3 bg-muted rounded-lg">
+          {assignedDoctors.some((a) => a.patient_id) && (
+            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
               <p className="text-xs text-muted-foreground">Patient ID</p>
-              <p className="font-mono font-semibold text-sm">{user.patient_id}</p>
+              <p className="font-mono font-semibold text-sm text-primary">{assignedDoctors.find((a) => a.patient_id)?.patient_id}</p>
             </div>
           )}
 

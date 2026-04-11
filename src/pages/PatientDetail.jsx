@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import SugarChart from "../components/SugarChart";
 import WeightStepChart from "../components/WeightStepChart";
 import StatCard from "../components/StatCard";
-import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone, IdCard } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import moment from "moment";
 
 export default function PatientDetail() {
@@ -19,11 +21,36 @@ export default function PatientDetail() {
   const [period, setPeriod] = useState("30");
   const [loading, setLoading] = useState(true);
   const [patientPhone, setPatientPhone] = useState(null);
+  const [assignment, setAssignment] = useState(null);
+  const [patientIdInput, setPatientIdInput] = useState("");
+  const [savingId, setSavingId] = useState(false);
 
   useEffect(() => {
     loadLogs();
     loadPatientPhone();
+    loadAssignment();
   }, [period]);
+
+  const loadAssignment = async () => {
+    const me = await base44.auth.me();
+    const assignments = await base44.entities.PatientDoctorAssignment.filter({
+      patient_email: patientEmail,
+      doctor_email: me.email,
+      status: "active",
+    });
+    if (assignments.length > 0) {
+      setAssignment(assignments[0]);
+      setPatientIdInput(assignments[0].patient_id || "");
+    }
+  };
+
+  const savePatientId = async () => {
+    if (!assignment) return;
+    setSavingId(true);
+    await base44.entities.PatientDoctorAssignment.update(assignment.id, { patient_id: patientIdInput.trim() });
+    setSavingId(false);
+    toast.success("Patient ID saved!");
+  };
 
   const loadPatientPhone = async () => {
     try {
@@ -67,8 +94,10 @@ export default function PatientDetail() {
           <div>
             <h1 className="text-xl font-heading font-bold">{patientName}</h1>
             <p className="text-xs text-muted-foreground">{patientEmail}</p>
+            {assignment?.patient_id && (
+              <span className="text-xs bg-primary/10 text-primary font-mono px-2 py-0.5 rounded-full">ID: {assignment.patient_id}</span>
+            )}
           </div>
-        </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-24">
@@ -98,6 +127,27 @@ export default function PatientDetail() {
           )}
         </div>
       </div>
+
+      {/* Patient ID Card for Doctor */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <IdCard className="h-4 w-4 text-primary" /> Patient ID
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g., GUD-2024-001"
+              value={patientIdInput}
+              onChange={(e) => setPatientIdInput(e.target.value)}
+            />
+            <Button onClick={savePatientId} disabled={savingId} className="shrink-0">
+              {savingId ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="flex items-center justify-center h-40">

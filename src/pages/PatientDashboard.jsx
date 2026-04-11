@@ -19,6 +19,7 @@ export default function PatientDashboard() {
   const [latestHba1c, setLatestHba1c] = useState(null);
   const [loading, setLoading] = useState(true);
   const [assignedDoctors, setAssignedDoctors] = useState([]);
+  const [patientIdDisplay, setPatientIdDisplay] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -56,6 +57,11 @@ export default function PatientDashboard() {
 
       // Load all assigned doctors' phones
       const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
+      const patientId = assignments.find((a) => a.patient_id)?.patient_id || null;
+      if (patientId) {
+        // Show patient ID in greeting area — stored in state
+        setPatientIdDisplay(patientId);
+      }
       const doctorList = await Promise.all(
         assignments.map(async (a) => {
           let phone = null;
@@ -99,6 +105,9 @@ export default function PatientDashboard() {
         <p className="text-muted-foreground text-sm mt-1">
           {moment().format("dddd, MMMM D, YYYY")}
         </p>
+        {patientIdDisplay && (
+          <span className="inline-block mt-1 text-xs bg-primary/10 text-primary font-mono px-2 py-0.5 rounded-full">ID: {patientIdDisplay}</span>
+        )}
       </motion.div>
 
       {/* Smart Feedback */}

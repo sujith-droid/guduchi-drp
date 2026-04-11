@@ -35,6 +35,10 @@
         "9 months"
       ],
       "description": "Program duration selected for the patient"
+    },
+    "patient_id": {
+      "type": "string",
+      "description": "Patient ID assigned by the doctor"
     }
   },
   "required": [
