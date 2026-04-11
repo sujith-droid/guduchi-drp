@@ -17,6 +17,7 @@ export default function Profile() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
+  const [branch, setBranch] = useState("");
   const [assignedDoctors, setAssignedDoctors] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,7 @@ export default function Profile() {
       setAge(me.age ? String(me.age) : "");
       setGender(me.gender || "");
       setAddress(me.address || "");
+      setBranch(me.branch || "");
       if (me.role === "patient") {
         const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
         setAssignedDoctors(assignments);
@@ -47,6 +49,7 @@ export default function Profile() {
       age: age ? Number(age) : undefined,
       gender: gender || undefined,
       address: address.trim() || undefined,
+      branch: branch || undefined,
     });
     toast.success("Profile updated!");
     setSaving(false);
@@ -159,6 +162,22 @@ export default function Profile() {
               className="mt-1"
             />
           </div>
+
+          {user?.role === "doctor" && (
+            <div>
+              <Label>Branch</Label>
+              <Select value={branch} onValueChange={setBranch}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select branch..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {["Bengaluru", "Udupi", "Hyderabad", "Chennai", "Kolkata", "Hubballi", "Kalaburgi", "Ahmedabad"].map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div>
             <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
