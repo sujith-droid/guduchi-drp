@@ -98,6 +98,7 @@ export default function PatientDetail() {
               <span className="text-xs bg-primary/10 text-primary font-mono px-2 py-0.5 rounded-full">ID: {assignment.patient_id}</span>
             )}
           </div>
+        </div>
         <div className="flex items-center gap-2">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-24">
