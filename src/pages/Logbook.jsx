@@ -16,9 +16,13 @@ export default function Logbook() {
   const [user, setUser] = useState(null);
   const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
   const [log, setLog] = useState({
-    fasting_sugar: "",
-    post_breakfast_sugar: "",
-    post_dinner_sugar: "",
+    before_food_morning: "",
+    before_food_afternoon: "",
+    before_food_night: "",
+    after_food_morning: "",
+    after_food_afternoon: "",
+    after_food_night: "",
+    random_sugar: "",
     weight: "",
     step_count: "",
     notes: "",
@@ -27,6 +31,7 @@ export default function Logbook() {
   const [recentLogs, setRecentLogs] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sugarTiming, setSugarTiming] = useState("morning");
   const [showSuccess, setShowSuccess] = useState(false);
   const [hba1cRecords, setHba1cRecords] = useState([]);
   const [hba1cValue, setHba1cValue] = useState("");
@@ -74,16 +79,20 @@ export default function Logbook() {
       const existing = logs[0];
       setExistingLog(existing);
       setLog({
-        fasting_sugar: existing.fasting_sugar || "",
-        post_breakfast_sugar: existing.post_breakfast_sugar || "",
-        post_dinner_sugar: existing.post_dinner_sugar || "",
+        before_food_morning: existing.before_food_morning || "",
+        before_food_afternoon: existing.before_food_afternoon || "",
+        before_food_night: existing.before_food_night || "",
+        after_food_morning: existing.after_food_morning || "",
+        after_food_afternoon: existing.after_food_afternoon || "",
+        after_food_night: existing.after_food_night || "",
+        random_sugar: existing.random_sugar || "",
         weight: existing.weight || "",
         step_count: existing.step_count || "",
         notes: existing.notes || "",
       });
     } else {
       setExistingLog(null);
-      setLog({ fasting_sugar: "", post_breakfast_sugar: "", post_dinner_sugar: "", weight: "", step_count: "", notes: "" });
+      setLog({ before_food_morning: "", before_food_afternoon: "", before_food_night: "", after_food_morning: "", after_food_afternoon: "", after_food_night: "", random_sugar: "", weight: "", step_count: "", notes: "" });
     }
   };
 
@@ -92,9 +101,13 @@ export default function Logbook() {
     const data = {
       patient_email: user.email,
       date: selectedDate,
-      fasting_sugar: log.fasting_sugar ? Number(log.fasting_sugar) : undefined,
-      post_breakfast_sugar: log.post_breakfast_sugar ? Number(log.post_breakfast_sugar) : undefined,
-      post_dinner_sugar: log.post_dinner_sugar ? Number(log.post_dinner_sugar) : undefined,
+      before_food_morning: log.before_food_morning ? Number(log.before_food_morning) : undefined,
+      before_food_afternoon: log.before_food_afternoon ? Number(log.before_food_afternoon) : undefined,
+      before_food_night: log.before_food_night ? Number(log.before_food_night) : undefined,
+      after_food_morning: log.after_food_morning ? Number(log.after_food_morning) : undefined,
+      after_food_afternoon: log.after_food_afternoon ? Number(log.after_food_afternoon) : undefined,
+      after_food_night: log.after_food_night ? Number(log.after_food_night) : undefined,
+      random_sugar: log.random_sugar ? Number(log.random_sugar) : undefined,
       weight: log.weight ? Number(log.weight) : undefined,
       step_count: log.step_count ? Number(log.step_count) : undefined,
       notes: log.notes || undefined,
@@ -187,41 +200,71 @@ export default function Logbook() {
 
         <TabsContent value="sugar">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            {/* Timing Selector */}
+            <div className="flex gap-2">
+              {["morning", "afternoon", "night"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setSugarTiming(t)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                    sugarTiming === t
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {/* Before Food */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Blood Sugar Readings</CardTitle>
+                <CardTitle className="text-base">Before Food</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Fasting (Morning) — mg/dL</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 110"
-                    value={log.fasting_sugar}
-                    onChange={(e) => setLog({ ...log, fasting_sugar: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Post Breakfast — mg/dL</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 150"
-                    value={log.post_breakfast_sugar}
-                    onChange={(e) => setLog({ ...log, post_breakfast_sugar: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Post Dinner — mg/dL</Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g., 140"
-                    value={log.post_dinner_sugar}
-                    onChange={(e) => setLog({ ...log, post_dinner_sugar: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
+              <CardContent>
+                <Label className="text-xs text-muted-foreground capitalize">{sugarTiming} — mg/dL</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 110"
+                  value={log[`before_food_${sugarTiming}`]}
+                  onChange={(e) => setLog({ ...log, [`before_food_${sugarTiming}`]: e.target.value })}
+                  className="mt-1"
+                />
+              </CardContent>
+            </Card>
+
+            {/* After Food */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">After Food</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Label className="text-xs text-muted-foreground capitalize">{sugarTiming} — mg/dL</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 150"
+                  value={log[`after_food_${sugarTiming}`]}
+                  onChange={(e) => setLog({ ...log, [`after_food_${sugarTiming}`]: e.target.value })}
+                  className="mt-1"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Random */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Random</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Label className="text-xs text-muted-foreground">Random reading — mg/dL</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 130"
+                  value={log.random_sugar}
+                  onChange={(e) => setLog({ ...log, random_sugar: e.target.value })}
+                  className="mt-1"
+                />
               </CardContent>
             </Card>
           </motion.div>

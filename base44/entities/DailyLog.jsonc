@@ -11,21 +11,49 @@
       "format": "date",
       "description": "Date of the log entry"
     },
+    "before_food_morning": {
+      "type": "number",
+      "description": "Before food morning blood sugar (mg/dL)"
+    },
+    "before_food_afternoon": {
+      "type": "number",
+      "description": "Before food afternoon blood sugar (mg/dL)"
+    },
+    "before_food_night": {
+      "type": "number",
+      "description": "Before food night blood sugar (mg/dL)"
+    },
+    "after_food_morning": {
+      "type": "number",
+      "description": "After food morning blood sugar (mg/dL)"
+    },
+    "after_food_afternoon": {
+      "type": "number",
+      "description": "After food afternoon blood sugar (mg/dL)"
+    },
+    "after_food_night": {
+      "type": "number",
+      "description": "After food night blood sugar (mg/dL)"
+    },
+    "random_sugar": {
+      "type": "number",
+      "description": "Random blood sugar reading (mg/dL)"
+    },
     "fasting_sugar": {
       "type": "number",
-      "description": "Fasting blood sugar (mg/dL)"
+      "description": "Fasting blood sugar (mg/dL) - legacy"
     },
     "post_breakfast_sugar": {
       "type": "number",
-      "description": "Post breakfast blood sugar (mg/dL)"
+      "description": "Post breakfast blood sugar (mg/dL) - legacy"
     },
     "post_dinner_sugar": {
       "type": "number",
-      "description": "Post dinner blood sugar (mg/dL)"
+      "description": "Post dinner blood sugar (mg/dL) - legacy"
     },
     "weight": {
       "type": "number",
-      "description": "Weight in kg (optional)"
+      "description": "Weight in kg"
     },
     "step_count": {
       "type": "number",
