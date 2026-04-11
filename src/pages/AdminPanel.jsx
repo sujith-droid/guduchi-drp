@@ -76,6 +76,23 @@ export default function AdminPanel() {
       doctor_name: doctor?.full_name || selectedDoctor,
       status: "active",
     });
+
+    // Notify doctor
+    await base44.entities.Notification.create({
+      user_email: selectedDoctor,
+      title: "New Patient Assigned",
+      message: `${patient?.full_name || selectedPatient} has been assigned to you by the admin.`,
+      type: "info",
+      related_patient_email: selectedPatient,
+    });
+    // Notify patient
+    await base44.entities.Notification.create({
+      user_email: selectedPatient,
+      title: "Doctor Assigned",
+      message: `Dr. ${doctor?.full_name || selectedDoctor} has been assigned as your doctor.`,
+      type: "info",
+    });
+
     toast.success("Patient assigned to doctor!");
     setAssignDialog(false);
     setSelectedPatient("");

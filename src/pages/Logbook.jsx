@@ -117,6 +117,17 @@ export default function Logbook() {
       await base44.entities.DailyLog.update(existingLog.id, data);
     } else {
       await base44.entities.DailyLog.create(data);
+      // Notify assigned doctors of new log entry
+      const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" });
+      for (const a of assignments) {
+        await base44.entities.Notification.create({
+          user_email: a.doctor_email,
+          title: "New Log Entry",
+          message: `${user.full_name || user.email} has submitted a new daily health log for ${data.date}.`,
+          type: "info",
+          related_patient_email: user.email,
+        });
+      }
     }
     setSaving(false);
     setShowSuccess(true);

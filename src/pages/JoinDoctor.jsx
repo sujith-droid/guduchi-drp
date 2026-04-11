@@ -58,6 +58,23 @@ export default function JoinDoctor() {
         status: "active",
       });
 
+      // Notify doctor of new patient
+      await base44.entities.Notification.create({
+        user_email: doctorEmail,
+        title: "New Patient Joined",
+        message: `${me.full_name || me.email} has joined your care via QR code.`,
+        type: "info",
+        related_patient_email: me.email,
+      });
+
+      // Notify patient
+      await base44.entities.Notification.create({
+        user_email: me.email,
+        title: "Welcome to the Program!",
+        message: `You have been successfully connected to Dr. ${doctorEmail}. Your diabetes reversal journey begins now!`,
+        type: "achievement",
+      });
+
       setStatus("done");
     } catch (e) {
       setStatus("error");

@@ -48,6 +48,15 @@ export default function PatientDetail() {
     if (!assignment) return;
     setSavingId(true);
     await base44.entities.PatientDoctorAssignment.update(assignment.id, { patient_id: patientIdInput.trim() });
+    // Notify patient of their new ID
+    if (patientIdInput.trim()) {
+      await base44.entities.Notification.create({
+        user_email: patientEmail,
+        title: "Patient ID Assigned",
+        message: `Your doctor has assigned you the Patient ID: ${patientIdInput.trim()}. You can view it on your profile.`,
+        type: "info",
+      });
+    }
     setSavingId(false);
     toast.success("Patient ID saved!");
   };
