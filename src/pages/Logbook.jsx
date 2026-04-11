@@ -201,20 +201,17 @@ export default function Logbook() {
         <TabsContent value="sugar">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             {/* Timing Selector */}
-            <div className="flex gap-2">
-              {["morning", "afternoon", "night"].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSugarTiming(t)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                    sugarTiming === t
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+            <div>
+              <Label className="text-xs text-muted-foreground">Time of Day</Label>
+              <select
+                value={sugarTiming}
+                onChange={(e) => setSugarTiming(e.target.value)}
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring capitalize"
+              >
+                <option value="morning">Morning</option>
+                <option value="afternoon">Afternoon</option>
+                <option value="night">Night</option>
+              </select>
             </div>
 
             {/* Before Food */}
