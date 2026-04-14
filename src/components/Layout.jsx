@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
+import PageTransition from "./PageTransition";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -98,7 +99,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between" style={{ paddingTop: 'calc(0.75rem + var(--safe-top))' }}>
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -130,7 +131,7 @@ export default function Layout() {
 
       <div className="flex flex-1">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-56 border-r border-border bg-card/50 p-4 gap-1">
+        <aside className="hidden md:flex flex-col w-56 border-r border-border bg-card/50 p-4 gap-1 select-none">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.path;
@@ -138,7 +139,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all select-none ${
                   active
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -191,14 +192,16 @@ export default function Layout() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          <div className="max-w-5xl mx-auto p-4 md:p-6">
-            <Outlet />
+          <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
           </div>
         </main>
       </div>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border px-2 py-1 z-30">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border px-2 pt-1 z-30 select-none" style={{ paddingBottom: 'calc(0.25rem + var(--safe-bottom))' }}>
         <div className="flex justify-around">
           {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
@@ -207,7 +210,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center py-1.5 px-2 rounded-lg text-xs transition-all ${
+                className={`flex flex-col items-center py-1.5 px-2 rounded-lg text-xs transition-all select-none ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >

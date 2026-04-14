@@ -6,10 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Phone, Save, QrCode, MapPin, Stethoscope } from "lucide-react";
+import { User, Phone, Save, QrCode, Stethoscope, Trash2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -21,6 +32,7 @@ export default function Profile() {
   const [assignedDoctors, setAssignedDoctors] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(async (me) => {
@@ -37,6 +49,37 @@ export default function Profile() {
       setLoading(false);
     });
   }, []);
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      // Delete all user data
+      await Promise.all([
+        base44.entities.DailyLog.filter({ patient_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.DailyLog.delete(r.id);
+        }),
+        base44.entities.HbA1cRecord.filter({ patient_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.HbA1cRecord.delete(r.id);
+        }),
+        base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.PatientDoctorAssignment.delete(r.id);
+        }),
+        base44.entities.PatientDoctorAssignment.filter({ doctor_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.PatientDoctorAssignment.delete(r.id);
+        }),
+        base44.entities.ChatMessage.filter({ sender_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.ChatMessage.delete(r.id);
+        }),
+        base44.entities.Notification.filter({ user_email: user.email }).then(async (records) => {
+          for (const r of records) await base44.entities.Notification.delete(r.id);
+        }),
+      ]);
+      toast.success("All your data has been deleted. Please contact support to remove your login account.");
+    } catch (e) {
+      toast.error("Failed to delete account data.");
+    }
+    setDeletingAccount(false);
+  };
 
   const handleSave = async () => {
     if (!phone.trim()) {
@@ -204,6 +247,39 @@ export default function Profile() {
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save Changes"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Account */}
+      <Card className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-destructive">
+            <Trash2 className="h-4 w-4" /> Delete Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">This will permanently delete all your health data, logs, and messages. This action cannot be undone.</p>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" className="w-full" disabled={deletingAccount}>
+                {deletingAccount ? "Deleting..." : "Delete My Account Data"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete all your health logs, HbA1c records, chat messages, and doctor assignments. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
+                  Yes, delete everything
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 

@@ -86,5 +86,48 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Safe area insets for mobile notch/home bar */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Auto dark mode based on system preference */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: 200 20% 6%;
+    --foreground: 150 10% 95%;
+    --card: 200 15% 10%;
+    --card-foreground: 150 10% 95%;
+    --popover: 200 15% 10%;
+    --popover-foreground: 150 10% 95%;
+    --primary: 152 55% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 15% 15%;
+    --secondary-foreground: 150 10% 90%;
+    --muted: 200 15% 15%;
+    --muted-foreground: 150 10% 55%;
+    --accent: 200 15% 18%;
+    --accent-foreground: 150 10% 90%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 15% 18%;
+    --input: 200 15% 18%;
+    --ring: 152 55% 45%;
+    --sidebar-background: 200 20% 8%;
+    --sidebar-foreground: 150 10% 90%;
+    --sidebar-primary: 152 55% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 15% 15%;
+    --sidebar-accent-foreground: 150 10% 90%;
+    --sidebar-border: 200 15% 18%;
+    --sidebar-ring: 152 55% 45%;
   }
 }
