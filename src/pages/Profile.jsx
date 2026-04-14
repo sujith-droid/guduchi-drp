@@ -74,9 +74,15 @@ export default function Profile() {
           for (const r of records) await base44.entities.Notification.delete(r.id);
         }),
       ]);
-      toast.success("All your data has been deleted. Please contact support to remove your login account.");
+      // Notify admin
+      await base44.integrations.Core.SendEmail({
+        to: "sujith@guduchiayurveda.com",
+        subject: "Account Deletion Request",
+        body: `User ${user.full_name || ""} (${user.email}) has deleted all their health data and is requesting complete account removal. Please remove their login account from the system.`,
+      });
+      toast.success("Your data has been deleted and a removal request has been sent to the administrator.", { duration: 6000 });
     } catch (e) {
-      toast.error("Failed to delete account data.");
+      toast.error("Failed to delete account data. Please try again.");
     }
     setDeletingAccount(false);
   };
@@ -257,25 +263,38 @@ export default function Profile() {
             <Trash2 className="h-4 w-4" /> Delete Account
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">This will permanently delete all your health data, logs, and messages. This action cannot be undone.</p>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete all your health data, logs, and messages. A deletion request will also be automatically sent to the administrator to remove your login account.
+          </p>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-xs text-destructive space-y-1">
+            <p className="font-semibold">What gets deleted immediately:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-destructive/80">
+              <li>All daily health logs</li>
+              <li>HbA1c records</li>
+              <li>Chat messages</li>
+              <li>Doctor assignments</li>
+            </ul>
+            <p className="font-semibold mt-2">What requires admin action:</p>
+            <p className="text-destructive/80">Your login account — the administrator will be notified automatically.</p>
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="w-full" disabled={deletingAccount}>
-                {deletingAccount ? "Deleting..." : "Delete My Account Data"}
+                {deletingAccount ? "Deleting & Notifying Admin..." : "Delete My Account Data"}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete all your health logs, HbA1c records, chat messages, and doctor assignments. This cannot be undone.
+                  This will permanently delete all your health logs, HbA1c records, chat messages, and doctor assignments — and send a deletion request to the administrator. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90">
-                  Yes, delete everything
+                  Yes, delete & notify admin
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

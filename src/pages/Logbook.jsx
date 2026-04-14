@@ -192,7 +192,7 @@ export default function Logbook() {
           </div>
         </motion.div>
       )}
-      <div>
+      <div className="text-center md:text-left">
         <h1 className="text-2xl font-heading font-bold">Daily Logbook</h1>
         <p className="text-sm text-muted-foreground mt-1">Record your daily health metrics</p>
       </div>

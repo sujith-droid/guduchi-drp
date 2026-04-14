@@ -223,7 +223,8 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center py-1.5 px-2 rounded-lg text-xs transition-all select-none ${
+                state={{ preserveScroll: true }}
+                className={`flex flex-col items-center py-1.5 px-2 min-h-[44px] justify-center rounded-lg text-xs transition-all select-none ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
               >

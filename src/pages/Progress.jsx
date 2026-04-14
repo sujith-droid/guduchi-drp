@@ -52,12 +52,12 @@ export default function Progress() {
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="md:text-left">
           <h1 className="text-2xl font-heading font-bold">Progress</h1>
           <p className="text-sm text-muted-foreground mt-1">Track your health journey</p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-28">
+          <SelectTrigger className="w-28 h-11">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

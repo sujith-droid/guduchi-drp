@@ -107,7 +107,7 @@ export default function PatientDashboard() {
     <div ref={containerRef} className="space-y-6 pb-20 md:pb-6 overflow-auto">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Greeting */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center md:text-left">
         <h1 className="text-2xl font-heading font-bold">
           {greeting()}, {user?.full_name?.split(" ")[0] || "there"} 👋
         </h1>

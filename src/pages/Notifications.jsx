@@ -75,14 +75,14 @@ export default function Notifications() {
     <div ref={containerRef} className="space-y-4 pb-20 md:pb-6 overflow-auto">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
-        <div>
+        <div className="md:text-left">
           <h1 className="text-2xl font-heading font-bold">Notifications</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1">
+          <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1 h-11">
             <Check className="h-3 w-3" /> Mark all read
           </Button>
         )}
