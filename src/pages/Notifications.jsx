@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Bell, Check, AlertTriangle, Award, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import moment from "moment";
 import { motion } from "framer-motion";
 
@@ -13,10 +15,10 @@ const typeIcons = {
 };
 
 const typeColors = {
-  reminder: "bg-blue-50 text-blue-600 border-blue-200",
-  alert: "bg-red-50 text-red-600 border-red-200",
-  achievement: "bg-emerald-50 text-emerald-600 border-emerald-200",
-  info: "bg-gray-50 text-gray-600 border-gray-200",
+  reminder: "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+  alert: "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700",
+  achievement: "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
+  info: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600",
 };
 
 export default function Notifications() {
@@ -27,6 +29,9 @@ export default function Notifications() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleRefresh = useCallback(async () => { await loadData(); }, []);
+  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
 
   const loadData = async () => {
     const me = await base44.auth.me();
@@ -67,7 +72,8 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="space-y-4 pb-20 md:pb-6">
+    <div ref={containerRef} className="space-y-4 pb-20 md:pb-6 overflow-auto">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold">Notifications</h1>

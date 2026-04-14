@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone } from "lucide-react";
@@ -7,6 +7,8 @@ import StatCard from "../components/StatCard";
 import SmartFeedback from "../components/SmartFeedback";
 import StepCalculator from "../components/StepCalculator";
 import SugarChart from "../components/SugarChart";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import moment from "moment";
 import { motion } from "framer-motion";
 
@@ -24,6 +26,12 @@ export default function PatientDashboard() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
 
   const loadData = async () => {
     try {
@@ -96,7 +104,8 @@ export default function PatientDashboard() {
   };
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div ref={containerRef} className="space-y-6 pb-20 md:pb-6 overflow-auto">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Greeting */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-heading font-bold">
@@ -179,13 +188,13 @@ export default function PatientDashboard() {
           {assignedDoctors.map((doc) => (
             doc.phone ? (
               <a key={doc.email} href={`tel:${doc.phone}`}
-                className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 hover:bg-emerald-100 transition-colors">
+                className="flex items-center gap-3 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 rounded-xl p-4 hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors">
                 <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
                   <Phone className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-800 text-sm">Dr. {doc.name}</p>
-                  <p className="text-xs text-emerald-600">{doc.phone} — tap to dial</p>
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">Dr. {doc.name}</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300">{doc.phone} — tap to dial</p>
                 </div>
               </a>
             ) : (

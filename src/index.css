@@ -91,6 +91,22 @@
   }
 }
 
+@layer utilities {
+  /* Disable text selection on interactive & navigation elements */
+  button,
+  [role="button"],
+  nav,
+  nav a,
+  nav span,
+  nav svg,
+  a[data-nav],
+  svg,
+  .select-none {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
 /* Safe area insets for mobile notch/home bar */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);

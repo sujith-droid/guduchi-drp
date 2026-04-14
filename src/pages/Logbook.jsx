@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import moment from "moment";
 import { motion } from "framer-motion";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function Logbook() {
   const [user, setUser] = useState(null);
@@ -42,6 +44,17 @@ export default function Logbook() {
   useEffect(() => {
     loadUser();
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    const logs = await base44.entities.DailyLog.filter({ patient_email: user.email }, "-date", 14);
+    setRecentLogs(logs);
+    await loadLogForDate();
+    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: user.email }, "-date", 10);
+    setHba1cRecords(hba1c);
+  }, [user, selectedDate]);
+
+  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
 
   useEffect(() => {
     if (user) loadLogForDate();
@@ -113,6 +126,15 @@ export default function Logbook() {
       notes: log.notes || undefined,
     };
 
+    // Optimistic update — reflect changes in recent logs list immediately
+    const optimisticEntry = { ...data, id: existingLog?.id || `optimistic-${Date.now()}`, created_date: new Date().toISOString() };
+    setRecentLogs((prev) => {
+      const filtered = prev.filter((l) => l.date !== selectedDate);
+      return [optimisticEntry, ...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+    });
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 2500);
+
     if (existingLog) {
       await base44.entities.DailyLog.update(existingLog.id, data);
     } else {
@@ -130,8 +152,7 @@ export default function Logbook() {
       }
     }
     setSaving(false);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2500);
+    // Reconcile with server truth after save
     loadLogForDate();
     const logs = await base44.entities.DailyLog.filter({ patient_email: user.email }, "-date", 14);
     setRecentLogs(logs);
@@ -152,7 +173,8 @@ export default function Logbook() {
   }
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div ref={containerRef} className="space-y-6 pb-20 md:pb-6 overflow-auto">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Success Popup */}
       {showSuccess && (
         <motion.div

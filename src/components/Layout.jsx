@@ -1,6 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import PageTransition from "./PageTransition";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import {
@@ -48,6 +47,22 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
+  const scrollPositions = useRef({});
+
+  // Save scroll position when leaving, restore when returning
+  useEffect(() => {
+    const mainEl = document.getElementById("main-scroll");
+    if (!mainEl) return;
+    // Restore saved position for new route
+    const saved = scrollPositions.current[location.pathname] ?? 0;
+    mainEl.scrollTop = saved;
+    // Save scroll on scroll events
+    const handleScroll = () => {
+      scrollPositions.current[location.pathname] = mainEl.scrollTop;
+    };
+    mainEl.addEventListener("scroll", handleScroll, { passive: true });
+    return () => mainEl.removeEventListener("scroll", handleScroll);
+  }, [location.pathname]);
 
   useEffect(() => {
     loadUser();
@@ -191,11 +206,9 @@ export default function Layout() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" id="main-scroll">
           <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
-            <PageTransition>
-              <Outlet />
-            </PageTransition>
+            <Outlet />
           </div>
         </main>
       </div>

@@ -122,9 +122,15 @@ export default function Chat() {
     };
     if (imageUrl) msgData.image_url = imageUrl;
 
-    await base44.entities.ChatMessage.create(msgData);
+    // Optimistic update — show message instantly
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticMsg = { ...msgData, id: optimisticId, created_date: new Date().toISOString(), _pending: true };
+    setMessages((prev) => [...prev, optimisticMsg]);
     setNewMsg("");
+
+    await base44.entities.ChatMessage.create(msgData);
     setSending(false);
+    // Replace optimistic with real data
     loadMessages();
   };
 
@@ -199,6 +205,15 @@ export default function Chat() {
     const file = new File([blob], "voice.webm", { type: "audio/webm" });
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     const partnerEmail = chatPartner.email;
+
+    // Optimistic
+    const optimisticId = `optimistic-${Date.now()}`;
+    setMessages((prev) => [...prev, {
+      id: optimisticId, sender_email: user.email, receiver_email: partnerEmail,
+      conversation_id: activeConvId, message_type: "audio", audio_url: file_url,
+      created_date: new Date().toISOString(), _pending: true,
+    }]);
+
     await base44.entities.ChatMessage.create({
       sender_email: user.email,
       receiver_email: partnerEmail,
