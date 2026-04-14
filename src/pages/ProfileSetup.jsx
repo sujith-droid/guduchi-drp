@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart } from "lucide-react";
+import { Heart, Stethoscope, User } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -16,6 +16,7 @@ export default function ProfileSetup() {
   const [gender, setGender] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("");
 
   useEffect(() => {
     loadUser();
@@ -27,10 +28,17 @@ export default function ProfileSetup() {
     if (me.age) setAge(String(me.age));
     if (me.gender) setGender(me.gender);
     if (me.phone) setPhone(me.phone);
+    if (me.role) setSelectedRole(me.role);
   };
 
   const handleSave = async () => {
     setSaving(true);
+    if (!selectedRole) {
+      toast.error("Please select whether you are a Doctor or a Patient.");
+      setSaving(false);
+      return;
+    }
+
     const patientId = user.patient_id || `DRP-${Date.now().toString(36).toUpperCase()}`;
     
     await base44.auth.updateMe({
@@ -39,12 +47,13 @@ export default function ProfileSetup() {
       phone: phone || undefined,
       patient_id: patientId,
       profile_complete: true,
+      role: selectedRole,
     });
 
     toast.success("Profile saved!");
     setSaving(false);
 
-    if (user.role === "doctor") navigate("/doctor");
+    if (selectedRole === "doctor") navigate("/doctor");
     else navigate("/");
   };
 
@@ -61,6 +70,40 @@ export default function ProfileSetup() {
           </div>
           <h1 className="text-2xl font-heading font-bold">Welcome to DiaCare</h1>
           <p className="text-sm text-muted-foreground mt-2">Let's set up your profile</p>
+        </div>
+
+        {/* Role Selection */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button
+            type="button"
+            onClick={() => setSelectedRole("patient")}
+            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${
+              selectedRole === "patient"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40"
+            }`}
+          >
+            <User className="h-8 w-8" />
+            <div className="text-center">
+              <p className="font-semibold text-sm">I'm a Patient</p>
+              <p className="text-xs opacity-70 mt-0.5">Track my health</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedRole("doctor")}
+            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${
+              selectedRole === "doctor"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40"
+            }`}
+          >
+            <Stethoscope className="h-8 w-8" />
+            <div className="text-center">
+              <p className="font-semibold text-sm">I'm a Doctor</p>
+              <p className="text-xs opacity-70 mt-0.5">Manage my patients</p>
+            </div>
+          </button>
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-6 space-y-5">
