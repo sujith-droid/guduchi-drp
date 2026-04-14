@@ -72,17 +72,17 @@ export default function Chat() {
       });
     }
 
-    if (assignments.length === 1) {
-      const a = assignments[0];
-      const convId = [a.patient_email, a.doctor_email].sort().join("_");
-      setActiveConvId(convId);
-      setChatPartner(me.role === "doctor" ? { name: a.patient_name, email: a.patient_email } : { name: a.doctor_name, email: a.doctor_email });
-    } else if (me.role === "patient" && assignments.length > 1) {
-      // Auto-open group chat for patients with multiple doctors
+    if (me.role === "patient" && assignments.length > 1) {
+      // Multiple doctors → always use group chat only
       const groupId = `group_${me.email}`;
       setActiveConvId(groupId);
       setChatPartner({ name: "Care Team", email: null });
       setIsGroupChat(true);
+    } else if (assignments.length === 1) {
+      const a = assignments[0];
+      const convId = [a.patient_email, a.doctor_email].sort().join("_");
+      setActiveConvId(convId);
+      setChatPartner(me.role === "doctor" ? { name: a.patient_name, email: a.patient_email } : { name: a.doctor_name, email: a.doctor_email });
     }
   };
 
@@ -245,7 +245,7 @@ export default function Chat() {
                 </div>
               </button>
             )}
-            {/* Show individual chats only if no group chat (i.e. single doctor) */}
+            {/* Show individual chats only when patient has exactly 1 doctor */}
             {!groupConv && conversations.map((a) => (
               <button
                 key={a.id}
