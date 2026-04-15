@@ -144,8 +144,8 @@ export default function PatientDashboard() {
       {/* Today's Stats */}
       {todayLog && (
         <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={Droplets} label="Before Morning" value={todayLog.before_food_morning || todayLog.fasting_sugar} unit="mg/dL" />
-          <StatCard icon={Activity} label="After Morning" value={todayLog.after_food_morning || todayLog.post_breakfast_sugar} unit="mg/dL" />
+          <StatCard icon={Droplets} label="Morning (Before)" value={todayLog.before_food_morning || todayLog.fasting_sugar} unit="mg/dL" />
+          <StatCard icon={Activity} label="Morning (After)" value={todayLog.after_food_morning || todayLog.post_breakfast_sugar} unit="mg/dL" />
           <StatCard icon={Weight} label="Weight" value={todayLog.weight} unit="kg" />
           <StatCard icon={Footprints} label="Steps" value={todayLog.step_count?.toLocaleString()} />
         </div>
