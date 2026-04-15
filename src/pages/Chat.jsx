@@ -88,8 +88,12 @@ export default function Chat() {
 
   const loadMessages = async () => {
     if (!activeConvId) return;
-    const msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
-    setMessages(msgs);
+    try {
+      const msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
+      setMessages(msgs);
+    } catch {
+      // Silently ignore transient network errors during polling
+    }
   };
 
   const selectConversation = (assignment) => {
