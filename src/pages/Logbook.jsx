@@ -424,9 +424,11 @@ export default function Logbook() {
                 <p className="text-sm font-medium">{moment(entry.date).format("ddd, MMM D")}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {[
-                    entry.fasting_sugar && `F: ${entry.fasting_sugar}`,
-                    entry.post_breakfast_sugar && `PB: ${entry.post_breakfast_sugar}`,
-                    entry.post_dinner_sugar && `PD: ${entry.post_dinner_sugar}`,
+                    (entry.before_food_morning || entry.fasting_sugar) && `BM: ${entry.before_food_morning || entry.fasting_sugar}`,
+                    (entry.after_food_morning || entry.post_breakfast_sugar) && `AM: ${entry.after_food_morning || entry.post_breakfast_sugar}`,
+                    entry.before_food_night && `BN: ${entry.before_food_night}`,
+                    (entry.after_food_night || entry.post_dinner_sugar) && `AN: ${entry.after_food_night || entry.post_dinner_sugar}`,
+                    entry.random_sugar && `R: ${entry.random_sugar}`,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "No sugar readings"}
