@@ -365,7 +365,7 @@ export default function Chat() {
 
       {/* Input */}
       <div className="relative flex items-center gap-2 pt-3 border-t border-border">
-        <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+        <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleImageUpload} />
         <input type="file" ref={fileDocRef} className="hidden" onChange={handleFileUpload} />
         {showTemplates && templates.length > 0 && (
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
