@@ -1,5 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import PageTransition from "@/components/PageTransition";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import {
@@ -47,6 +48,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const scrollPositions = useRef({});
 
   // Save scroll position when leaving, restore when returning
@@ -208,7 +210,9 @@ export default function Layout() {
         {/* Main Content */}
         <main className="flex-1 overflow-auto" id="main-scroll">
           <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
-            <Outlet />
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
           </div>
         </main>
       </div>
@@ -220,10 +224,17 @@ export default function Layout() {
             const Icon = item.icon;
             const active = location.pathname === item.path;
             return (
-              <Link
+              <button
                 key={item.path}
-                to={item.path}
-                state={{ preserveScroll: true }}
+                onClick={() => {
+                  if (active) {
+                    // Reset scroll to top when tapping the active tab
+                    const mainEl = document.getElementById("main-scroll");
+                    if (mainEl) mainEl.scrollTop = 0;
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
                 className={`flex flex-col items-center py-1.5 px-2 min-h-[44px] justify-center rounded-lg text-xs transition-all select-none ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
@@ -235,7 +246,7 @@ export default function Layout() {
                   )}
                 </div>
                 <span className="mt-0.5">{item.label}</span>
-              </Link>
+              </button>
             );
           })}
         </div>
