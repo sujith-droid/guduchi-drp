@@ -18,6 +18,7 @@ import ProfileSetup from './pages/ProfileSetup';
 import Profile from './pages/Profile';
 import JoinDoctor from './pages/JoinDoctor';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
       <Route path="/setup" element={<ProfileSetup />} />
       <Route path="/join" element={<JoinDoctor />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
       <Route path="/profile" element={<Profile />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
