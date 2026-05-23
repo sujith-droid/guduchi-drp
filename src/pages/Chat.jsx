@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,9 @@ import moment from "moment";
 import { motion } from "framer-motion";
 
 export default function Chat() {
+  const { convId: convIdParam } = useParams();
+  const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
@@ -14,7 +18,6 @@ export default function Chat() {
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [groupConv, setGroupConv] = useState(null);
-  const [activeConvId, setActiveConvId] = useState(null);
   const [isGroupChat, setIsGroupChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
@@ -27,6 +30,9 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recordingTimerRef = useRef(null);
+
+  // activeConvId comes from URL param
+  const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
 
   useEffect(() => {
     loadUser();
@@ -72,19 +78,40 @@ export default function Chat() {
       });
     }
 
-    if (me.role === "patient" && assignments.length > 1) {
-      // Multiple doctors → always use group chat only
-      const groupId = `group_${me.email}`;
-      setActiveConvId(groupId);
-      setChatPartner({ name: "Care Team", email: null });
-      setIsGroupChat(true);
-    } else if (assignments.length === 1) {
-      const a = assignments[0];
-      const convId = [a.patient_email, a.doctor_email].sort().join("_");
-      setActiveConvId(convId);
-      setChatPartner(me.role === "doctor" ? { name: a.patient_name, email: a.patient_email } : { name: a.doctor_name, email: a.doctor_email });
+    // Auto-navigate if there's only one conversation and no param yet
+    if (!convIdParam) {
+      if (me.role === "patient" && assignments.length > 1) {
+        const groupId = `group_${me.email}`;
+        navigate(`/chat/${encodeURIComponent(groupId)}`, { replace: true });
+      } else if (assignments.length === 1) {
+        const a = assignments[0];
+        const cId = [a.patient_email, a.doctor_email].sort().join("_");
+        navigate(`/chat/${encodeURIComponent(cId)}`, { replace: true });
+      }
     }
   };
+
+  // Derive chatPartner from activeConvId + conversations
+  useEffect(() => {
+    if (!activeConvId || !user || conversations.length === 0) return;
+    if (activeConvId.startsWith("group_")) {
+      setChatPartner({ name: "Care Team", email: null });
+      setIsGroupChat(true);
+      return;
+    }
+    setIsGroupChat(false);
+    const match = conversations.find((a) => {
+      const cId = [a.patient_email, a.doctor_email].sort().join("_");
+      return cId === activeConvId;
+    });
+    if (match) {
+      setChatPartner(
+        user.role === "doctor"
+          ? { name: match.patient_name, email: match.patient_email }
+          : { name: match.doctor_name, email: match.doctor_email }
+      );
+    }
+  }, [activeConvId, conversations, user]);
 
   const loadMessages = async () => {
     if (!activeConvId) return;
@@ -98,19 +125,11 @@ export default function Chat() {
 
   const selectConversation = (assignment) => {
     if (assignment.isGroup) {
-      setActiveConvId(assignment.convId);
-      setChatPartner({ name: assignment.name, email: null });
-      setIsGroupChat(true);
+      navigate(`/chat/${encodeURIComponent(assignment.convId)}`);
       return;
     }
-    setIsGroupChat(false);
-    const convId = [assignment.patient_email, assignment.doctor_email].sort().join("_");
-    setActiveConvId(convId);
-    setChatPartner(
-      user.role === "doctor"
-        ? { name: assignment.patient_name, email: assignment.patient_email }
-        : { name: assignment.doctor_name, email: assignment.doctor_email }
-    );
+    const cId = [assignment.patient_email, assignment.doctor_email].sort().join("_");
+    navigate(`/chat/${encodeURIComponent(cId)}`);
   };
 
   const sendMessage = async (imageUrl, audioUrl) => {
@@ -237,7 +256,7 @@ export default function Chat() {
     );
   }
 
-  // Conversation list view
+  // Conversation list view — shown when no convId in URL
   if (!activeConvId) {
     return (
       <div className="space-y-4 pb-20 md:pb-6">
@@ -295,7 +314,7 @@ export default function Chat() {
       {/* Chat Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-border">
         {(conversations.length > 1 || groupConv) && (
-          <Button variant="ghost" size="icon" onClick={() => { setActiveConvId(null); setChatPartner(null); setIsGroupChat(false); }}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/chat")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}

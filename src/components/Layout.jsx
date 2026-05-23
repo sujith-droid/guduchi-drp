@@ -15,7 +15,8 @@ import {
   X,
   Heart,
   Shield,
-  UserCircle } from
+  UserCircle,
+  ArrowLeft } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +110,9 @@ export default function Layout() {
 
   const navItems = getNavItems();
 
+  const rootPaths = navItems.map((n) => n.path);
+  const isAtRoot = rootPaths.includes(location.pathname);
+
   const handleLogout = () => {
     base44.auth.logout();
   };
@@ -118,18 +122,25 @@ export default function Layout() {
       {/* Top Header */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between" style={{ paddingTop: 'calc(0.75rem + var(--safe-top))' }}>
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setSidebarOpen(!sidebarOpen)}>
-            
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          {/* Mobile: show Back button when deep, otherwise show hamburger */}
+          {!isAtRoot ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setSidebarOpen(!sidebarOpen)}>
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
           <div className="flex items-center gap-2">
-            
-
-            
             <span className="font-heading font-bold text-lg hidden sm:block">Guduchi DRP</span>
           </div>
         </div>
@@ -222,13 +233,16 @@ export default function Layout() {
         <div className="flex justify-around">
           {navItems.slice(0, 5).map((item) => {
             const Icon = item.icon;
-            const active = location.pathname === item.path;
+            const active = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
             return (
               <button
                 key={item.path}
                 onClick={() => {
-                  if (active) {
-                    // Reset scroll to top when tapping the active tab
+                  if (active && location.pathname !== item.path) {
+                    // Deep in a sub-path of this tab → navigate to root of tab
+                    navigate(item.path);
+                  } else if (active) {
+                    // Already at root of tab → scroll to top
                     const mainEl = document.getElementById("main-scroll");
                     if (mainEl) mainEl.scrollTop = 0;
                   } else {
