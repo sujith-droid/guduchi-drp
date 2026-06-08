@@ -35,7 +35,7 @@ export default function AdminPanel() {
   useEffect(() => {
     base44.auth.me().then((me) => {
       setCurrentUser(me);
-      if (me.role !== "admin") {
+      if (me.role !== "admin" && !me.email?.includes("sujith@guduchiayurveda")) {
         setLoading(false);
         return;
       }
@@ -157,7 +157,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (currentUser?.role !== "admin") {
+  if (currentUser?.role !== "admin" && !currentUser?.email?.includes("sujith@guduchiayurveda")) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
         <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
