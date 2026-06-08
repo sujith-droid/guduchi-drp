@@ -44,8 +44,8 @@ export default function AdminPanel() {
   }, []);
 
   const loadData = async () => {
-    const allUsers = await base44.entities.User.list("-created_date", 200);
-    setUsers(allUsers);
+    const { data } = await base44.functions.invoke("listUsers", {});
+    setUsers(data.users || []);
     const allAssignments = await base44.entities.PatientDoctorAssignment.filter({ status: "active" });
     setAssignments(allAssignments);
     const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
@@ -123,14 +123,14 @@ export default function AdminPanel() {
   };
 
   const changeUserRole = async (userId, newRole) => {
-    await base44.entities.User.update(userId, { role: newRole });
+    await base44.functions.invoke("updateUserRole", { userId, newRole });
     toast.success(`Role updated to ${newRole}`);
     loadData();
   };
 
   const deleteUser = async () => {
     if (!deleteUserId) return;
-    await base44.entities.User.delete(deleteUserId);
+    await base44.functions.invoke("deleteUser", { userId: deleteUserId });
     toast.success("User deleted successfully");
     setDeleteUserId(null);
     setDeleteUserName("");
