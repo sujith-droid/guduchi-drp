@@ -35,5 +35,11 @@
       "type": "boolean",
       "default": false
     }
-  }
+  },
+  "required": [
+    "phone",
+    "age",
+    "gender",
+    "patient_id"
+  ]
 }

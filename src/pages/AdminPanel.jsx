@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, QrCode, Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -28,6 +29,8 @@ export default function AdminPanel() {
   const [newTplContent, setNewTplContent] = useState("");
   const [savingTpl, setSavingTpl] = useState(false);
   const [qrDoctor, setQrDoctor] = useState(null);
+  const [deleteUserId, setDeleteUserId] = useState(null);
+  const [deleteUserName, setDeleteUserName] = useState("");
 
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -124,6 +127,15 @@ export default function AdminPanel() {
   const changeUserRole = async (userId, newRole) => {
     await base44.entities.User.update(userId, { role: newRole });
     toast.success(`Role updated to ${newRole}`);
+    loadData();
+  };
+
+  const deleteUser = async () => {
+    if (!deleteUserId) return;
+    await base44.entities.User.delete(deleteUserId);
+    toast.success("User deleted successfully");
+    setDeleteUserId(null);
+    setDeleteUserName("");
     loadData();
   };
 
@@ -383,24 +395,52 @@ export default function AdminPanel() {
                   <p className="text-sm font-medium">{u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
-                <Select
-                  value={u.role || "patient"}
-                  onValueChange={(val) => changeUserRole(u.id, val)}
-                >
-                  <SelectTrigger className="w-28 h-7 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="patient">Patient</SelectItem>
-                    <SelectItem value="doctor">Doctor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={u.role || "patient"}
+                    onValueChange={(val) => changeUserRole(u.id, val)}
+                  >
+                    <SelectTrigger className="w-28 h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="patient">Patient</SelectItem>
+                      <SelectItem value="doctor">Doctor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive h-7 w-7"
+                    onClick={() => { setDeleteUserId(u.id); setDeleteUserName(u.full_name || u.email); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete User Confirmation */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={(open) => { if (!open) { setDeleteUserId(null); setDeleteUserName(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteUserName}</strong>? This action cannot be undone and all associated data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setDeleteUserId(null); setDeleteUserName(""); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
