@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-
-const ADMIN_EMAIL = "sujith@guduchiayurveda";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +35,7 @@ export default function AdminPanel() {
   useEffect(() => {
     base44.auth.me().then((me) => {
       setCurrentUser(me);
-      if (!me.email?.includes(ADMIN_EMAIL)) {
+      if (me.role !== "admin") {
         setLoading(false);
         return;
       }
@@ -159,7 +157,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (!currentUser?.email?.includes(ADMIN_EMAIL)) {
+  if (currentUser?.role !== "admin") {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
         <Shield className="h-12 w-12 text-muted-foreground opacity-30" />

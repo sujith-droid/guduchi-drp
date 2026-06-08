@@ -99,11 +99,9 @@ export default function Layout() {
     } catch {setUnreadCount(0);}
   };
 
-  const ADMIN_EMAIL = "sujith@guduchiayurveda";
-
   const getNavItems = () => {
     if (!user) return patientNav;
-    if (user.email?.includes(ADMIN_EMAIL)) return adminNav;
+    if (user.role === "admin") return adminNav;
     if (user.role === "doctor") return doctorNav;
     return patientNav;
   };
