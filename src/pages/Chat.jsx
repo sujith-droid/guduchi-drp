@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X } from "lucide-react";
-import moment from "moment";
+import moment from "moment-timezone";
 import { motion } from "framer-motion";
 
 export default function Chat() {

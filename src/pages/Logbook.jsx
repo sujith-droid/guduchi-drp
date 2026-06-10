@@ -10,7 +10,7 @@ import { Droplets, Weight, Save, Calendar, ChevronLeft, ChevronRight, CheckCircl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import moment from "moment";
+import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";

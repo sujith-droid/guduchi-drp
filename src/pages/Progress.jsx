@@ -8,7 +8,7 @@ import SugarChart from "../components/SugarChart";
 import WeightStepChart from "../components/WeightStepChart";
 import { Droplets, Weight, Footprints } from "lucide-react";
 
-import moment from "moment";
+import moment from "moment-timezone";
 
 export default function Progress() {
   const [user, setUser] = useState(null);

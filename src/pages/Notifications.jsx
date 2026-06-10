@@ -4,7 +4,7 @@ import { Bell, Check, AlertTriangle, Award, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
-import moment from "moment";
+import moment from "moment-timezone";
 import { motion } from "framer-motion";
 
 const typeIcons = {
