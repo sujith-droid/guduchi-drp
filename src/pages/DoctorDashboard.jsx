@@ -29,15 +29,15 @@ export default function DoctorDashboard() {
     const assignments = await base44.entities.PatientDoctorAssignment.filter(query);
     setPatients(assignments);
 
-    // Load recent logs for each patient
+    // Load all recent logs in one batch query, then group by patient
+    const recentLogs = await base44.entities.DailyLog.list("-date", 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const logsMap = {};
-    for (const a of assignments) {
-      const logs = await base44.entities.DailyLog.filter(
-        { patient_email: a.patient_email },
-        "-date",
-        7
-      );
-      logsMap[a.patient_email] = logs;
+    for (const log of recentLogs) {
+      if (log.date < sevenDaysAgo) continue;
+      const email = log.patient_email;
+      if (!logsMap[email]) logsMap[email] = [];
+      if (logsMap[email].length < 7) logsMap[email].push(log);
     }
     setPatientLogs(logsMap);
     setLoading(false);

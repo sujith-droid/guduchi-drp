@@ -10,7 +10,7 @@ import StatCard from "../components/StatCard";
 import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone, IdCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import moment from "moment";
+import moment from "moment-timezone";
 
 export default function PatientDetail() {
   const urlParams = new URLSearchParams(window.location.search);
