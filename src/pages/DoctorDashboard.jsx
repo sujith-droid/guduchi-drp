@@ -24,10 +24,9 @@ export default function DoctorDashboard() {
     const me = await base44.auth.me();
     setUser(me);
 
-    const assignments = await base44.entities.PatientDoctorAssignment.filter({
-      doctor_email: me.email,
-      status: "active",
-    });
+    const isAdmin = me.role === "admin";
+    const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
+    const assignments = await base44.entities.PatientDoctorAssignment.filter(query);
     setPatients(assignments);
 
     // Load recent logs for each patient

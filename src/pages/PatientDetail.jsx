@@ -33,11 +33,10 @@ export default function PatientDetail() {
 
   const loadAssignment = async () => {
     const me = await base44.auth.me();
-    const assignments = await base44.entities.PatientDoctorAssignment.filter({
-      patient_email: patientEmail,
-      doctor_email: me.email,
-      status: "active",
-    });
+    const query = me.role === "admin"
+      ? { patient_email: patientEmail, status: "active" }
+      : { patient_email: patientEmail, doctor_email: me.email, status: "active" };
+    const assignments = await base44.entities.PatientDoctorAssignment.filter(query);
     if (assignments.length > 0) {
       setAssignment(assignments[0]);
       setPatientIdInput(assignments[0].patient_id || "");

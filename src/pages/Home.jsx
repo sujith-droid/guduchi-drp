@@ -8,7 +8,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.role === "doctor") {
+    if (user?.role === "doctor" || user?.role === "admin") {
       navigate("/doctor", { replace: true });
     }
   }, [user, navigate]);
