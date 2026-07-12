@@ -50,6 +50,11 @@
         },
         {
           "user_condition": {
+            "role": "doctor"
+          }
+        },
+        {
+          "user_condition": {
             "role": "admin"
           }
         }
