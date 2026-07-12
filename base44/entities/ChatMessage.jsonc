@@ -35,6 +35,11 @@
         "audio"
       ],
       "description": "Type of message"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the message has been read by the receiver"
     }
   },
   "required": [

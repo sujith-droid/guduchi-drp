@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 
@@ -30,6 +30,7 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recordingTimerRef = useRef(null);
+  const [unreadMap, setUnreadMap] = useState({});
 
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
@@ -44,7 +45,7 @@ export default function Chat() {
       const interval = setInterval(loadMessages, 5000);
       return () => clearInterval(interval);
     }
-  }, [activeConvId]);
+  }, [activeConvId, user]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,6 +67,13 @@ export default function Chat() {
       me.role === "doctor" ? { doctor_email: me.email } : { patient_email: me.email }
     );
     setConversations(assignments);
+    // Fetch unread message counts per conversation
+    const allUnread = await base44.entities.ChatMessage.filter({ receiver_email: me.email, is_read: false });
+    const map = {};
+    for (const m of allUnread) {
+      map[m.conversation_id] = (map[m.conversation_id] || 0) + 1;
+    }
+    setUnreadMap(map);
 
     // For patients with multiple doctors, create a group conversation
     if (me.role === "patient" && assignments.length > 1) {
@@ -118,6 +126,13 @@ export default function Chat() {
     try {
       const msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
       setMessages(msgs);
+      // Mark incoming messages as read
+      if (user) {
+        const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
+        for (const m of unread) {
+          await base44.entities.ChatMessage.update(m.id, { is_read: true });
+        }
+      }
     } catch {
       // Silently ignore transient network errors during polling
     }
@@ -130,6 +145,18 @@ export default function Chat() {
     }
     const cId = [assignment.patient_email, assignment.doctor_email].sort().join("_");
     navigate(`/chat/${encodeURIComponent(cId)}`);
+  };
+
+  const notifyReceiver = async (receiverEmail, preview) => {
+    if (!receiverEmail) return;
+    const patientEmail = user.role === "patient" ? user.email : receiverEmail;
+    await base44.entities.Notification.create({
+      user_email: receiverEmail,
+      title: `New message from ${user.full_name || user.email}`,
+      message: preview.substring(0, 100),
+      type: "info",
+      related_patient_email: patientEmail,
+    }).catch(() => {});
   };
 
   const sendMessage = async (imageUrl, audioUrl) => {
@@ -152,6 +179,7 @@ export default function Chat() {
     setNewMsg("");
 
     await base44.entities.ChatMessage.create(msgData);
+    await notifyReceiver(isGroupChat ? null : chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
     setSending(false);
     // Replace optimistic with real data
     loadMessages();
@@ -180,6 +208,7 @@ export default function Chat() {
       message_type: 'text',
       image_url: file_url,
     });
+    await notifyReceiver(partnerEmail, `📎 ${file.name}`);
     setSending(false);
     loadMessages();
   };
@@ -195,6 +224,7 @@ export default function Chat() {
       message: template.content,
       message_type: 'text',
     });
+    await notifyReceiver(partnerEmail, template.content);
     setSending(false);
     loadMessages();
   };
@@ -244,6 +274,7 @@ export default function Chat() {
       message_type: "audio",
       audio_url: file_url,
     });
+    await notifyReceiver(partnerEmail, "🎤 Voice message");
     setSending(false);
     loadMessages();
   };
@@ -284,7 +315,10 @@ export default function Chat() {
               </button>
             )}
             {/* Show individual chats only when patient has exactly 1 doctor */}
-            {!groupConv && conversations.map((a) => (
+            {!groupConv && conversations.map((a) => {
+              const cId = [a.patient_email, a.doctor_email].sort().join("_");
+              const unread = unreadMap[cId] || 0;
+              return (
               <button
                 key={a.id}
                 onClick={() => selectConversation(a)}
@@ -293,7 +327,7 @@ export default function Chat() {
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
                   {(user.role === "doctor" ? a.patient_name : a.doctor_name || "?")[0]?.toUpperCase()}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-sm">
                     {user.role === "doctor" ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
@@ -301,8 +335,14 @@ export default function Chat() {
                     {user.role === "doctor" ? "Patient" : "Your Doctor"}
                   </p>
                 </div>
+                {unread > 0 && (
+                  <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center">
+                    {unread}
+                  </span>
+                )}
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -336,11 +376,24 @@ export default function Chat() {
             Start the conversation by sending a message.
           </div>
         )}
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
           const isMe = msg.sender_email === user.email;
+          const prevMsg = messages[idx - 1];
+          const showDateSep = !prevMsg || !moment.tz(prevMsg.created_date, "Asia/Kolkata").isSame(moment.tz(msg.created_date, "Asia/Kolkata"), "day");
+          const dateLabel = (() => {
+            const m = moment.tz(msg.created_date, "Asia/Kolkata");
+            if (m.isSame(moment.tz("Asia/Kolkata").startOf("day"), "day")) return "Today";
+            if (m.isSame(moment.tz("Asia/Kolkata").subtract(1, "day").startOf("day"), "day")) return "Yesterday";
+            return m.format("MMM D, YYYY");
+          })();
           return (
+            <div key={msg.id}>
+            {showDateSep && (
+              <div className="flex items-center justify-center my-3">
+                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">{dateLabel}</span>
+              </div>
+            )}
             <motion.div
-              key={msg.id}
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
@@ -372,11 +425,17 @@ export default function Chat() {
                   )}
                   {msg.message && <p className="text-sm">{msg.message}</p>}
                 </div>
-                <p className={`text-[10px] text-muted-foreground mt-1 ${isMe ? "text-right" : ""}`}>
-                  {moment(msg.created_date).format("h:mm A")}
+                <p className={`text-[10px] text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
+                  {moment.tz(msg.created_date, "Asia/Kolkata").format("h:mm A")}
+                  {isMe && !msg._pending && (
+                    msg.is_read
+                      ? <CheckCheck className="h-3 w-3 text-primary" />
+                      : <Check className="h-3 w-3" />
+                  )}
                 </p>
               </div>
             </motion.div>
+            </div>
           );
         })}
         <div ref={messagesEnd} />
