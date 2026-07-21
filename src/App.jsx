@@ -1,11 +1,10 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import RedirectToLogin from '@/components/RedirectToLogin';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Logbook from './pages/Logbook';
@@ -20,6 +19,7 @@ import Profile from './pages/Profile';
 import JoinDoctor from './pages/JoinDoctor';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
+import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -31,12 +31,13 @@ function App() {
         <Router>
           <Routes>
             {/* Public auth routes */}
+            <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* All other routes require authentication */}
-            <Route element={<ProtectedRoute unauthenticatedElement={<RedirectToLogin />} />}>
+            <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
               <Route path="/setup" element={<ProfileSetup />} />
               <Route path="/join" element={<JoinDoctor />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
