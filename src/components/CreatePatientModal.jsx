@@ -16,7 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 
 // Plus-addressing base: the clinic's single inbox that receives every patient's OTP.
 // Change this to your clinic's real email (e.g. yourclinic@gmail.com).
-const CLINIC_BASE_EMAIL = "guduchi.clinic@gmail.com";
+const CLINIC_BASE_EMAIL = "sujith@guduchiayurveda.com";
 
 function generatePassword() {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
