@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,9 +45,9 @@ export default function Register() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/login" className="text-primary font-medium hover:underline">
+          <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="text-primary font-medium hover:underline">
             Log in
-          </Link>
+          </button>
         </>
       }
     >
