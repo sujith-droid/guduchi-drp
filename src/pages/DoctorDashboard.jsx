@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send } from "lucide-react";
+import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, UserPlus } from "lucide-react";
 import BulkMessageModal from "../components/BulkMessageModal";
+import CreatePatientModal from "../components/CreatePatientModal";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import moment from "moment";
@@ -15,6 +16,7 @@ export default function DoctorDashboard() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -87,13 +89,27 @@ export default function DoctorDashboard() {
             {patients.length} patient{patients.length !== 1 ? "s" : ""} assigned
           </p>
         </div>
-        <button
-          onClick={() => setBulkModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Send className="h-4 w-4" /> Bulk Message
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add Patient</span>
+          </button>
+          <button
+            onClick={() => setBulkModalOpen(true)}
+            className="flex items-center gap-2 bg-secondary text-secondary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-secondary/80 transition-colors"
+          >
+            <Send className="h-4 w-4" /> <span className="hidden sm:inline">Bulk Message</span>
+          </button>
+        </div>
       </div>
+      <CreatePatientModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        doctor={user}
+        onCreated={loadData}
+      />
       <BulkMessageModal
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
