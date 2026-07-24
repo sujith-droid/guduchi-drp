@@ -43,14 +43,23 @@ export default function AdminPanel() {
     });
   }, []);
 
+  const [loadError, setLoadError] = useState(false);
+
   const loadData = async () => {
-    const { data } = await base44.functions.invoke("listUsers", {});
-    setUsers(data.users || []);
-    const allAssignments = await base44.entities.PatientDoctorAssignment.filter({ status: "active" });
-    setAssignments(allAssignments);
-    const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
-    setTemplates(tmpl);
-    setLoading(false);
+    try {
+      setLoadError(false);
+      const { data } = await base44.functions.invoke("listUsers", {});
+      setUsers(data.users || []);
+      const allAssignments = await base44.entities.PatientDoctorAssignment.filter({ status: "active" });
+      setAssignments(allAssignments);
+      const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
+      setTemplates(tmpl);
+    } catch (e) {
+      console.error("Failed to load admin data", e);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const doctors = users.filter((u) => u.role === "doctor");
@@ -163,6 +172,17 @@ export default function AdminPanel() {
         <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
         <p className="font-semibold">Access Denied</p>
         <p className="text-sm text-muted-foreground">Only the admin can access this panel.</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+        <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
+        <p className="font-semibold">Couldn't load admin data</p>
+        <p className="text-sm text-muted-foreground">Your session may have expired. Please refresh or log in again.</p>
+        <Button variant="outline" onClick={loadData}>Retry</Button>
       </div>
     );
   }
