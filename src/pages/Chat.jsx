@@ -52,14 +52,23 @@ export default function Chat() {
   }, [messages]);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-    await loadConversations(me);
-    if (me.role === 'doctor') {
-      const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
-      setTemplates(tmpl);
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+      await loadConversations(me);
+      if (me.role === 'doctor') {
+        try {
+          const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
+          setTemplates(tmpl);
+        } catch (e) {
+          console.error("Failed to load templates", e);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load chat", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const loadConversations = async (me) => {
@@ -67,8 +76,13 @@ export default function Chat() {
       me.role === "doctor" ? { doctor_email: me.email } : { patient_email: me.email }
     );
     setConversations(assignments);
-    // Fetch unread message counts per conversation
-    const allUnread = await base44.entities.ChatMessage.filter({ receiver_email: me.email, is_read: false });
+    // Fetch unread message counts per conversation (resilient — don't block page load)
+    let allUnread = [];
+    try {
+      allUnread = await base44.entities.ChatMessage.filter({ receiver_email: me.email, is_read: false });
+    } catch (e) {
+      console.error("Failed to load unread messages", e);
+    }
     const map = {};
     for (const m of allUnread) {
       map[m.conversation_id] = (map[m.conversation_id] || 0) + 1;
