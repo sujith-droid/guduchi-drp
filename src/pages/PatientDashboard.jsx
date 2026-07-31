@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone } from "lucide-react";
+import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatCard from "../components/StatCard";
 import SmartFeedback from "../components/SmartFeedback";
@@ -226,6 +226,13 @@ export default function PatientDashboard() {
             <Activity className="h-5 w-5 text-primary mb-2" />
             <p className="text-sm font-medium">Chat Doctor</p>
             <p className="text-xs text-muted-foreground">Ask your doctor</p>
+          </div>
+        </Link>
+        <Link to="/join">
+          <div className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors">
+            <QrCode className="h-5 w-5 text-primary mb-2" />
+            <p className="text-sm font-medium">Link Doctor</p>
+            <p className="text-xs text-muted-foreground">Scan QR or enter email</p>
           </div>
         </Link>
       </div>
