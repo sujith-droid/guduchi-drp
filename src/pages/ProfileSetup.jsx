@@ -39,6 +39,13 @@ export default function ProfileSetup() {
       return;
     }
 
+    const digits = (phone || "").replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Please enter a valid mobile number (at least 10 digits).");
+      setSaving(false);
+      return;
+    }
+
     const patientId = user.patient_id || `DRP-${Date.now().toString(36).toUpperCase()}`;
     
     await base44.auth.updateMe({
