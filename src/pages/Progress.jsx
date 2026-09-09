@@ -9,24 +9,23 @@ import WeightStepChart from "../components/WeightStepChart";
 import { Droplets, Weight, Footprints } from "lucide-react";
 
 import moment from "moment-timezone";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Progress() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [logs, setLogs] = useState([]);
   const [period, setPeriod] = useState("30");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) loadData();
+  }, [user]);
 
   useEffect(() => {
     if (user) loadLogs();
   }, [user, period]);
 
   const loadData = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
     setLoading(false);
   };
 

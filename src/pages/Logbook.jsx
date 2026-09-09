@@ -14,9 +14,10 @@ import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Logbook() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
   const [log, setLog] = useState({
     before_food_morning: "",
@@ -43,8 +44,8 @@ export default function Logbook() {
   const [savingHba1c, setSavingHba1c] = useState(false);
 
   useEffect(() => {
-    loadUser();
-  }, []);
+    if (user) loadUser();
+  }, [user]);
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
@@ -62,8 +63,7 @@ export default function Logbook() {
   }, [user, selectedDate]);
 
   const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
+    const me = user;
     const logs = await base44.entities.DailyLog.filter({ patient_email: me.email }, "-date", 14);
     setRecentLogs(logs);
     const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: me.email }, "-date", 10);

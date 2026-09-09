@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Chat() {
   const { convId: convIdParam } = useParams();
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -36,8 +37,8 @@ export default function Chat() {
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
 
   useEffect(() => {
-    loadUser();
-  }, []);
+    if (user) initChat();
+  }, [user]);
 
   useEffect(() => {
     if (activeConvId) {
@@ -51,15 +52,14 @@ export default function Chat() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const loadUser = async () => {
+  const initChat = async () => {
     try {
-      const me = await base44.auth.me();
-      setUser(me);
-      await loadConversations(me);
-      if (me.role === 'doctor') {
+      await loadConversations(user);
+      if (user.role === 'doctor') {
         try {
-          const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
-          setTemplates(tmpl);
+          const adminToken = localStorage.getItem("admin_session_token");
+          const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getTemplates" });
+          setTemplates((res.data || res).templates || []);
         } catch (e) {
           console.error("Failed to load templates", e);
         }

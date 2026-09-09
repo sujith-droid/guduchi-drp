@@ -21,9 +21,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -35,20 +36,19 @@ export default function Profile() {
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
-    base44.auth.me().then(async (me) => {
-      setUser(me);
-      setPhone(me.phone || "");
-      setAge(me.age ? String(me.age) : "");
-      setGender(me.gender || "");
-      setAddress(me.address || "");
-      setBranch(me.branch || "");
-      if (me.role === "patient") {
-        const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
-        setAssignedDoctors(assignments);
-      }
-      setLoading(false);
-    });
-  }, []);
+    if (!user) return;
+    setPhone(user.phone || "");
+    setAge(user.age ? String(user.age) : "");
+    setGender(user.gender || "");
+    setAddress(user.address || "");
+    setBranch(user.branch || "");
+    if (user.role === "patient") {
+      base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" })
+        .then(setAssignedDoctors)
+        .catch(() => {});
+    }
+    setLoading(false);
+  }, [user]);
 
   const handleDeleteAccount = async () => {
     setDeletingAccount(true);
@@ -93,15 +93,21 @@ export default function Profile() {
       return;
     }
     setSaving(true);
-    await base44.auth.updateMe({
-      phone: phone.trim(),
-      age: age ? Number(age) : undefined,
-      gender: gender || undefined,
-      address: address.trim() || undefined,
-      branch: branch || undefined,
-    });
-    toast.success("Profile updated!");
-    setSaving(false);
+    try {
+      await base44.functions.invoke("updateProfile", {
+        email: user.email,
+        phone: phone.trim(),
+        address: address.trim(),
+        age: age ? Number(age) : undefined,
+        gender: gender || undefined,
+        branch: branch || undefined,
+      });
+      toast.success("Profile updated!");
+    } catch (e) {
+      toast.error("Failed to update profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {

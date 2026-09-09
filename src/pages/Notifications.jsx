@@ -6,6 +6,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 const typeIcons = {
   reminder: Bell,
@@ -22,32 +23,33 @@ const typeColors = {
 };
 
 export default function Notifications() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const adminToken = localStorage.getItem("admin_session_token");
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) loadData();
+  }, [user]);
 
   const handleRefresh = useCallback(async () => { await loadData(); }, []);
   const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
 
   const loadData = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-    const notifs = await base44.entities.Notification.filter(
-      { user_email: me.email },
-      "-created_date",
-      50
-    );
-    setNotifications(notifs);
-    setLoading(false);
+    try {
+      const res = await base44.functions.invoke("notificationsApi", { adminToken, action: "list" });
+      const data = res.data || res;
+      setNotifications(data.notifications || []);
+    } catch (e) {
+      console.error("Failed to load notifications", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const markAsRead = async (notif) => {
     if (notif.is_read) return;
-    await base44.entities.Notification.update(notif.id, { is_read: true });
+    try { await base44.functions.invoke("notificationsApi", { adminToken, action: "markRead", id: notif.id }); } catch {}
     setNotifications((prev) =>
       prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
     );
@@ -55,9 +57,9 @@ export default function Notifications() {
 
   const markAllRead = async () => {
     const unread = notifications.filter((n) => !n.is_read);
-    for (const n of unread) {
-      await base44.entities.Notification.update(n.id, { is_read: true });
-    }
+    try {
+      await base44.functions.invoke("notificationsApi", { adminToken, action: "markAllRead", ids: unread.map((n) => n.id) });
+    } catch {}
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };
 

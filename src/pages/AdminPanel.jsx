@@ -14,6 +14,7 @@ import { useState as useQrState, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -30,30 +31,28 @@ export default function AdminPanel() {
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteUserName, setDeleteUserName] = useState("");
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
-    base44.auth.me().then((me) => {
-      setCurrentUser(me);
-      if (me.role !== "admin" && !me.email?.includes("sujith@guduchiayurveda")) {
-        setLoading(false);
-        return;
-      }
-      loadData();
-    });
-  }, []);
+    if (!currentUser) return;
+    if (currentUser.role !== "admin" && !currentUser.email?.includes("sujith@guduchiayurveda")) {
+      setLoading(false);
+      return;
+    }
+    loadData();
+  }, [currentUser]);
 
   const [loadError, setLoadError] = useState(false);
 
   const loadData = async () => {
     try {
       setLoadError(false);
-      const { data } = await base44.functions.invoke("listUsers", {});
-      setUsers(data.users || []);
-      const allAssignments = await base44.entities.PatientDoctorAssignment.filter({ status: "active" });
-      setAssignments(allAssignments);
-      const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
-      setTemplates(tmpl);
+      const adminToken = localStorage.getItem("admin_session_token");
+      const res = await base44.functions.invoke("adminGetData", { adminToken });
+      const d = res.data || res || {};
+      setUsers(d.users || []);
+      setAssignments(d.assignments || []);
+      setTemplates(d.templates || []);
     } catch (e) {
       console.error("Failed to load admin data", e);
       setLoadError(true);
@@ -77,33 +76,17 @@ export default function AdminPanel() {
       toast.error("This patient is already assigned to this doctor.");
       return;
     }
-    const patient = users.find((u) => u.email === selectedPatient);
-    const doctor = users.find((u) => u.email === selectedDoctor);
-    await base44.entities.PatientDoctorAssignment.create({
-      patient_email: selectedPatient,
-      doctor_email: selectedDoctor,
-      patient_name: patient?.full_name || selectedPatient,
-      doctor_name: doctor?.full_name || selectedDoctor,
-      status: "active",
-    });
-
-    // Notify doctor
-    await base44.entities.Notification.create({
-      user_email: selectedDoctor,
-      title: "New Patient Assigned",
-      message: `${patient?.full_name || selectedPatient} has been assigned to you by the admin.`,
-      type: "info",
-      related_patient_email: selectedPatient,
-    });
-    // Notify patient
-    await base44.entities.Notification.create({
-      user_email: selectedPatient,
-      title: "Doctor Assigned",
-      message: `Dr. ${doctor?.full_name || selectedDoctor} has been assigned as your doctor.`,
-      type: "info",
-    });
-
-    toast.success("Patient assigned to doctor!");
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", {
+        adminToken, action: "assign",
+        patientEmail: selectedPatient, doctorEmail: selectedDoctor,
+      });
+      toast.success("Patient assigned to doctor!");
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e?.message || "Failed to assign.");
+      return;
+    }
     setAssignDialog(false);
     setSelectedPatient("");
     setSelectedDoctor("");
@@ -113,49 +96,79 @@ export default function AdminPanel() {
   const addTemplate = async () => {
     if (!newTplName.trim() || !newTplContent.trim()) return;
     setSavingTpl(true);
-    await base44.entities.MessageTemplate.create({
-      name: newTplName.trim(),
-      content: newTplContent.trim(),
-    });
-    setNewTplName("");
-    setNewTplContent("");
-    setSavingTpl(false);
-    toast.success("Template added!");
-    const tmpl = await base44.entities.MessageTemplate.list('-created_date', 100);
-    setTemplates(tmpl);
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", {
+        adminToken, action: "addTemplate",
+        name: newTplName.trim(), content: newTplContent.trim(),
+      });
+      setNewTplName("");
+      setNewTplContent("");
+      toast.success("Template added!");
+      await loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to add template.");
+    } finally {
+      setSavingTpl(false);
+    }
   };
 
   const deleteTemplate = async (id) => {
-    await base44.entities.MessageTemplate.delete(id);
-    setTemplates((prev) => prev.filter((t) => t.id !== id));
-    toast.success("Template deleted");
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "deleteTemplate", id });
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Template deleted");
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to delete template.");
+    }
   };
 
   const changeUserRole = async (userId, newRole) => {
-    await base44.functions.invoke("updateUserRole", { userId, newRole });
-    toast.success(`Role updated to ${newRole}`);
-    loadData();
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "updateRole", userId, newRole });
+      toast.success(`Role updated to ${newRole}`);
+      loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to update role.");
+    }
   };
 
   const deleteUser = async () => {
     if (!deleteUserId) return;
-    await base44.functions.invoke("deleteUser", { userId: deleteUserId });
-    toast.success("User deleted successfully");
-    setDeleteUserId(null);
-    setDeleteUserName("");
-    loadData();
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "deleteUser", userId: deleteUserId });
+      toast.success("User deleted successfully");
+      setDeleteUserId(null);
+      setDeleteUserName("");
+      loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to delete user.");
+    }
   };
 
   const removeAssignment = async (id) => {
-    await base44.entities.PatientDoctorAssignment.update(id, { status: "inactive" });
-    toast.success("Assignment removed");
-    loadData();
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "removeAssignment", id });
+      toast.success("Assignment removed");
+      loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to remove assignment.");
+    }
   };
 
   const updateProgram = async (id, program_duration) => {
-    await base44.entities.PatientDoctorAssignment.update(id, { program_duration });
-    toast.success("Program updated");
-    loadData();
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "updateProgram", id, program_duration });
+      toast.success("Program updated");
+      loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to update program.");
+    }
   };
 
   if (loading) {

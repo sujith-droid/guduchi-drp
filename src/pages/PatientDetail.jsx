@@ -11,6 +11,7 @@ import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import moment from "moment-timezone";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function PatientDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -24,15 +25,17 @@ export default function PatientDetail() {
   const [assignment, setAssignment] = useState(null);
   const [patientIdInput, setPatientIdInput] = useState("");
   const [savingId, setSavingId] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
     loadLogs();
     loadPatientPhone();
     loadAssignment();
-  }, [period]);
+  }, [period, user]);
 
   const loadAssignment = async () => {
-    const me = await base44.auth.me();
+    const me = user;
     const query = me.role === "admin"
       ? { patient_email: patientEmail, status: "active" }
       : { patient_email: patientEmail, doctor_email: me.email, status: "active" };
@@ -46,18 +49,18 @@ export default function PatientDetail() {
   const savePatientId = async () => {
     if (!assignment) return;
     setSavingId(true);
-    await base44.entities.PatientDoctorAssignment.update(assignment.id, { patient_id: patientIdInput.trim() });
-    // Notify patient of their new ID
-    if (patientIdInput.trim()) {
-      await base44.entities.Notification.create({
-        user_email: patientEmail,
-        title: "Patient ID Assigned",
-        message: `Your doctor has assigned you the Patient ID: ${patientIdInput.trim()}. You can view it on your profile.`,
-        type: "info",
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("doctorApi", {
+        adminToken, action: "savePatientId",
+        assignmentId: assignment.id, patientId: patientIdInput.trim(),
       });
+      toast.success("Patient ID saved!");
+    } catch (e) {
+      toast.error("Failed to save Patient ID");
+    } finally {
+      setSavingId(false);
     }
-    setSavingId(false);
-    toast.success("Patient ID saved!");
   };
 
   const loadPatientPhone = async () => {

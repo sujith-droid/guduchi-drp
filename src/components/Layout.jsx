@@ -88,7 +88,10 @@ export default function Layout() {
 
   const loadNotifications = async () => {
     try {
-      const notifs = await base44.entities.Notification.filter({ user_email: user.email, is_read: false });
+      const adminToken = localStorage.getItem("admin_session_token");
+      const res = await base44.functions.invoke("notificationsApi", { adminToken, action: "list" });
+      const data = res.data || res;
+      const notifs = (data.notifications || []).filter((n) => !n.is_read);
       setUnreadCount(notifs.length);
     } catch {setUnreadCount(0);}
   };

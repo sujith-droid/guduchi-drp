@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import moment from "moment";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function DoctorDashboard() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [patients, setPatients] = useState([]);
   const [patientLogs, setPatientLogs] = useState({});
   const [search, setSearch] = useState("");
@@ -17,12 +18,11 @@ export default function DoctorDashboard() {
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) loadData();
+  }, [user]);
 
   const loadData = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
+    const me = user;
 
     const isAdmin = me.role === "admin";
     const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };

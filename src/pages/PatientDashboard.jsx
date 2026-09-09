@@ -11,9 +11,10 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import moment from "moment";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function PatientDashboard() {
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [todayLog, setTodayLog] = useState(null);
   const [previousLog, setPreviousLog] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
@@ -24,8 +25,8 @@ export default function PatientDashboard() {
   const [patientIdDisplay, setPatientIdDisplay] = useState(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) loadData();
+  }, [user]);
 
   const handleRefresh = useCallback(async () => {
     await loadData();
@@ -35,8 +36,7 @@ export default function PatientDashboard() {
 
   const loadData = async () => {
     try {
-      const me = await base44.auth.me();
-      setUser(me);
+      const me = user;
 
       const today = moment().format("YYYY-MM-DD");
       const logs = await base44.entities.DailyLog.filter(

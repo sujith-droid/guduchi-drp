@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function JoinDoctor() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -15,92 +16,29 @@ export default function JoinDoctor() {
   const [doctorName, setDoctorName] = useState("");
   const [manualEmail, setManualEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (doctorEmailFromUrl) {
+    if (doctorEmailFromUrl && user) {
       handleAssign(doctorEmailFromUrl);
     }
-  }, []);
+  }, [user]);
 
   const handleAssign = async (doctorEmail) => {
     try {
       setDoctorName(doctorEmail);
-      const isAuthed = await base44.auth.isAuthenticated();
-      if (!isAuthed) {
-        base44.auth.redirectToLogin(window.location.href);
+      if (!user) {
+        setStatus("form");
         return;
       }
-      const me = await base44.auth.me();
-
-      // Check existing assignments
-      const existing = await base44.entities.PatientDoctorAssignment.filter({
-        patient_email: me.email,
-        doctor_email: doctorEmail,
-        status: "active",
+      const res = await base44.functions.invoke("patientApi", {
+        action: "assignDoctor",
+        patientEmail: user.email,
+        doctorEmail,
       });
-
-      if (existing.length > 0) {
-        setStatus("already");
-        return;
-      }
-
-      // Check max 3 limit
-      const myAssignments = await base44.entities.PatientDoctorAssignment.filter({
-        patient_email: me.email,
-        status: "active",
-      });
-
-      if (myAssignments.length >= 3) {
-        setStatus("full");
-        return;
-      }
-
-      await base44.entities.PatientDoctorAssignment.create({
-        patient_email: me.email,
-        doctor_email: doctorEmail,
-        patient_name: me.full_name || me.email,
-        doctor_name: doctorEmail,
-        status: "active",
-      });
-
-      // Notify doctor of new patient
-      await base44.entities.Notification.create({
-        user_email: doctorEmail,
-        title: "New Patient Joined",
-        message: `${me.full_name || me.email} has joined your care via QR code.`,
-        type: "info",
-        related_patient_email: me.email,
-      }).catch(() => {});
-      await base44.integrations.Core.SendEmail({
-        to: doctorEmail,
-        subject: "New Patient Joined Your Care",
-        body: `Hello,\n\n${me.full_name || me.email} has scanned your QR code and joined your care on the Guduchi Diabetes Reversal Program.\n\nLog in to your dashboard to view their profile.\n\n— Guduchi Health Team`,
-      }).catch(() => {});
-
-      // Send the onboarding welcome chat message (uses doctor's "Welcome" template)
-      await base44.functions.invoke("sendWelcomeMessage", {
-        data: {
-          patient_email: me.email,
-          doctor_email: doctorEmail,
-          patient_name: me.full_name || me.email,
-          doctor_name: doctorEmail,
-        },
-      }).catch(() => {});
-
-      // Notify patient
-      await base44.entities.Notification.create({
-        user_email: me.email,
-        title: "Welcome to the Program!",
-        message: `You have been successfully connected to Dr. ${doctorEmail}. Your diabetes reversal journey begins now!`,
-        type: "achievement",
-      }).catch(() => {});
-      await base44.integrations.Core.SendEmail({
-        to: me.email,
-        subject: "Welcome to Guduchi Diabetes Reversal Program!",
-        body: `Hello ${me.full_name || ""},\n\nYou have been successfully connected to Dr. ${doctorEmail}.\n\nStart logging your daily health metrics and track your progress toward reversing diabetes!\n\n— Guduchi Health Team`,
-      }).catch(() => {});
-
-      setStatus("done");
+      const data = res.data || res;
+      setDoctorName(data.doctorName || doctorEmail);
+      setStatus(data.status || "error");
     } catch (e) {
       setStatus("error");
     }

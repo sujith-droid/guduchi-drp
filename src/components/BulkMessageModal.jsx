@@ -15,7 +15,10 @@ export default function BulkMessageModal({ open, onClose, patients, doctorEmail 
 
   useEffect(() => {
     if (open) {
-      base44.entities.MessageTemplate.list("-created_date", 100).then(setTemplates);
+      const adminToken = localStorage.getItem("admin_session_token");
+      base44.functions.invoke("doctorApi", { adminToken, action: "getTemplates" })
+        .then((res) => setTemplates((res.data || res).templates || []))
+        .catch(() => setTemplates([]));
       setSelectedPatients([]);
       setSelectedTemplate(null);
     }
@@ -108,10 +111,10 @@ export default function BulkMessageModal({ open, onClose, patients, doctorEmail 
                     checked={selectedPatients.includes(p.patient_email)}
                     onCheckedChange={() => togglePatient(p.patient_email)}
                   />
-                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
-                    {(p.patient_name || "?")[0]?.toUpperCase()}
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs">
+                    {(p.patient_name || p.patient_email)[0]?.toUpperCase()}
                   </div>
-                  <Label className="text-sm cursor-pointer">{p.patient_name || p.patient_email}</Label>
+                  <Label className="text-sm cursor-pointer flex-1">{p.patient_name || p.patient_email}</Label>
                 </div>
               ))}
             </div>
