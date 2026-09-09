@@ -185,7 +185,7 @@ export default function Layout() {
         {sidebarOpen &&
         <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-            <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card p-4 pt-20 flex flex-col gap-1 shadow-xl">
+            <aside className="absolute left-0 top-0 bottom-0 w-64 bg-card p-4 flex flex-col gap-1 shadow-xl" style={{ paddingTop: 'calc(5rem + var(--safe-top))' }}>
               {navItems.map((item) => {
               const Icon = item.icon;
               const active = location.pathname === item.path;
