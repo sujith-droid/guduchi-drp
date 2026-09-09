@@ -426,6 +426,9 @@ export default function AdminPanel() {
                 <div>
                   <p className="text-sm font-medium">{u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Joined: {u.created_date ? new Date(u.created_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Select
