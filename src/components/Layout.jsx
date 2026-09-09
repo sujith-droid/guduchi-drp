@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
+import { roleDisplayLabel } from "@/lib/roles";
 
 const patientNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -143,7 +144,7 @@ export default function Layout() {
           {user &&
           <div className="text-right mr-2 hidden sm:block">
               <p className="text-sm font-medium">{user.full_name || "User"}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role || "patient"}</p>
+              <p className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</p>
             </div>
           }
           <Button variant="ghost" size="icon" onClick={handleLogout}>

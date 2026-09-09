@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/AuthContext";
+import { isPatientRole } from "@/lib/roles";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ export default function Profile() {
     setGender(user.gender || "");
     setAddress(user.address || "");
     setBranch(user.branch || "");
-    if (user.role === "patient") {
+    if (isPatientRole(user.role)) {
       base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" })
         .then(setAssignedDoctors)
         .catch(() => {});
@@ -309,7 +310,7 @@ export default function Profile() {
       </Card>
 
       {/* Assigned Doctors (patients only) */}
-      {user?.role === "patient" && (
+      {isPatientRole(user?.role) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">

@@ -7,6 +7,7 @@ import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTem
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import { isPatientRole } from "@/lib/roles";
 
 export default function Chat() {
   const { convId: convIdParam } = useParams();
@@ -90,7 +91,7 @@ export default function Chat() {
     setUnreadMap(map);
 
     // For patients with multiple doctors, create a group conversation
-    if (me.role === "patient" && assignments.length > 1) {
+    if (isPatientRole(me.role) && assignments.length > 1) {
       const groupId = `group_${me.email}`;
       setGroupConv({
         id: groupId,
@@ -102,7 +103,7 @@ export default function Chat() {
 
     // Auto-navigate if there's only one conversation and no param yet
     if (!convIdParam) {
-      if (me.role === "patient" && assignments.length > 1) {
+      if (isPatientRole(me.role) && assignments.length > 1) {
         const groupId = `group_${me.email}`;
         navigate(`/chat/${encodeURIComponent(groupId)}`, { replace: true });
       } else if (assignments.length === 1) {
@@ -163,7 +164,7 @@ export default function Chat() {
 
   const notifyReceiver = async (receiverEmail, preview) => {
     if (!receiverEmail) return;
-    const patientEmail = user.role === "patient" ? user.email : receiverEmail;
+    const patientEmail = isPatientRole(user.role) ? user.email : receiverEmail;
     await base44.entities.Notification.create({
       user_email: receiverEmail,
       title: `New message from ${user.full_name || user.email}`,

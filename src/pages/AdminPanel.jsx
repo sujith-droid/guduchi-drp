@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import { isPatientRole } from "@/lib/roles";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -62,7 +63,7 @@ export default function AdminPanel() {
   };
 
   const doctors = users.filter((u) => u.role === "doctor");
-  const patients = users.filter((u) => u.role === "patient");
+  const patients = users.filter((u) => isPatientRole(u.role));
 
   const assignPatient = async () => {
     if (!selectedPatient || !selectedDoctor) return;
@@ -428,7 +429,7 @@ export default function AdminPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Select
-                    value={u.role || "patient"}
+                    value={isPatientRole(u.role) ? "patient" : u.role}
                     onValueChange={(val) => changeUserRole(u.id, val)}
                   >
                     <SelectTrigger className="w-28 h-7 text-xs">
