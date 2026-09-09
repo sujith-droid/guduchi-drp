@@ -29,6 +29,14 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [notRegistered, setNotRegistered] = useState(false);
 
+  // Force light color tokens on auth pages so typed text and OTP slots stay
+  // readable on the white card (system dark mode would otherwise flip tokens
+  // while the card stays white, making input text invisible).
+  useEffect(() => {
+    document.documentElement.classList.add('light');
+    return () => document.documentElement.classList.remove('light');
+  }, []);
+
   useEffect(() => {
     let timer;
     if (step === 3 && countdown > 0) {

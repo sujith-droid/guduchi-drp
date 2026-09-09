@@ -47,6 +47,14 @@ export default function SignUp() {
     role: "patient",
   });
 
+  // Force light color tokens on auth pages so typed text stays readable on the
+  // white card (system dark mode would otherwise flip tokens while the card
+  // stays white, making input text invisible).
+  useEffect(() => {
+    document.documentElement.classList.add('light');
+    return () => document.documentElement.classList.remove('light');
+  }, []);
+
   // Check for pre-filled email or phone from Login page URL params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
