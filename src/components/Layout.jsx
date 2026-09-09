@@ -46,6 +46,8 @@ const adminNav = [
 
 
 export default function Layout() {
+  // Reads the authenticated user + session logout from the app AuthContext
+  // (mobile-OTP session). See src/lib/AuthContext.jsx.
   const { user, logout: authLogout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
