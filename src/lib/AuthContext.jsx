@@ -52,15 +52,23 @@ export const AuthProvider = ({ children }) => {
           if (responseData?.user) {
             setUser(responseData.user);
             localStorage.setItem("cached_user", JSON.stringify(responseData.user));
+            setIsLoadingAuth(false);
+            setIsLoadingPublicSettings(false);
             return;
           }
         } catch (e) {
-          // invalid/expired OTP session — clear everything and redirect to login
-          localStorage.removeItem("admin_session_token");
-          localStorage.removeItem("cached_user");
-          setUser(null);
-          setIsAuthenticated(false);
-          setAuthError({ type: 'auth_required', message: 'Session expired' });
+          // Only a clear 401 (invalid/expired session) is a real logout. Transient
+          // network/server errors must not bounce a valid session on a hard
+          // refresh — protected endpoints still validate the token server-side
+          // on every call, so security is preserved either way.
+          const status = e?.status || e?.response?.status;
+          if (status === 401) {
+            localStorage.removeItem("admin_session_token");
+            localStorage.removeItem("cached_user");
+            setUser(null);
+            setIsAuthenticated(false);
+            setAuthError({ type: 'auth_required', message: 'Session expired' });
+          }
           setIsLoadingAuth(false);
           setIsLoadingPublicSettings(false);
           return;
@@ -156,10 +164,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    // 1. Clear the client-side token immediately (synchronous) so the next load
-    //    has no token even if the server call is slow/skipped.
+    // 1. Clear the client-side token synchronously so the next load has none.
     const adminToken = localStorage.getItem("admin_session_token");
     try {
       localStorage.removeItem("admin_session_token");
@@ -167,18 +172,16 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("token");
       localStorage.removeItem("cached_user");
     } catch (e) {}
-    // Best-effort: invalidate the OTP session server-side.
+    // 2. Invalidate the OTP session server-side (await so it completes before
+    //    reload). Do NOT clear React user state first — doing so re-renders the
+    //    app and flashes our /login page before the reload below.
     if (adminToken) {
       try { await base44.functions.invoke("adminAction", { adminToken, action: "logout" }); } catch (e) {}
     }
-    // 2. Clear the HTTP-only session cookie via the platform endpoint — awaited so
-    //    the cookie is actually gone before we reload (otherwise the platform
-    //    re-issues the session on the next load).
-    try {
-      const base = appParams.appBaseUrl || "";
-      await fetch(`${base}/api/apps/auth/logout?from_url=${encodeURIComponent(window.location.origin + "/login")}`, { credentials: "include" });
-    } catch (e) {}
-    // 3. Hard-reload to /login — resets all in-memory state (appParams, axios).
+    // 3. Hard-reload straight to our custom /login. We intentionally do NOT call
+    //    the platform /auth/logout endpoint — mobile-OTP users have no platform
+    //    session to clear, and calling it surfaces the platform's own built-in
+    //    login page ("old login") immediately after ours.
     window.location.replace("/login");
   };
 
