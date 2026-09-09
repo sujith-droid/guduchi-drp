@@ -21,7 +21,52 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      
+
+      // Mobile-OTP sessions are stored as an opaque token in localStorage
+      // and validated server-side via the adminMe backend function (no Base44
+      // email/password session is involved). Resolve that first, before the
+      // normal Base44 auth path.
+      const adminToken = localStorage.getItem("admin_session_token");
+      if (adminToken) {
+        // Optimistically restore the cached user so the UI renders instantly
+        // (no network round-trip blocking the first paint). The session is
+        // validated server-side in the background below; if it's invalid we
+        // log out.
+        let cachedUser = null;
+        try { cachedUser = JSON.parse(localStorage.getItem("cached_user")); } catch {}
+
+        if (cachedUser) {
+          base44.auth.setToken(adminToken);
+          setUser(cachedUser);
+          setIsAuthenticated(true);
+          setAuthError(null);
+          setIsLoadingAuth(false);
+          setIsLoadingPublicSettings(false);
+        }
+
+        // Validate the session server-side in the background.
+        try {
+          base44.auth.setToken(adminToken);
+          const res = await base44.functions.invoke("adminMe", { adminToken });
+          const responseData = res?.data || res;
+          if (responseData?.user) {
+            setUser(responseData.user);
+            localStorage.setItem("cached_user", JSON.stringify(responseData.user));
+            return;
+          }
+        } catch (e) {
+          // invalid/expired OTP session — clear everything and redirect to login
+          localStorage.removeItem("admin_session_token");
+          localStorage.removeItem("cached_user");
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthError({ type: 'auth_required', message: 'Session expired' });
+          setIsLoadingAuth(false);
+          setIsLoadingPublicSettings(false);
+          return;
+        }
+      }
+
       // First, check app public settings (with token if available)
       // This will tell us if auth is required, user not registered, etc.
       const appClient = createAxiosClient({
@@ -110,22 +155,63 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async () => {
     setUser(null);
     setIsAuthenticated(false);
-    
-    if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+    // 1. Clear the client-side token immediately (synchronous) so the next load
+    //    has no token even if the server call is slow/skipped.
+    const adminToken = localStorage.getItem("admin_session_token");
+    try {
+      localStorage.removeItem("admin_session_token");
+      localStorage.removeItem("base44_access_token");
+      localStorage.removeItem("token");
+      localStorage.removeItem("cached_user");
+    } catch (e) {}
+    // Best-effort: invalidate the OTP session server-side.
+    if (adminToken) {
+      try { await base44.functions.invoke("adminAction", { adminToken, action: "logout" }); } catch (e) {}
     }
+    // 2. Clear the HTTP-only session cookie via the platform endpoint — awaited so
+    //    the cookie is actually gone before we reload (otherwise the platform
+    //    re-issues the session on the next load).
+    try {
+      const base = appParams.appBaseUrl || "";
+      await fetch(`${base}/api/apps/auth/logout?from_url=${encodeURIComponent(window.location.origin + "/login")}`, { credentials: "include" });
+    } catch (e) {}
+    // 3. Hard-reload to /login — resets all in-memory state (appParams, axios).
+    window.location.replace("/login");
   };
 
   const navigateToLogin = () => {
     // Use the SDK's redirectToLogin method
     base44.auth.redirectToLogin(window.location.href);
+  };
+
+  const loginWithToken = (token, userObj) => {
+    if (token) base44.auth.setToken(token);
+    if (userObj) {
+      setUser(userObj);
+      setIsAuthenticated(true);
+      setAuthError(null);
+    }
+  };
+
+  // Used by the mobile-OTP login flow: stores the opaque AdminSession
+  // token in localStorage and also sets it on the Base44 client so that
+  // base44.functions.invoke can reach the backend (endpoints validate the
+  // token from the request body, not the Authorization header, so the value
+  // being the AdminSession UUID rather than a real session token is fine).
+  const loginAdminSession = (token, userObj) => {
+    if (token) {
+      localStorage.setItem("admin_session_token", token);
+      base44.auth.setToken(token);
+    }
+    if (userObj) {
+      localStorage.setItem("cached_user", JSON.stringify(userObj));
+      setUser(userObj);
+      setIsAuthenticated(true);
+      setAuthError(null);
+    }
   };
 
   return (
@@ -138,7 +224,9 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       logout,
       navigateToLogin,
-      checkAppState
+      checkAppState,
+      loginWithToken,
+      loginAdminSession
     }}>
       {children}
     </AuthContext.Provider>

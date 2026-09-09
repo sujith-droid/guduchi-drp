@@ -31,6 +31,14 @@
       "type": "string",
       "description": "Unique patient ID"
     },
+    "specialty": {
+      "type": "string",
+      "description": "Doctor's medical specialty"
+    },
+    "city": {
+      "type": "string",
+      "description": "Doctor's city"
+    },
     "profile_complete": {
       "type": "boolean",
       "default": false

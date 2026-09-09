@@ -20,6 +20,7 @@ import {
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/AuthContext";
 
 const patientNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -45,7 +46,7 @@ const adminNav = [
 
 
 export default function Layout() {
-  const [user, setUser] = useState(null);
+  const { user, logout: authLogout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
@@ -68,10 +69,6 @@ export default function Layout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    loadUser();
-  }, []);
-
-  useEffect(() => {
     if (user) loadNotifications();
   }, [user]);
 
@@ -86,11 +83,6 @@ export default function Layout() {
     });
     return unsubscribe;
   }, [user]);
-
-  const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-  };
 
   const loadNotifications = async () => {
     try {
@@ -112,7 +104,7 @@ export default function Layout() {
   const isAtRoot = rootPaths.includes(location.pathname);
 
   const handleLogout = () => {
-    base44.auth.logout();
+    authLogout();
   };
 
   return (

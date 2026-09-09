@@ -5,145 +5,94 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, Stethoscope, User } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, loginWithToken } = useAuth(); // Need loginWithToken to update user in context
+
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
-  const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("");
 
   useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-    if (me.age) setAge(String(me.age));
-    if (me.gender) setGender(me.gender);
-    if (me.phone) setPhone(me.phone);
-    if (me.role) setSelectedRole(me.role);
-  };
+    if (user) {
+      if (user.age) setAge(String(user.age));
+      if (user.gender) setGender(user.gender);
+    }
+  }, [user]);
 
   const handleSave = async () => {
+    if (!age || age < 1 || age > 120) return toast.error("Please enter a valid age.");
+    if (!gender) return toast.error("Please select your gender.");
+
     setSaving(true);
-    if (!selectedRole) {
-      toast.error("Please select whether you are a Doctor or a Patient.");
+    try {
+      const patientId = user.patient_id || `DRP-${Date.now().toString(36).toUpperCase()}`;
+
+      // Save via a service-role backend function so it works regardless of the
+      // client session token (phone-OTP login only has a dummy token).
+      const res = await base44.functions.invoke("completeProfile", {
+        email: user.email,
+        age: Number(age),
+        gender,
+        patient_id: patientId
+      });
+      const responseData = res?.data || res;
+
+      const newUser = { ...user, ...(responseData?.user || {}), profile_complete: true };
+      loginWithToken(null, newUser);
+
+      toast.success("Profile saved!");
+
+      if (newUser.role === "doctor") {
+        navigate("/doctor", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      const serverMsg = err?.response?.data?.error || err?.response?.data?.message || err.message || "Failed to save profile";
+      toast.error(serverMsg);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    const digits = (phone || "").replace(/\D/g, "");
-    if (digits.length < 10) {
-      toast.error("Please enter a valid mobile number (at least 10 digits).");
-      setSaving(false);
-      return;
-    }
-
-    const patientId = user.patient_id || `DRP-${Date.now().toString(36).toUpperCase()}`;
-    
-    await base44.auth.updateMe({
-      age: age ? Number(age) : undefined,
-      gender: gender || undefined,
-      phone: phone || undefined,
-      patient_id: patientId,
-      profile_complete: true,
-      role: selectedRole,
-    });
-
-    toast.success("Profile saved!");
-    setSaving(false);
-
-    if (selectedRole === "doctor") navigate("/doctor");
-    else navigate("/");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-background pt-[var(--safe-top)] pb-[var(--safe-bottom)]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-            <Heart className="h-7 w-7 text-primary-foreground" />
+          <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 border border-primary/20 p-2 overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-cover" />
           </div>
-          <h1 className="text-2xl font-heading font-bold">Welcome to DiaCare</h1>
-          <p className="text-sm text-muted-foreground mt-2">Let's set up your profile</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-foreground">Complete Your Profile</h1>
+          <p className="text-sm text-slate-500 dark:text-muted-foreground mt-2">Just a few more details to get started</p>
         </div>
 
-        {/* Role Selection */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <button
-            type="button"
-            onClick={() => setSelectedRole("patient")}
-            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${
-              selectedRole === "patient"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-muted-foreground hover:border-primary/40"
-            }`}
-          >
-            <User className="h-8 w-8" />
-            <div className="text-center">
-              <p className="font-semibold text-sm">I'm a Patient</p>
-              <p className="text-xs opacity-70 mt-0.5">Track my health</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedRole("doctor")}
-            className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 transition-all ${
-              selectedRole === "doctor"
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-muted-foreground hover:border-primary/40"
-            }`}
-          >
-            <Stethoscope className="h-8 w-8" />
-            <div className="text-center">
-              <p className="font-semibold text-sm">I'm a Doctor</p>
-              <p className="text-xs opacity-70 mt-0.5">Manage my patients</p>
-            </div>
-          </button>
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border p-6 space-y-5">
-          <div>
-            <Label>Name</Label>
-            <Input value={user?.full_name || ""} disabled className="mt-1 opacity-60" />
-          </div>
-          <div>
-            <Label>Mobile Number <span className="text-destructive">*</span></Label>
-            <Input
-              placeholder="e.g., +91 9876543210"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1"
-              type="tel"
-            />
-            <p className="text-xs text-muted-foreground mt-1">Required for calls between patients and doctors</p>
-          </div>
-          <div>
-            <Label>Age (optional)</Label>
+        <div className="bg-white dark:bg-card dark:text-card-foreground p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-border space-y-4">
+          <div className="space-y-1.5 text-left">
+            <Label className="text-slate-700 dark:text-foreground">Age</Label>
             <Input
               type="number"
-              placeholder="e.g., 45"
+              placeholder="e.g. 35"
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              className="mt-1"
+              className="text-lg"
             />
           </div>
-          <div>
-            <Label>Gender (optional)</Label>
+
+          <div className="space-y-1.5 text-left">
+            <Label className="text-slate-700 dark:text-foreground">Gender</Label>
             <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select..." />
+              <SelectTrigger className="h-12 text-base">
+                <SelectValue placeholder="Select gender" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="male">Male</SelectItem>
@@ -153,15 +102,13 @@ export default function ProfileSetup() {
             </Select>
           </div>
 
-          {user?.patient_id && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground">Patient ID</p>
-              <p className="font-mono font-semibold text-sm">{user.patient_id}</p>
-            </div>
-          )}
-
-          <Button onClick={handleSave} className="w-full" disabled={saving}>
-            {saving ? "Saving..." : "Continue"}
+          <Button
+            className="w-full h-12 text-base font-semibold mt-4 gap-2"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving && <Loader2 className="h-5 w-5 animate-spin" />}
+            {saving ? "Saving Profile..." : "Complete Setup"}
           </Button>
         </div>
       </motion.div>

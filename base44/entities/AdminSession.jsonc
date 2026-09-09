@@ -1,0 +1,59 @@
+{
+  "name": "AdminSession",
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "string",
+      "description": "Opaque session token (UUID) issued after mobile-OTP verification"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Base44 User id of the admin"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the admin"
+    },
+    "role": {
+      "type": "string",
+      "description": "Role captured at session creation (admin/doctor/patient)"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "ISO-8601 datetime when the session expires"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "False once the user logs out"
+    }
+  },
+  "required": [
+    "token",
+    "user_email",
+    "role",
+    "expires_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "system"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "system"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "system"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "system"
+      }
+    }
+  }
+}
