@@ -76,7 +76,6 @@ const AuthenticatedApp = () => {
       <Route path="/join" element={<JoinDoctor />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-      <Route path="/profile" element={<Profile />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/logbook" element={<Logbook />} />
@@ -87,6 +86,7 @@ const AuthenticatedApp = () => {
         <Route path="/doctor" element={<DoctorDashboard />} />
         <Route path="/patient-detail" element={<PatientDetail />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

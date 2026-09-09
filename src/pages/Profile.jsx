@@ -122,7 +122,7 @@ export default function Profile() {
   const roleLabel = user?.role === "doctor" ? "Doctor" : user?.role === "admin" ? "Admin" : "Patient";
 
   return (
-    <div className="max-w-lg mx-auto space-y-6 pb-20 md:pb-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
           <User className="h-6 w-6" /> My Profile
