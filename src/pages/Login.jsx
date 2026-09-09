@@ -211,10 +211,7 @@ export default function Login() {
                   </p>
                 )}
 
-                /*<button type="button" onClick={toggleAdminMode}
-                  className="w-full text-center text-xs text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground transition-colors mt-2">
-                  {isAdminMode ? "Switch to patient login" : "Admin / Doctor login"}
-                </button>*/
+                
               </form>
             )}
 
