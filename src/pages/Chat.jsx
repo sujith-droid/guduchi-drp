@@ -73,11 +73,53 @@ export default function Chat() {
   };
 
   const loadConversations = async (me) => {
-    const assignments = await base44.entities.PatientDoctorAssignment.filter(
-      me.role === "doctor" ? { doctor_email: me.email } : { patient_email: me.email }
-    );
+    const doctorSide = !isPatientRole(me.role);
+
+    if (doctorSide) {
+      // Doctors: list only patients who have actually messaged, newest first
+      const [sent, received] = await Promise.all([
+        base44.entities.ChatMessage.filter({ sender_email: me.email }, "-created_date", 500),
+        base44.entities.ChatMessage.filter({ receiver_email: me.email }, "-created_date", 500),
+      ]);
+      const convMap = {};
+      for (const m of [...sent, ...received]) {
+        const cid = m.conversation_id;
+        if (!convMap[cid] || new Date(m.created_date) > new Date(convMap[cid].created_date)) {
+          convMap[cid] = m;
+        }
+      }
+      const assignments = await base44.entities.PatientDoctorAssignment.filter({ doctor_email: me.email });
+      const nameMap = {};
+      for (const a of assignments) {
+        const cid = [a.patient_email, a.doctor_email].sort().join("_");
+        nameMap[cid] = a.patient_name;
+      }
+      const convList = Object.entries(convMap).map(([cid, latest]) => {
+        const patientEmail = latest.sender_email === me.email ? latest.receiver_email : latest.sender_email;
+        return {
+          id: cid,
+          conversation_id: cid,
+          patient_email: patientEmail,
+          doctor_email: me.email,
+          patient_name: nameMap[cid] || patientEmail,
+          latest_message: latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : ""),
+          latest_time: latest.created_date,
+        };
+      });
+      convList.sort((a, b) => new Date(b.latest_time) - new Date(a.latest_time));
+      setConversations(convList);
+
+      const map = {};
+      for (const m of received) {
+        if (!m.is_read) map[m.conversation_id] = (map[m.conversation_id] || 0) + 1;
+      }
+      setUnreadMap(map);
+      return;
+    }
+
+    // Patient flow — list assigned doctors
+    const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email });
     setConversations(assignments);
-    // Fetch unread message counts per conversation (resilient — don't block page load)
     let allUnread = [];
     try {
       allUnread = await base44.entities.ChatMessage.filter({ receiver_email: me.email, is_read: false });
@@ -90,7 +132,6 @@ export default function Chat() {
     }
     setUnreadMap(map);
 
-    // For patients with multiple doctors, create a group conversation
     if (isPatientRole(me.role) && assignments.length > 1) {
       const groupId = `group_${me.email}`;
       setGroupConv({
@@ -101,7 +142,6 @@ export default function Chat() {
       });
     }
 
-    // Auto-navigate if there's only one conversation and no param yet
     if (!convIdParam) {
       if (isPatientRole(me.role) && assignments.length > 1) {
         const groupId = `group_${me.email}`;
@@ -129,7 +169,7 @@ export default function Chat() {
     });
     if (match) {
       setChatPartner(
-        user.role === "doctor"
+        !isPatientRole(user.role)
           ? { name: match.patient_name, email: match.patient_email }
           : { name: match.doctor_name, email: match.doctor_email }
       );
@@ -333,6 +373,7 @@ export default function Chat() {
             {!groupConv && conversations.map((a) => {
               const cId = [a.patient_email, a.doctor_email].sort().join("_");
               const unread = unreadMap[cId] || 0;
+              const doctorSide = !isPatientRole(user.role);
               return (
               <button
                 key={a.id}
@@ -340,21 +381,25 @@ export default function Chat() {
                 className="w-full bg-card rounded-xl border border-border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors text-left"
               >
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                  {(user.role === "doctor" ? a.patient_name : a.doctor_name || "?")[0]?.toUpperCase()}
+                  {(doctorSide ? a.patient_name : a.doctor_name || "?")[0]?.toUpperCase()}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">
-                    {user.role === "doctor" ? a.patient_name : a.doctor_name || "Doctor"}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">
+                    {doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.role === "doctor" ? "Patient" : "Your Doctor"}
+                  <p className="text-xs text-muted-foreground truncate">
+                    {doctorSide ? (a.latest_message || "Tap to open chat") : "Your Doctor"}
                   </p>
                 </div>
-                {unread > 0 && (
-                  <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center">
-                    {unread}
-                  </span>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {unread > 0 ? (
+                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center">
+                      {unread}
+                    </span>
+                  ) : (doctorSide && a.latest_time ? (
+                    <span className="text-[10px] text-muted-foreground">{moment.utc(a.latest_time).tz("Asia/Kolkata").format("h:mm A")}</span>
+                  ) : null)}
+                </div>
               </button>
               );
             })}
@@ -379,7 +424,7 @@ export default function Chat() {
         <div>
           <p className="font-medium text-sm">{chatPartner?.name || "Chat"}</p>
           <p className="text-xs text-muted-foreground">
-            {user.role === "doctor" ? "Patient" : "Your Doctor"}
+            {!isPatientRole(user.role) ? "Patient" : "Your Doctor"}
           </p>
         </div>
       </div>
