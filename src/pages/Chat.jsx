@@ -394,9 +394,9 @@ export default function Chat() {
         {messages.map((msg, idx) => {
           const isMe = msg.sender_email === user.email;
           const prevMsg = messages[idx - 1];
-          const showDateSep = !prevMsg || !moment.tz(prevMsg.created_date, "Asia/Kolkata").isSame(moment.tz(msg.created_date, "Asia/Kolkata"), "day");
+          const showDateSep = !prevMsg || !moment.utc(prevMsg.created_date).tz("Asia/Kolkata").isSame(moment.utc(msg.created_date).tz("Asia/Kolkata"), "day");
           const dateLabel = (() => {
-            const m = moment.tz(msg.created_date, "Asia/Kolkata");
+            const m = moment.utc(msg.created_date).tz("Asia/Kolkata");
             if (m.isSame(moment.tz("Asia/Kolkata").startOf("day"), "day")) return "Today";
             if (m.isSame(moment.tz("Asia/Kolkata").subtract(1, "day").startOf("day"), "day")) return "Yesterday";
             return m.format("MMM D, YYYY");
@@ -441,7 +441,7 @@ export default function Chat() {
                   {msg.message && <p className="text-sm">{msg.message}</p>}
                 </div>
                 <p className={`text-[10px] text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
-                  {moment.tz(msg.created_date, "Asia/Kolkata").format("h:mm A")}
+                  {moment.utc(msg.created_date).tz("Asia/Kolkata").format("h:mm A")}
                   {isMe && !msg._pending && (
                     msg.is_read
                       ? <CheckCheck className="h-3 w-3 text-primary" />

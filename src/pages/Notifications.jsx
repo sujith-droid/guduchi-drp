@@ -116,7 +116,7 @@ export default function Notifications() {
                   <p className="text-sm font-medium">{notif.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    {moment(notif.created_date).fromNow()}
+                    {moment.utc(notif.created_date).fromNow()}
                   </p>
                 </div>
                 {!notif.is_read && (
