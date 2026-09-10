@@ -31,7 +31,7 @@ export default function DoctorDashboard() {
 
     // Load all recent logs in one batch query, then group by patient
     const recentLogs = await base44.entities.DailyLog.list("-date", 1000);
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
     const logsMap = {};
     for (const log of recentLogs) {
       if (log.date < sevenDaysAgo) continue;
