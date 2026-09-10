@@ -7,6 +7,7 @@ import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTem
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import { appParams } from "@/lib/app-params";
 import { isPatientRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
@@ -170,12 +171,21 @@ export default function Chat() {
     }
   }, [activeConvId, conversations, user]);
 
-  // Fetch the chat partner's phone number so the Call button can dial it
+  // Fetch the chat partner's phone number so the Call button can dial it.
+  // Use fetch directly (not base44.functions.invoke) so the AdminSession UUID
+  // is NOT sent as a Bearer token — the Base44 platform rejects it as 401
+  // before the function runs. The adminToken goes in the request body instead.
   useEffect(() => {
     setPartnerPhone(null);
     if (!chatPartner?.email) return;
-    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email, adminToken: localStorage.getItem("admin_session_token") })
-      .then((res) => setPartnerPhone(res.data?.phone || res?.phone || null))
+    const adminToken = localStorage.getItem("admin_session_token");
+    fetch(`/api/apps/${appParams.appId}/functions/getUserPhone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_email: chatPartner.email, adminToken }),
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error(String(res.status))))
+      .then((data) => setPartnerPhone(data?.phone || null))
       .catch(() => {});
   }, [chatPartner?.email]);
 
