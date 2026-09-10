@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -33,6 +33,7 @@ export default function Chat() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recordingTimerRef = useRef(null);
   const [unreadMap, setUnreadMap] = useState({});
+  const [partnerPhone, setPartnerPhone] = useState(null);
 
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
@@ -175,6 +176,15 @@ export default function Chat() {
       );
     }
   }, [activeConvId, conversations, user]);
+
+  // Fetch the chat partner's phone number so the Call button can dial it
+  useEffect(() => {
+    setPartnerPhone(null);
+    if (!chatPartner?.email) return;
+    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email })
+      .then((res) => setPartnerPhone(res.data?.phone || null))
+      .catch(() => {});
+  }, [chatPartner?.email]);
 
   const loadMessages = async () => {
     if (!activeConvId) return;
@@ -421,12 +431,25 @@ export default function Chat() {
         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
           {chatPartner?.name?.[0]?.toUpperCase() || "?"}
         </div>
-        <div>
-          <p className="font-medium text-sm">{chatPartner?.name || "Chat"}</p>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{chatPartner?.name || "Chat"}</p>
           <p className="text-xs text-muted-foreground">
             {!isPatientRole(user.role) ? "Patient" : "Your Doctor"}
           </p>
         </div>
+        {!isGroupChat && (
+          partnerPhone ? (
+            <a href={`tel:${partnerPhone}`}>
+              <Button size="sm" variant="outline" className="gap-1">
+                <Phone className="h-3 w-3" /> Call
+              </Button>
+            </a>
+          ) : (
+            <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
+              <Phone className="h-3 w-3" /> No Phone
+            </Button>
+          )
+        )}
       </div>
 
       {/* Messages */}
