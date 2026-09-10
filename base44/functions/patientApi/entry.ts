@@ -37,13 +37,13 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ status: 'already', doctorName: doctorEmail });
         }
 
-        // Check max 3 limit
-        const myAssignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({
+        // Deactivate existing active assignments — patient can only have one doctor at a time
+        const currentAssignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({
           patient_email: patientEmail,
           status: 'active',
         });
-        if (myAssignments.length >= 3) {
-          return Response.json({ status: 'full', doctorName: doctorEmail });
+        for (const a of currentAssignments) {
+          await base44.asServiceRole.entities.PatientDoctorAssignment.update(a.id, { status: 'inactive' });
         }
 
         // Get doctor name

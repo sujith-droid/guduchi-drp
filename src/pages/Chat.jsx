@@ -21,8 +21,6 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
-  const [groupConv, setGroupConv] = useState(null);
-  const [isGroupChat, setIsGroupChat] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
   const fileInputRef = useRef(null);
@@ -135,7 +133,7 @@ export default function Chat() {
     }
 
     // Patient flow — list assigned doctors
-    const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email });
+    const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: 'active' });
     setConversations(assignments);
     let allUnread = [];
     try {
@@ -149,37 +147,16 @@ export default function Chat() {
     }
     setUnreadMap(map);
 
-    if (isPatientRole(me.role) && assignments.length > 1) {
-      const groupId = `group_${me.email}`;
-      setGroupConv({
-        id: groupId,
-        convId: groupId,
-        name: "Care Team",
-        members: assignments.map((a) => ({ name: a.doctor_name, email: a.doctor_email })),
-      });
-    }
-
-    if (!convIdParam) {
-      if (isPatientRole(me.role) && assignments.length > 1) {
-        const groupId = `group_${me.email}`;
-        navigate(`/chat/${encodeURIComponent(groupId)}`, { replace: true });
-      } else if (assignments.length === 1) {
-        const a = assignments[0];
-        const cId = [a.patient_email, a.doctor_email].sort().join("_");
-        navigate(`/chat/${encodeURIComponent(cId)}`, { replace: true });
-      }
+    if (!convIdParam && assignments.length === 1) {
+      const a = assignments[0];
+      const cId = [a.patient_email, a.doctor_email].sort().join("_");
+      navigate(`/chat/${encodeURIComponent(cId)}`, { replace: true });
     }
   };
 
   // Derive chatPartner from activeConvId + conversations
   useEffect(() => {
     if (!activeConvId || !user || conversations.length === 0) return;
-    if (activeConvId.startsWith("group_")) {
-      setChatPartner({ name: "Care Team", email: null });
-      setIsGroupChat(true);
-      return;
-    }
-    setIsGroupChat(false);
     const match = conversations.find((a) => {
       const cId = [a.patient_email, a.doctor_email].sort().join("_");
       return cId === activeConvId;
@@ -220,10 +197,6 @@ export default function Chat() {
   };
 
   const selectConversation = (assignment) => {
-    if (assignment.isGroup) {
-      navigate(`/chat/${encodeURIComponent(assignment.convId)}`);
-      return;
-    }
     const cId = [assignment.patient_email, assignment.doctor_email].sort().join("_");
     navigate(`/chat/${encodeURIComponent(cId)}`);
   };
@@ -246,7 +219,7 @@ export default function Chat() {
 
     const msgData = {
       sender_email: user.email,
-      receiver_email: isGroupChat ? "group" : chatPartner.email,
+      receiver_email: chatPartner.email,
       conversation_id: activeConvId,
       message: newMsg.trim() || undefined,
       message_type: imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text",
@@ -260,7 +233,7 @@ export default function Chat() {
     setNewMsg("");
 
     await base44.entities.ChatMessage.create(msgData);
-    await notifyReceiver(isGroupChat ? null : chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
+    await notifyReceiver(chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
     setSending(false);
     // Replace optimistic with real data
     loadMessages();
@@ -381,23 +354,7 @@ export default function Chat() {
           </div>
         ) : (
           <div className="space-y-2">
-            {/* Group conversation for patients with multiple doctors */}
-            {groupConv && (
-              <button
-                onClick={() => selectConversation({ ...groupConv, isGroup: true })}
-                className="w-full bg-gradient-to-r from-primary/10 to-accent border border-primary/30 rounded-xl p-4 flex items-center gap-3 hover:border-primary/50 transition-colors text-left"
-              >
-                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
-                  👥
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Care Team Group</p>
-                  <p className="text-xs text-muted-foreground">{groupConv.members.map((m) => `Dr. ${m.name}`).join(", ")}</p>
-                </div>
-              </button>
-            )}
-            {/* Show individual chats only when patient has exactly 1 doctor */}
-            {!groupConv && conversations.map((a) => {
+            {conversations.map((a) => {
               const cId = [a.patient_email, a.doctor_email].sort().join("_");
               const unread = unreadMap[cId] || 0;
               const doctorSide = !isPatientRole(user.role);
@@ -440,7 +397,7 @@ export default function Chat() {
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] pb-16 md:pb-0">
       {/* Chat Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-border">
-        {(conversations.length > 1 || groupConv) && (
+        {conversations.length > 1 && (
           <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/chat")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -454,18 +411,16 @@ export default function Chat() {
             {!isPatientRole(user.role) ? "Patient" : "Your Doctor"}
           </p>
         </div>
-        {!isGroupChat && (
-          partnerPhone ? (
-            <a href={`tel:${partnerPhone}`}>
-              <Button size="sm" variant="outline" className="gap-1">
-                <Phone className="h-3 w-3" /> Call
-              </Button>
-            </a>
-          ) : (
-            <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
-              <Phone className="h-3 w-3" /> No Phone
+        {partnerPhone ? (
+          <a href={`tel:${partnerPhone}`}>
+            <Button size="sm" variant="outline" className="gap-1">
+              <Phone className="h-3 w-3" /> Call
             </Button>
-          )
+          </a>
+        ) : (
+          <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
+            <Phone className="h-3 w-3" /> No Phone
+          </Button>
         )}
       </div>
 

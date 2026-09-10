@@ -127,7 +127,7 @@ export default function JoinDoctor() {
               <AlertCircle className="h-10 w-10 text-orange-500" />
             </div>
             <p className="font-heading font-bold text-xl">Limit Reached</p>
-            <p className="text-sm text-muted-foreground">You can only be assigned to a maximum of 3 doctors.</p>
+            <p className="text-sm text-muted-foreground">You already have a doctor assigned. Please remove the current one before selecting a new doctor.</p>
             <Button className="w-full" onClick={goHome}>Go to Dashboard</Button>
           </>
         )}
