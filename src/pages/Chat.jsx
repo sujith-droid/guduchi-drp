@@ -174,8 +174,8 @@ export default function Chat() {
   useEffect(() => {
     setPartnerPhone(null);
     if (!chatPartner?.email) return;
-    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email })
-      .then((res) => setPartnerPhone(res.data?.phone || null))
+    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email, adminToken: localStorage.getItem("admin_session_token") })
+      .then((res) => setPartnerPhone(res.data?.phone || res?.phone || null))
       .catch(() => {});
   }, [chatPartner?.email]);
 
