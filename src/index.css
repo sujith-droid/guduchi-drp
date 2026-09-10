@@ -118,6 +118,11 @@
 /* Overscroll containment for nested scroll regions */
 #main-scroll {
   overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#main-scroll::-webkit-scrollbar {
+  display: none;
 }
 .chat-messages-scroll {
   overscroll-behavior: contain;

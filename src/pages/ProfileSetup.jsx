@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MobileSelect from "@/components/MobileSelect";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -90,16 +90,17 @@ export default function ProfileSetup() {
 
           <div className="space-y-1.5 text-left">
             <Label className="text-slate-700 dark:text-foreground">Gender</Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger className="h-12 text-base">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={gender}
+              onValueChange={setGender}
+              options={[
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "other", label: "Other" },
+              ]}
+              placeholder="Select gender"
+              triggerClassName="h-12 text-base"
+            />
           </div>
 
           <Button

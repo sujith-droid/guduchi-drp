@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { base44 } from "@/api/base44Client";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import MobileSelect from "@/components/MobileSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import SugarChart from "../components/SugarChart";
-import WeightStepChart from "../components/WeightStepChart";
 import StatCard from "../components/StatCard";
+
+// Code-split recharts-heavy chart components so they load on demand.
+const SugarChart = lazy(() => import("../components/SugarChart"));
+const WeightStepChart = lazy(() => import("../components/WeightStepChart"));
 import { ArrowLeft, Droplets, Weight, Footprints, Activity, MessageCircle, Phone, IdCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -14,9 +16,10 @@ import moment from "moment-timezone";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function PatientDetail() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const patientEmail = urlParams.get("email");
-  const patientName = urlParams.get("name") || "Patient";
+  const [searchParams] = useSearchParams();
+  const patientEmail = searchParams.get("email");
+  const patientName = searchParams.get("name") || "Patient";
+  const navigate = useNavigate();
 
   const [logs, setLogs] = useState([]);
   const [period, setPeriod] = useState("30");
@@ -97,11 +100,9 @@ export default function PatientDetail() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/doctor">
-            <Button variant="ghost" size="icon" aria-label="Go back">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
             <h1 className="text-xl font-heading font-bold">{patientName}</h1>
             <p className="text-xs text-muted-foreground">{patientEmail}</p>
@@ -209,7 +210,9 @@ export default function PatientDetail() {
               <CardTitle className="text-base">Blood Sugar Levels</CardTitle>
             </CardHeader>
             <CardContent>
-              <SugarChart logs={logs} />
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                <SugarChart logs={logs} />
+              </Suspense>
             </CardContent>
           </Card>
 
@@ -219,7 +222,9 @@ export default function PatientDetail() {
               <CardTitle className="text-base">Weight Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <WeightStepChart logs={logs} dataKey="weight" label="Weight (kg)" color="hsl(var(--chart-2))" />
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                <WeightStepChart logs={logs} dataKey="weight" label="Weight (kg)" color="hsl(var(--chart-2))" />
+              </Suspense>
             </CardContent>
           </Card>
 
@@ -229,7 +234,9 @@ export default function PatientDetail() {
               <CardTitle className="text-base">Step Count</CardTitle>
             </CardHeader>
             <CardContent>
-              <WeightStepChart logs={logs} dataKey="step_count" label="Steps" color="hsl(var(--chart-3))" />
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                <WeightStepChart logs={logs} dataKey="step_count" label="Steps" color="hsl(var(--chart-3))" />
+              </Suspense>
             </CardContent>
           </Card>
         </>

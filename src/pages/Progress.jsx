@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import SugarChart from "../components/SugarChart";
-import WeightStepChart from "../components/WeightStepChart";
+// Code-split recharts-heavy chart components so they load on demand.
+const SugarChart = lazy(() => import("../components/SugarChart"));
+const WeightStepChart = lazy(() => import("../components/WeightStepChart"));
 import { Droplets, Weight, Footprints } from "lucide-react";
 
 import moment from "moment-timezone";
@@ -101,7 +102,9 @@ export default function Progress() {
             </CardHeader>
             <CardContent>
               {logs.length > 0 ? (
-                <SugarChart logs={logs} />
+                <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                  <SugarChart logs={logs} />
+                </Suspense>
               ) : (
                 <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
                   No data for this period
@@ -117,7 +120,9 @@ export default function Progress() {
               <CardTitle className="text-base">Weight Trend</CardTitle>
             </CardHeader>
             <CardContent>
-              <WeightStepChart logs={logs} dataKey="weight" label="Weight (kg)" color="hsl(var(--chart-2))" />
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                <WeightStepChart logs={logs} dataKey="weight" label="Weight (kg)" color="hsl(var(--chart-2))" />
+              </Suspense>
             </CardContent>
           </Card>
         </TabsContent>
@@ -128,7 +133,9 @@ export default function Progress() {
               <CardTitle className="text-base">Step Count</CardTitle>
             </CardHeader>
             <CardContent>
-              <WeightStepChart logs={logs} dataKey="step_count" label="Steps" color="hsl(var(--chart-3))" />
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
+                <WeightStepChart logs={logs} dataKey="step_count" label="Steps" color="hsl(var(--chart-3))" />
+              </Suspense>
             </CardContent>
           </Card>
         </TabsContent>

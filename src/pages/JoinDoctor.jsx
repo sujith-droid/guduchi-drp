@@ -4,7 +4,7 @@ import { CheckCircle2, AlertCircle, Loader2, Stethoscope, Link2 } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function JoinDoctor() {
@@ -17,6 +17,7 @@ export default function JoinDoctor() {
   const [manualEmail, setManualEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (doctorEmailFromUrl && user) {
@@ -52,7 +53,7 @@ export default function JoinDoctor() {
     handleAssign(email);
   };
 
-  const goHome = () => { window.location.href = "/"; };
+  const goHome = () => { navigate("/"); };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
