@@ -15,6 +15,7 @@ import {
   X,
   Heart,
   Shield,
+  Stethoscope,
   UserCircle,
   ArrowLeft } from
 "lucide-react";
@@ -29,6 +30,7 @@ const patientNav = [
 { path: "/progress", label: "Progress", icon: TrendingUp },
 { path: "/chat", label: "Chat", icon: MessageCircle },
 { path: "/notifications", label: "Alerts", icon: Bell },
+{ path: "/find-doctor", label: "Find Doctor", icon: Stethoscope },
 { path: "/profile", label: "Profile", icon: UserCircle }];
 
 

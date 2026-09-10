@@ -17,6 +17,7 @@ import PatientDetail from './pages/PatientDetail';
 import AdminPanel from './pages/AdminPanel';
 import ProfileSetup from './pages/ProfileSetup';
 import Profile from './pages/Profile';
+import DoctorDirectory from './pages/DoctorDirectory';
 import JoinDoctor from './pages/JoinDoctor';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
@@ -87,6 +88,7 @@ const AuthenticatedApp = () => {
         <Route path="/patient-detail" element={<PatientDetail />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/find-doctor" element={<DoctorDirectory />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

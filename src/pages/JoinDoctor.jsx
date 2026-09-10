@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { CheckCircle2, AlertCircle, Loader2, QrCode, Link2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Stethoscope, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,14 +67,17 @@ export default function JoinDoctor() {
         {status === "form" && (
           <>
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <QrCode className="h-8 w-8 text-primary" />
+              <Stethoscope className="h-8 w-8 text-primary" />
             </div>
             <div>
               <p className="font-heading font-bold text-xl">Link to Your Doctor</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Scan your doctor's QR code with your phone camera, or enter their email below to connect.
+                Browse the directory to pick a doctor, or enter their email below to connect.
               </p>
             </div>
+            <Button asChild className="w-full gap-2">
+              <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Doctors</Link>
+            </Button>
             <form onSubmit={handleManualSubmit} className="w-full space-y-3 text-left">
               <div>
                 <Label>Doctor's Email</Label>

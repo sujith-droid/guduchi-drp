@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/AuthContext";
 import { isPatientRole } from "@/lib/roles";
+import { Link } from "react-router-dom";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -319,20 +320,30 @@ export default function Profile() {
           </CardHeader>
           <CardContent>
             {assignedDoctors.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">No doctors assigned yet.</p>
+              <div className="text-center py-3 space-y-3">
+                <p className="text-sm text-muted-foreground">No doctors assigned yet.</p>
+                <Button asChild className="w-full gap-2">
+                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Find a Doctor</Link>
+                </Button>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {assignedDoctors.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                      {(a.doctor_name || a.doctor_email)[0]?.toUpperCase()}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  {assignedDoctors.map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                        {(a.doctor_name || a.doctor_email)[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Dr. {a.doctor_name || a.doctor_email}</p>
+                        <p className="text-xs text-muted-foreground">{a.doctor_email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Dr. {a.doctor_name || a.doctor_email}</p>
-                      <p className="text-xs text-muted-foreground">{a.doctor_email}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Button asChild variant="outline" className="w-full gap-2">
+                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Doctors</Link>
+                </Button>
               </div>
             )}
           </CardContent>
