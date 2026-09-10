@@ -21,24 +21,30 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'MSG91 credentials not configured in server.' }, { status: 500 });
         }
 
-        const mobile = phone.replace(/^\+/, "");
+        // 2. Dev/test bypass: fixed OTP for a specific number (skip MSG91)
+        const isDevPhone = phone.replace(/\D/g, "").endsWith("9110293526");
+        if (isDevPhone && code === "1234") {
+            // Skip MSG91 verification, proceed directly to user lookup
+        } else {
+            const mobile = phone.replace(/^\+/, "");
 
-        // 2. Verify the OTP code with MSG91 (authkey goes in the header)
-        const verifyUrl = `https://control.msg91.com/api/v5/otp/verify?otp=${encodeURIComponent(code)}&mobile=${encodeURIComponent(mobile)}`;
-        const resp = await fetch(verifyUrl, {
-            method: "GET",
-            headers: {
-                "authkey": authKey,
-                "accept": "application/json",
-            },
-        });
-        const data = await resp.json().catch(() => ({}));
+            // 3. Verify the OTP code with MSG91 (authkey goes in the header)
+            const verifyUrl = `https://control.msg91.com/api/v5/otp/verify?otp=${encodeURIComponent(code)}&mobile=${encodeURIComponent(mobile)}`;
+            const resp = await fetch(verifyUrl, {
+                method: "GET",
+                headers: {
+                    "authkey": authKey,
+                    "accept": "application/json",
+                },
+            });
+            const data = await resp.json().catch(() => ({}));
 
-        if (!resp.ok || data.type !== "success") {
-            return Response.json({ error: data.message || 'Invalid or expired OTP. Please try again.' }, { status: 400 });
+            if (!resp.ok || data.type !== "success") {
+                return Response.json({ error: data.message || 'Invalid or expired OTP. Please try again.' }, { status: 400 });
+            }
         }
 
-        // 3. Find the user
+        // 4. Find the user
         const users = await base44.asServiceRole.entities.User.filter({ phone });
         if (users.length === 0) {
             return Response.json({ error: 'User not found' }, { status: 404 });
@@ -46,14 +52,14 @@ Deno.serve(async (req) => {
 
         const user = users[0];
 
-        // 4. Persist the verified phone number so the in-app Call button can
+        // 5. Persist the verified phone number so the in-app Call button can
         //    reach this user. Keeps the stored value in sync with the number
         //    actually used at login.
         if (user.phone !== phone) {
             await base44.asServiceRole.entities.User.update(user.id, { phone });
         }
 
-        // 5. Issue a session token.
+        // 6. Issue a session token.
         // Mobile-OTP login cannot mint a real Base44 session token on this plan,
         // so we issue an opaque AdminSession token for ALL users (validated
         // server-side). This persists in localStorage so the user stays logged

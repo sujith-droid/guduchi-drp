@@ -21,7 +21,13 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'No account found with this phone number.' }, { status: 404 });
         }
 
-        // 2. MSG91 credentials from server env
+        // 2. Dev/test bypass: fixed OTP for a specific number (no MSG91 call)
+        const isDevPhone = phone.replace(/\D/g, "").endsWith("9110293526");
+        if (isDevPhone) {
+            return Response.json({ success: true, message: 'OTP sent successfully' });
+        }
+
+        // 3. MSG91 credentials from server env
         const authKey = Deno.env.get("MSG91_AUTH_KEY");
         const templateId = Deno.env.get("MSG91_OTP_TEMPLATE_ID");
 
