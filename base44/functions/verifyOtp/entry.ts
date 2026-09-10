@@ -46,7 +46,14 @@ Deno.serve(async (req) => {
 
         const user = users[0];
 
-        // 4. Issue a session token.
+        // 4. Persist the verified phone number so the in-app Call button can
+        //    reach this user. Keeps the stored value in sync with the number
+        //    actually used at login.
+        if (user.phone !== phone) {
+            await base44.asServiceRole.entities.User.update(user.id, { phone });
+        }
+
+        // 5. Issue a session token.
         // Mobile-OTP login cannot mint a real Base44 session token on this plan,
         // so we issue an opaque AdminSession token for ALL users (validated
         // server-side). This persists in localStorage so the user stays logged
