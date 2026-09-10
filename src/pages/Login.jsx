@@ -106,7 +106,7 @@ export default function Login() {
         return;
       }
       // All OTP users get an opaque AdminSession token persisted in localStorage
-      // so they stay logged in across app restarts (30-day expiry).
+      // so they stay logged in across app restarts (90-day expiry).
       loginAdminSession(responseData.token, responseData.user);
       handlePostLogin(responseData.user);
     } catch (err) {

@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
         // Mobile-OTP login cannot mint a real Base44 session token on this plan,
         // so we issue an opaque AdminSession token for ALL users (validated
         // server-side). This persists in localStorage so the user stays logged
-        // in across app restarts until the session expires (30 days).
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        // in across app restarts until the session expires (90 days).
+        const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
         const session = await base44.asServiceRole.entities.AdminSession.create({
             token: crypto.randomUUID(),
             user_id: user.id,

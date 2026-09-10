@@ -45,11 +45,25 @@ export const AuthProvider = ({ children }) => {
         }
 
         // Validate the session server-side in the background.
+        // Use fetch directly (not base44.functions.invoke) so the request
+        // does not carry the AdminSession UUID as a Bearer token in the
+        // Authorization header — the Base44 platform rejects that as 401
+        // before the function even runs. adminMe reads the token from the
+        // request body and validates it server-side.
         try {
-          base44.auth.setToken(adminToken);
-          const res = await base44.functions.invoke("adminMe", { adminToken });
-          const responseData = res?.data || res;
+          const response = await fetch(`/api/apps/${appParams.appId}/functions/adminMe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminToken }),
+          });
+          if (!response.ok) {
+            const err = new Error(response.statusText || 'Session validation failed');
+            err.status = response.status;
+            throw err;
+          }
+          const responseData = await response.json();
           if (responseData?.user) {
+            base44.auth.setToken(adminToken);
             setUser(responseData.user);
             localStorage.setItem("cached_user", JSON.stringify(responseData.user));
             setIsLoadingAuth(false);
