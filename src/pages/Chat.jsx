@@ -424,7 +424,7 @@ export default function Chat() {
       {/* Chat Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-border">
         {(conversations.length > 1 || groupConv) && (
-          <Button variant="ghost" size="icon" onClick={() => navigate("/chat")}>
+          <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => navigate("/chat")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
@@ -532,7 +532,7 @@ export default function Chat() {
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-muted-foreground">Templates</p>
-              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setShowTemplates(false)}><X className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="icon" aria-label="Close templates" className="h-5 w-5" onClick={() => setShowTemplates(false)}><X className="h-3 w-3" /></Button>
             </div>
             {templates.map((t) => (
               <button key={t.id} onClick={() => sendTemplate(t)}
@@ -545,14 +545,14 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+            <Button variant="ghost" size="icon" aria-label="Upload image" onClick={() => fileInputRef.current?.click()} disabled={sending}>
               <ImagePlus className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => fileDocRef.current?.click()} disabled={sending}>
+            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending}>
               <Paperclip className="h-5 w-5" />
             </Button>
             {user?.role === 'doctor' && (
-              <Button variant="ghost" size="icon" onClick={() => setShowTemplates((v) => !v)} disabled={sending}>
+              <Button variant="ghost" size="icon" aria-label="Message templates" onClick={() => setShowTemplates((v) => !v)} disabled={sending}>
                 <LayoutTemplate className="h-5 w-5" />
               </Button>
             )}
@@ -563,10 +563,10 @@ export default function Chat() {
               className="flex-1"
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(null, null)}
             />
-            <Button size="icon" variant="ghost" onClick={startRecording} disabled={sending}>
+            <Button size="icon" variant="ghost" aria-label="Record voice message" onClick={startRecording} disabled={sending}>
               <Mic className="h-5 w-5" />
             </Button>
-            <Button size="icon" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()}>
+            <Button size="icon" aria-label="Send message" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </>
@@ -576,7 +576,7 @@ export default function Chat() {
               <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-sm text-red-600 font-medium">Recording... {recordingSeconds}s</span>
             </div>
-            <Button size="icon" variant="destructive" onClick={sendVoiceMessage} disabled={sending}>
+            <Button size="icon" variant="destructive" aria-label="Stop recording" onClick={sendVoiceMessage} disabled={sending}>
               <Square className="h-4 w-4" />
             </Button>
           </>

@@ -57,6 +57,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const scrollPositions = useRef({});
+  const tabStacks = useRef({});
 
   // Save scroll position when leaving, restore when returning
   useEffect(() => {
@@ -111,6 +112,20 @@ export default function Layout() {
   const rootPaths = navItems.map((n) => n.path);
   const isAtRoot = rootPaths.includes(location.pathname);
 
+  const getTabForRoute = (route) => {
+    for (const t of navItems) {
+      if (t.path === "/") continue;
+      if (route === t.path || route.startsWith(t.path + "/")) return t.path;
+    }
+    return "/";
+  };
+
+  // Record the current route into the active tab's stack for tab-switch restoration
+  useEffect(() => {
+    const currentTab = getTabForRoute(location.pathname);
+    tabStacks.current[currentTab] = location.pathname;
+  }, [location.pathname]);
+
   const handleLogout = () => {
     authLogout();
   };
@@ -126,6 +141,7 @@ export default function Layout() {
               variant="ghost"
               size="icon"
               className="md:hidden"
+              aria-label="Go back"
               onClick={() => navigate(-1)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -134,6 +150,7 @@ export default function Layout() {
               variant="ghost"
               size="icon"
               className="md:hidden"
+              aria-label="Open menu"
               onClick={() => setSidebarOpen(!sidebarOpen)}>
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -149,7 +166,7 @@ export default function Layout() {
               <p className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</p>
             </div>
           }
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
+          <Button variant="ghost" size="icon" aria-label="Log out" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -165,6 +182,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
+                aria-label={item.label}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all select-none ${
                 active ?
                 "bg-primary text-primary-foreground shadow-sm" :
@@ -235,16 +253,17 @@ export default function Layout() {
             return (
               <button
                 key={item.path}
+                aria-label={item.label}
                 onClick={() => {
-                  if (active && location.pathname !== item.path) {
-                    // Deep in a sub-path of this tab → navigate to root of tab
-                    navigate(item.path);
-                  } else if (active) {
-                    // Already at root of tab → scroll to top
+                  if (active) {
+                    // Re-selecting active tab → reset to root + scroll to top
+                    if (location.pathname !== item.path) navigate(item.path);
                     const mainEl = document.getElementById("main-scroll");
                     if (mainEl) mainEl.scrollTop = 0;
                   } else {
-                    navigate(item.path);
+                    // Switching tabs → restore this tab's last sub-route
+                    const lastRoute = tabStacks.current[item.path];
+                    navigate(lastRoute || item.path);
                   }
                 }}
                 className={`flex flex-col items-center py-1.5 px-2 min-h-[44px] justify-center rounded-lg text-xs transition-all select-none ${

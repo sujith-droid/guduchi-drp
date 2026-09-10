@@ -30,10 +30,12 @@ export default function DoctorDashboard() {
     setPatients(assignments);
 
     // Load all recent logs in one batch query, then group by patient
-    const recentLogs = await base44.entities.DailyLog.list("-date", 1000);
     const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
+    const patientEmails = new Set(assignments.map((a) => a.patient_email));
+    const recentLogs = await base44.entities.DailyLog.list("-date", 200);
     const logsMap = {};
     for (const log of recentLogs) {
+      if (!patientEmails.has(log.patient_email)) continue;
       if (log.date < sevenDaysAgo) continue;
       const email = log.patient_email;
       if (!logsMap[email]) logsMap[email] = [];

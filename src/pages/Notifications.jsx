@@ -84,7 +84,7 @@ export default function Notifications() {
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1 h-11">
+          <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1 h-11" aria-label="Mark all notifications as read">
             <Check className="h-3 w-3" /> Mark all read
           </Button>
         )}

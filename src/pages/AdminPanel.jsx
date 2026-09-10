@@ -209,7 +209,7 @@ export default function AdminPanel() {
         </div>
         <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" aria-label="Assign patient to doctor">
               <Link2 className="h-4 w-4" /> Assign
             </Button>
           </DialogTrigger>
@@ -323,6 +323,7 @@ export default function AdminPanel() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Remove assignment"
                       onClick={() => removeAssignment(a.id)}
                       className="text-destructive hover:text-destructive"
                     >
@@ -361,7 +362,7 @@ export default function AdminPanel() {
                     <p className="text-sm font-medium">{t.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.content}</p>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteTemplate(t.id)} className="text-destructive hover:text-destructive flex-shrink-0">
+                  <Button variant="ghost" size="icon" aria-label="Delete template" onClick={() => deleteTemplate(t.id)} className="text-destructive hover:text-destructive flex-shrink-0">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -404,6 +405,7 @@ export default function AdminPanel() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Delete user"
                     className="text-destructive hover:text-destructive h-7 w-7"
                     onClick={() => { setDeleteUserId(u.id); setDeleteUserName(u.full_name || u.email); }}
                   >

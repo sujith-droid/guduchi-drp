@@ -229,7 +229,7 @@ export default function Profile() {
             </div>
           )}
 
-          <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
+          <Button onClick={handleSave} disabled={saving} className="w-full gap-2" aria-label="Save profile changes">
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save Changes"}
           </Button>

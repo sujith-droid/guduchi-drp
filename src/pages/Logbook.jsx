@@ -204,7 +204,7 @@ export default function Logbook() {
 
       {/* Date Selector */}
       <div className="flex items-center justify-center gap-4 bg-card rounded-xl border border-border p-3">
-        <Button variant="ghost" size="icon" onClick={() => changeDate(-1)}>
+        <Button variant="ghost" size="icon" aria-label="Previous day" onClick={() => changeDate(-1)}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="text-center">
@@ -219,6 +219,7 @@ export default function Logbook() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Next day"
           onClick={() => changeDate(1)}
           disabled={selectedDate === moment().format("YYYY-MM-DD")}
         >
@@ -364,7 +365,7 @@ export default function Logbook() {
             </CardTitle>
             <Dialog open={hba1cDialogOpen} onOpenChange={setHba1cDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1">
+                <Button variant="outline" size="sm" className="gap-1" aria-label="Add HbA1c reading">
                   <Plus className="h-3 w-3" /> Add
                 </Button>
               </DialogTrigger>

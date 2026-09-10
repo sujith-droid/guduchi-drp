@@ -98,7 +98,7 @@ export default function PatientDetail() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/doctor">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Go back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -127,13 +127,13 @@ export default function PatientDetail() {
             </Button>
           </Link>
           {patientPhone ? (
-            <a href={`tel:${patientPhone}`}>
+            <a href={`tel:${patientPhone}`} aria-label={`Call ${patientName}`}>
               <Button size="sm" className="gap-1 bg-emerald-500 hover:bg-emerald-600">
                 <Phone className="h-3 w-3" /> Call
               </Button>
             </a>
           ) : (
-            <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
+            <Button size="sm" variant="outline" disabled className="gap-1 opacity-50" aria-label="No phone number available">
               <Phone className="h-3 w-3" /> No Phone
             </Button>
           )}

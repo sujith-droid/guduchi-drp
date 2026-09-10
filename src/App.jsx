@@ -3,26 +3,27 @@ import { Toaster as SonnerToaster } from "sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
-import PageNotFound from './lib/PageNotFound';
+import { lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
-import Home from './pages/Home';
-import Logbook from './pages/Logbook';
-import Progress from './pages/Progress';
-import Chat from './pages/Chat';
-import Notifications from './pages/Notifications';
-import DoctorDashboard from './pages/DoctorDashboard';
-import PatientDetail from './pages/PatientDetail';
-import AdminPanel from './pages/AdminPanel';
-import ProfileSetup from './pages/ProfileSetup';
-import Profile from './pages/Profile';
-import DoctorDirectory from './pages/DoctorDirectory';
-import JoinDoctor from './pages/JoinDoctor';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsAndConditions from './pages/TermsAndConditions';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
+const PageNotFound = lazy(() => import('./lib/PageNotFound'));
+const Home = lazy(() => import('./pages/Home'));
+const Logbook = lazy(() => import('./pages/Logbook'));
+const Progress = lazy(() => import('./pages/Progress'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const DoctorDashboard = lazy(() => import('./pages/DoctorDashboard'));
+const PatientDetail = lazy(() => import('./pages/PatientDetail'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const ProfileSetup = lazy(() => import('./pages/ProfileSetup'));
+const Profile = lazy(() => import('./pages/Profile'));
+const DoctorDirectory = lazy(() => import('./pages/DoctorDirectory'));
+const JoinDoctor = lazy(() => import('./pages/JoinDoctor'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'));
+const Login = lazy(() => import('./pages/Login'));
+const SignUp = lazy(() => import('./pages/SignUp'));
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, user } = useAuth();
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
@@ -92,6 +94,7 @@ const AuthenticatedApp = () => {
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>
+    </Suspense>
   );
 };
 
