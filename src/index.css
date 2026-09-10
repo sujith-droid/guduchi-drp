@@ -115,6 +115,14 @@
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
+/* Overscroll containment for nested scroll regions */
+#main-scroll {
+  overscroll-behavior: contain;
+}
+.chat-messages-scroll {
+  overscroll-behavior: contain;
+}
+
 /* Auto dark mode based on system preference */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {

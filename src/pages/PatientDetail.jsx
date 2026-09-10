@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MobileSelect from "@/components/MobileSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import SugarChart from "../components/SugarChart";
@@ -110,17 +110,18 @@ export default function PatientDetail() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 days</SelectItem>
-              <SelectItem value="30">30 days</SelectItem>
-              <SelectItem value="90">90 days</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <MobileSelect
+            value={period}
+            onValueChange={setPeriod}
+            options={[
+              { value: "7", label: "7 days" },
+              { value: "30", label: "30 days" },
+              { value: "90", label: "90 days" },
+            ]}
+            placeholder="Select period"
+            triggerClassName="w-24"
+          />
           <Link to="/chat">
             <Button size="sm" variant="outline" className="gap-1">
               <MessageCircle className="h-3 w-3" /> Chat

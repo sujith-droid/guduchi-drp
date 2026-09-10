@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { isPatientRole } from "@/lib/roles";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function Chat() {
   const { convId: convIdParam } = useParams();
@@ -45,14 +47,28 @@ export default function Chat() {
   useEffect(() => {
     if (activeConvId) {
       loadMessages();
-      const interval = setInterval(loadMessages, 5000);
-      return () => clearInterval(interval);
+      const unsubscribe = base44.entities.ChatMessage.subscribe((event) => {
+        if (event.data?.conversation_id === activeConvId) {
+          loadMessages();
+        }
+      });
+      return unsubscribe;
     }
   }, [activeConvId, user]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleRefresh = useCallback(async () => {
+    await initChat();
+  }, [user]);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const initChat = async () => {
     try {
@@ -356,6 +372,7 @@ export default function Chat() {
   if (!activeConvId) {
     return (
       <div className="space-y-4 pb-20 md:pb-6">
+        <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
         <h1 className="text-2xl font-heading font-bold">Messages</h1>
         {conversations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -407,7 +424,7 @@ export default function Chat() {
                       {unread}
                     </span>
                   ) : (doctorSide && a.latest_time ? (
-                    <span className="text-[10px] text-muted-foreground">{moment.utc(a.latest_time).tz("Asia/Kolkata").format("h:mm A")}</span>
+                    <span className="text-xs text-muted-foreground">{moment.utc(a.latest_time).tz("Asia/Kolkata").format("h:mm A")}</span>
                   ) : null)}
                 </div>
               </button>
@@ -453,7 +470,7 @@ export default function Chat() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto py-4 space-y-3 chat-messages-scroll">
         {messages.length === 0 && (
           <div className="text-center py-12 text-muted-foreground text-sm">
             Start the conversation by sending a message.
@@ -473,7 +490,7 @@ export default function Chat() {
             <div key={msg.id}>
             {showDateSep && (
               <div className="flex items-center justify-center my-3">
-                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">{dateLabel}</span>
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-3 py-1 rounded-full">{dateLabel}</span>
               </div>
             )}
             <motion.div
@@ -508,7 +525,7 @@ export default function Chat() {
                   )}
                   {msg.message && <p className="text-sm">{msg.message}</p>}
                 </div>
-                <p className={`text-[10px] text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
+                <p className={`text-xs text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
                   {moment.utc(msg.created_date).tz("Asia/Kolkata").format("h:mm A")}
                   {isMe && !msg._pending && (
                     msg.is_read
@@ -525,7 +542,7 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="relative flex items-center gap-2 pt-3 border-t border-border">
+      <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
         <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleImageUpload} />
         <input type="file" ref={fileDocRef} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleFileUpload} />
         {showTemplates && templates.length > 0 && (
@@ -545,14 +562,14 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            <Button variant="ghost" size="icon" aria-label="Upload image" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+            <Button variant="ghost" size="icon" aria-label="Upload image" onClick={() => fileInputRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
               <ImagePlus className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending}>
+            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
               <Paperclip className="h-5 w-5" />
             </Button>
             {user?.role === 'doctor' && (
-              <Button variant="ghost" size="icon" aria-label="Message templates" onClick={() => setShowTemplates((v) => !v)} disabled={sending}>
+              <Button variant="ghost" size="icon" aria-label="Message templates" onClick={() => setShowTemplates((v) => !v)} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
                 <LayoutTemplate className="h-5 w-5" />
               </Button>
             )}
@@ -560,13 +577,13 @@ export default function Chat() {
               value={newMsg}
               onChange={(e) => setNewMsg(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1"
+              className="flex-1 min-w-[120px]"
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(null, null)}
             />
-            <Button size="icon" variant="ghost" aria-label="Record voice message" onClick={startRecording} disabled={sending}>
+            <Button size="icon" variant="ghost" aria-label="Record voice message" onClick={startRecording} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
               <Mic className="h-5 w-5" />
             </Button>
-            <Button size="icon" aria-label="Send message" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()}>
+            <Button size="icon" aria-label="Send message" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()} className="shrink-0 min-h-[44px] min-w-[44px]">
               <Send className="h-4 w-4" />
             </Button>
           </>

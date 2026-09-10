@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import SugarChart from "../components/SugarChart";
@@ -10,6 +9,9 @@ import { Droplets, Weight, Footprints } from "lucide-react";
 
 import moment from "moment-timezone";
 import { useAuth } from "@/lib/AuthContext";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
+import MobileSelect from "../components/MobileSelect";
 
 export default function Progress() {
   const { user } = useAuth();
@@ -20,6 +22,16 @@ export default function Progress() {
   useEffect(() => {
     if (user) loadData();
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    await loadLogs();
+  }, [user, period]);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   useEffect(() => {
     if (user) loadLogs();
@@ -50,21 +62,23 @@ export default function Progress() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
         <div className="md:text-left">
           <h1 className="text-2xl font-heading font-bold">Progress</h1>
           <p className="text-sm text-muted-foreground mt-1">Track your health journey</p>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-28 h-11">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">7 days</SelectItem>
-            <SelectItem value="30">30 days</SelectItem>
-            <SelectItem value="90">90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <MobileSelect
+          value={period}
+          onValueChange={setPeriod}
+          options={[
+            { value: "7", label: "7 days" },
+            { value: "30", label: "30 days" },
+            { value: "90", label: "90 days" },
+          ]}
+          placeholder="Select period"
+          triggerClassName="w-28 h-11"
+        />
       </div>
 
       <Tabs defaultValue="sugar" className="space-y-4">

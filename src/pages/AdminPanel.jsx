@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MobileSelect from "@/components/MobileSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -220,33 +220,23 @@ export default function AdminPanel() {
             <div className="space-y-4">
               <div>
                 <Label>Patient</Label>
-                <Select value={selectedPatient} onValueChange={setSelectedPatient}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select patient..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((p) => (
-                      <SelectItem key={p.email} value={p.email}>
-                        {p.full_name || p.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MobileSelect
+                  value={selectedPatient}
+                  onValueChange={setSelectedPatient}
+                  options={patients.map((p) => ({ value: p.email, label: p.full_name || p.email }))}
+                  placeholder="Select patient..."
+                  triggerClassName="mt-1"
+                />
               </div>
               <div>
                 <Label>Doctor</Label>
-                <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select doctor..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((d) => (
-                      <SelectItem key={d.email} value={d.email}>
-                        {d.full_name || d.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MobileSelect
+                  value={selectedDoctor}
+                  onValueChange={setSelectedDoctor}
+                  options={doctors.map((d) => ({ value: d.email, label: d.full_name || d.email }))}
+                  placeholder="Select doctor..."
+                  triggerClassName="mt-1"
+                />
               </div>
               <Button onClick={assignPatient} className="w-full" disabled={!selectedPatient || !selectedDoctor}>
                 Assign
@@ -257,7 +247,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
           <CardContent className="p-4 text-center">
             <Users className="h-5 w-5 mx-auto mb-1 text-primary" />
@@ -306,20 +296,18 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Select
+                    <MobileSelect
                       value={a.program_duration || ""}
                       onValueChange={(val) => updateProgram(a.id, val)}
-                    >
-                      <SelectTrigger className="w-28 h-7 text-xs">
-                        <SelectValue placeholder="Program" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1 month">1 Month</SelectItem>
-                        <SelectItem value="3 months">3 Months</SelectItem>
-                        <SelectItem value="6 months">6 Months</SelectItem>
-                        <SelectItem value="9 months">9 Months</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      options={[
+                        { value: "1 month", label: "1 Month" },
+                        { value: "3 months", label: "3 Months" },
+                        { value: "6 months", label: "6 Months" },
+                        { value: "9 months", label: "9 Months" },
+                      ]}
+                      placeholder="Program"
+                      triggerClassName="w-28 h-7 text-xs"
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -384,24 +372,22 @@ export default function AdminPanel() {
                 <div>
                   <p className="text-sm font-medium">{u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Joined: {u.created_date ? new Date(u.created_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Select
+                  <MobileSelect
                     value={isPatientRole(u.role) ? "patient" : u.role}
                     onValueChange={(val) => changeUserRole(u.id, val)}
-                  >
-                    <SelectTrigger className="w-28 h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="patient">Patient</SelectItem>
-                      <SelectItem value="doctor">Doctor</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "patient", label: "Patient" },
+                      { value: "doctor", label: "Doctor" },
+                      { value: "admin", label: "Admin" },
+                    ]}
+                    placeholder="Select role"
+                    triggerClassName="w-28 h-7 text-xs"
+                  />
                   <Button
                     variant="ghost"
                     size="icon"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Bell, Check, AlertTriangle, Award, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,11 @@ export default function Notifications() {
   }, [user]);
 
   const handleRefresh = useCallback(async () => { await loadData(); }, []);
-  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const loadData = async () => {
     try {
@@ -74,7 +78,7 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div ref={containerRef} className="space-y-4 pb-20 md:pb-6 overflow-auto">
+    <div className="space-y-4 pb-20 md:pb-6">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
         <div className="md:text-left">
@@ -115,7 +119,7 @@ export default function Notifications() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{notif.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {moment.utc(notif.created_date).fromNow()}
                   </p>
                 </div>

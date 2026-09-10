@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MobileSelect from "@/components/MobileSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User, Phone, Save, Stethoscope, Trash2 } from "lucide-react";
@@ -25,7 +25,7 @@ import { isPatientRole } from "@/lib/roles";
 import { Link } from "react-router-dom";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -75,17 +75,27 @@ export default function Profile() {
           for (const r of records) await base44.entities.Notification.delete(r.id);
         }),
       ]);
-      // Notify admin
-      await base44.integrations.Core.SendEmail({
-        to: "sujith@guduchiayurveda.com",
-        subject: "Account Deletion Request",
-        body: `User ${user.full_name || ""} (${user.email}) has deleted all their health data and is requesting complete account removal. Please remove their login account from the system.`,
-      });
-      toast.success("Your data has been deleted and a removal request has been sent to the administrator.", { duration: 6000 });
+      // Notify admin (best-effort — still log out even if email fails)
+      let emailFailed = false;
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: "sujith@guduchiayurveda.com",
+          subject: "Account Deletion Request",
+          body: `User ${user.full_name || ""} (${user.email}) has deleted all their health data and is requesting complete account removal. Please remove their login account from the system.`,
+        });
+      } catch {
+        emailFailed = true;
+      }
+      if (emailFailed) {
+        toast.warning("Your data was deleted, but the admin notification could not be sent. You will be logged out now.");
+      } else {
+        toast.success("Your data has been deleted and a removal request has been sent to the administrator.", { duration: 6000 });
+      }
+      await logout();
     } catch (e) {
       toast.error("Failed to delete account data. Please try again.");
+      setDeletingAccount(false);
     }
-    setDeletingAccount(false);
   };
 
   const handleSave = async () => {
@@ -195,31 +205,29 @@ export default function Profile() {
           {user?.role === "doctor" && (
             <div>
               <Label>Branch</Label>
-              <Select value={branch} onValueChange={setBranch}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select branch..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {["Bengaluru", "Udupi", "Hyderabad", "Chennai", "Kolkata", "Hubballi", "Kalaburgi", "Ahmedabad"].map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MobileSelect
+                value={branch}
+                onValueChange={setBranch}
+                options={["Bengaluru", "Udupi", "Hyderabad", "Chennai", "Kolkata", "Hubballi", "Kalaburgi", "Ahmedabad"].map((b) => ({ value: b, label: b }))}
+                placeholder="Select branch..."
+                triggerClassName="mt-1"
+              />
             </div>
           )}
 
           <div>
             <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Select value={gender} onValueChange={setGender}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={gender}
+              onValueChange={setGender}
+              options={[
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "other", label: "Other" },
+              ]}
+              placeholder="Select..."
+              triggerClassName="mt-1"
+            />
           </div>
 
           {assignedDoctors.some((a) => a.patient_id) && (

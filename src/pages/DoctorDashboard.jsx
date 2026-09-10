@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send } from "lucide-react";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import moment from "moment";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
@@ -20,6 +22,16 @@ export default function DoctorDashboard() {
   useEffect(() => {
     if (user) loadData();
   }, [user]);
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const loadData = async () => {
     const me = user;
@@ -82,6 +94,7 @@ export default function DoctorDashboard() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold">Patient Dashboard</h1>
@@ -115,7 +128,7 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {["Improving", "Stable", "Needs Attention"].map((status) => {
           const count = patients.filter((p) => getStatus(p.patient_email).label === status).length;
           const StatusIcon = getStatusIcon(status);
@@ -123,7 +136,7 @@ export default function DoctorDashboard() {
             <div key={status} className="bg-card rounded-xl border border-border p-3 text-center">
               <StatusIcon className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
               <p className="text-lg font-bold font-heading">{count}</p>
-              <p className="text-[10px] text-muted-foreground">{status}</p>
+              <p className="text-xs text-muted-foreground">{status}</p>
             </div>
           );
         })}
@@ -161,11 +174,11 @@ export default function DoctorDashboard() {
                       <div>
                         <p className="font-medium text-sm">{patient.patient_name || "Unknown"}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${status.color}`}>
+                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${status.color}`}>
                             {status.label}
                           </Badge>
                           {lastLog && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <Clock className="h-2.5 w-2.5" />
                               {moment(lastLog.date).fromNow()}
                             </span>

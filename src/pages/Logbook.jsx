@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Droplets, Weight, Save, Calendar, ChevronLeft, ChevronRight, CheckCircle2, FileText, Plus } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import MobileSelect from "../components/MobileSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import moment from "moment-timezone";
@@ -56,7 +56,11 @@ export default function Logbook() {
     setHba1cRecords(hba1c);
   }, [user, selectedDate]);
 
-  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   useEffect(() => {
     if (user) loadLogForDate();
@@ -178,7 +182,7 @@ export default function Logbook() {
   }
 
   return (
-    <div ref={containerRef} className="space-y-6 pb-20 md:pb-6 overflow-auto">
+    <div className="space-y-6 pb-20 md:pb-6">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Success Popup */}
       {showSuccess && (
@@ -242,16 +246,17 @@ export default function Logbook() {
             {/* Timing Selector */}
             <div>
               <Label className="text-xs text-muted-foreground">Time of Day</Label>
-              <Select value={sugarTiming} onValueChange={setSugarTiming}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="morning">Morning</SelectItem>
-                  <SelectItem value="afternoon">Afternoon</SelectItem>
-                  <SelectItem value="night">Night</SelectItem>
-                </SelectContent>
-              </Select>
+              <MobileSelect
+                value={sugarTiming}
+                onValueChange={setSugarTiming}
+                options={[
+                  { value: "morning", label: "Morning" },
+                  { value: "afternoon", label: "Afternoon" },
+                  { value: "night", label: "Night" },
+                ]}
+                placeholder="Select time"
+                triggerClassName="mt-1"
+              />
             </div>
 
             {/* Before Food */}

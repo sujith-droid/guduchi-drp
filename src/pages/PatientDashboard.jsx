@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone, QrCode } from "lucide-react";
@@ -32,7 +32,11 @@ export default function PatientDashboard() {
     await loadData();
   }, []);
 
-  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh(handleRefresh);
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const loadData = async () => {
     try {
@@ -104,7 +108,7 @@ export default function PatientDashboard() {
   };
 
   return (
-    <div ref={containerRef} className="space-y-6 pb-20 md:pb-6 overflow-auto">
+    <div className="space-y-6 pb-20 md:pb-6">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Greeting */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center md:text-left">
