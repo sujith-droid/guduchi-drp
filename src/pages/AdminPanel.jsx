@@ -8,9 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, QrCode, Download } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { useState as useQrState, useRef } from "react";
+import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -28,7 +26,6 @@ export default function AdminPanel() {
   const [newTplName, setNewTplName] = useState("");
   const [newTplContent, setNewTplContent] = useState("");
   const [savingTpl, setSavingTpl] = useState(false);
-  const [qrDoctor, setQrDoctor] = useState(null);
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteUserName, setDeleteUserName] = useState("");
 
@@ -336,46 +333,6 @@ export default function AdminPanel() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Doctor QR Codes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <QrCode className="h-4 w-4 text-primary" /> Doctor QR Codes
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">Share a doctor's QR code — patients scan it to auto-assign themselves.</p>
-          <div className="space-y-2">
-            {doctors.map((doc) => {
-              const joinUrl = `${window.location.origin}/join?doctor=${encodeURIComponent(doc.email)}`;
-              return (
-                <div key={doc.id} className="border border-border rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-sm">{doc.full_name || doc.email}</p>
-                      <p className="text-xs text-muted-foreground">{doc.email}</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="gap-1" onClick={() => setQrDoctor(qrDoctor?.id === doc.id ? null : doc)}>
-                      <QrCode className="h-3 w-3" /> {qrDoctor?.id === doc.id ? "Hide" : "Show QR"}
-                    </Button>
-                  </div>
-                  {qrDoctor?.id === doc.id && (
-                    <div className="flex flex-col items-center gap-3 pt-3 border-t border-border">
-                      <QRCodeSVG value={joinUrl} size={180} includeMargin />
-                      <p className="text-xs text-muted-foreground text-center break-all">{joinUrl}</p>
-                      <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={() => navigator.clipboard.writeText(joinUrl)}>
-                        Copy Link
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {doctors.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No doctors registered yet.</p>}
-          </div>
         </CardContent>
       </Card>
 
