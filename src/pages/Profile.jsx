@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Phone, Save, QrCode, Stethoscope, Trash2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { User, Phone, Save, Stethoscope, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
@@ -146,33 +145,6 @@ export default function Profile() {
           </div>
         </CardHeader>
       </Card>
-
-      {/* QR Code for Doctors */}
-      {user?.role === "doctor" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <QrCode className="h-4 w-4 text-primary" /> Your Patient Join QR Code
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-3">
-            <p className="text-xs text-muted-foreground text-center">Patients scan this QR to get automatically assigned to you.</p>
-            <QRCodeSVG
-              value={`${window.location.origin}/join?doctor=${encodeURIComponent(user.email)}`}
-              size={200}
-              includeMargin
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={() => navigator.clipboard.writeText(`${window.location.origin}/join?doctor=${encodeURIComponent(user.email)}`)}
-            >
-              Copy Link
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Editable Info */}
       <Card>
