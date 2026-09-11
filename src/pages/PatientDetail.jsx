@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import moment from "moment-timezone";
 import { useAuth } from "@/lib/AuthContext";
+import { appParams } from "@/lib/app-params";
 
 export default function PatientDetail() {
   const [searchParams] = useSearchParams();
@@ -54,11 +55,20 @@ export default function PatientDetail() {
     setSavingId(true);
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("doctorApi", {
-        adminToken, action: "savePatientId",
-        assignmentId: assignment.id, patientId: patientIdInput.trim(),
+      const response = await fetch(`/api/apps/${appParams.appId}/functions/doctorApi`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminToken,
+          action: "savePatientId",
+          assignmentId: assignment.id,
+          patientId: patientIdInput.trim(),
+        }),
       });
+      if (!response.ok) throw new Error("Failed to save Patient ID");
       toast.success("Patient ID saved!");
+      // Refresh the assignment so the header badge updates immediately.
+      await loadAssignment();
     } catch (e) {
       toast.error("Failed to save Patient ID");
     } finally {
