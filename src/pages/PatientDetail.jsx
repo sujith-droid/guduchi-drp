@@ -55,9 +55,12 @@ export default function PatientDetail() {
     setSavingId(true);
     try {
       const adminToken = localStorage.getItem("admin_session_token");
+      const platformToken = localStorage.getItem("base44_access_token") || localStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (platformToken) headers["Authorization"] = `Bearer ${platformToken}`;
       const response = await fetch(`/api/apps/${appParams.appId}/functions/doctorApi`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           adminToken,
           action: "savePatientId",
