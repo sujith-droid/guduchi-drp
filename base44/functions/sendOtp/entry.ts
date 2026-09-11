@@ -15,8 +15,14 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Phone number required' }, { status: 400 });
         }
 
-        // 1. Check if user exists in Base44
-        const users = await base44.asServiceRole.entities.User.filter({ phone });
+        // 1. Check if user exists in Base44.
+        //    Phone may be stored with or without the +91 country code, so try
+        //    the exact value first, then fall back to the last 10 digits.
+        let users = await base44.asServiceRole.entities.User.filter({ phone });
+        const normalizedDigits = phone.replace(/\D/g, "").slice(-10);
+        if (users.length === 0 && normalizedDigits.length === 10) {
+            users = await base44.asServiceRole.entities.User.filter({ phone: normalizedDigits });
+        }
         if (users.length === 0) {
             return Response.json({ error: 'No account found with this phone number.' }, { status: 404 });
         }
