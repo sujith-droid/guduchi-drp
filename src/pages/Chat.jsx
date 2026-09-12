@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2 } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -203,6 +203,15 @@ export default function Chat() {
       }
     } catch {
       // Silently ignore transient network errors during polling
+    }
+  };
+
+  const deleteMessage = async (msg) => {
+    try {
+      await base44.entities.ChatMessage.delete(msg.id);
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    } catch (e) {
+      console.error("Failed to delete message", e);
     }
   };
 
@@ -463,8 +472,8 @@ export default function Chat() {
               animate={{ opacity: 1, y: 0 }}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
-              <div className={`max-w-[80%] ${isMe ? "order-1" : ""}`}>
-                <div className={`rounded-2xl px-4 py-2.5 ${
+              <div className={`max-w-[80%] ${isMe ? "order-1" : ""} group/msg`}>
+                <div className={`relative rounded-2xl px-4 py-2.5 ${
                   isMe
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-card border border-border rounded-bl-sm"
@@ -501,7 +510,16 @@ export default function Chat() {
                     )
                   )}
                   {msg.message && <p className="text-sm">{msg.message}</p>}
-                </div>
+                  {!isPatientRole(user.role) && !msg._pending && (
+                    <button
+                      onClick={() => deleteMessage(msg)}
+                      aria-label="Delete message"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-md"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                  </div>
                 <p className={`text-xs text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
                   {moment.utc(msg.created_date).tz("Asia/Kolkata").format("h:mm A")}
                   {isMe && !msg._pending && (
