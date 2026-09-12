@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -474,7 +474,19 @@ export default function Chat() {
                   )}
                   {msg.image_url && (
                     /\.(jpg|jpeg|png|gif|webp|heic)$/i.test(msg.image_url) ? (
-                      <img src={msg.image_url} alt="Shared" className="rounded-lg max-w-full max-h-48 object-cover mb-2" />
+                      <div className="relative group mb-2">
+                        <img src={msg.image_url} alt="Shared" className="rounded-lg max-w-full max-h-48 object-cover" />
+                        <a
+                          href={msg.image_url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Download image"
+                          className="absolute top-1.5 right-1.5 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </div>
                     ) : (
                       <a
                         href={msg.image_url}
