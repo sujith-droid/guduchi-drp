@@ -92,37 +92,40 @@ export default function Chat() {
     const doctorSide = !isPatientRole(me.role);
 
     if (doctorSide) {
-      // Doctors: list only patients who have actually messaged, newest first
+      // Doctors: list all assigned patients, with latest message preview if any
       const [sent, received] = await Promise.all([
         base44.entities.ChatMessage.filter({ sender_email: me.email }, "-created_date", 500),
         base44.entities.ChatMessage.filter({ receiver_email: me.email }, "-created_date", 500),
       ]);
-      const convMap = {};
+      const assignments = await base44.entities.PatientDoctorAssignment.filter({ doctor_email: me.email, status: "active" });
+
+      const msgMap = {};
       for (const m of [...sent, ...received]) {
         const cid = m.conversation_id;
-        if (!convMap[cid] || new Date(m.created_date) > new Date(convMap[cid].created_date)) {
-          convMap[cid] = m;
+        if (!msgMap[cid] || new Date(m.created_date) > new Date(msgMap[cid].created_date)) {
+          msgMap[cid] = m;
         }
       }
-      const assignments = await base44.entities.PatientDoctorAssignment.filter({ doctor_email: me.email });
-      const nameMap = {};
-      for (const a of assignments) {
+
+      const convList = assignments.map((a) => {
         const cid = [a.patient_email, a.doctor_email].sort().join("_");
-        nameMap[cid] = a.patient_name;
-      }
-      const convList = Object.entries(convMap).map(([cid, latest]) => {
-        const patientEmail = latest.sender_email === me.email ? latest.receiver_email : latest.sender_email;
+        const latest = msgMap[cid];
         return {
           id: cid,
           conversation_id: cid,
-          patient_email: patientEmail,
-          doctor_email: me.email,
-          patient_name: nameMap[cid] || patientEmail,
-          latest_message: latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : ""),
-          latest_time: latest.created_date,
+          patient_email: a.patient_email,
+          doctor_email: a.doctor_email,
+          patient_name: a.patient_name || a.patient_email,
+          latest_message: latest ? (latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : "")) : null,
+          latest_time: latest ? latest.created_date : null,
         };
       });
-      convList.sort((a, b) => new Date(b.latest_time) - new Date(a.latest_time));
+      convList.sort((a, b) => {
+        if (!a.latest_time && !b.latest_time) return a.patient_name.localeCompare(b.patient_name);
+        if (!a.latest_time) return 1;
+        if (!b.latest_time) return -1;
+        return new Date(b.latest_time) - new Date(a.latest_time);
+      });
       setConversations(convList);
 
       const map = {};
