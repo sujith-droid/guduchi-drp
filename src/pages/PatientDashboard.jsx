@@ -197,7 +197,7 @@ export default function PatientDashboard() {
                   <Phone className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">Dr. {doc.name}</p>
+                  <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">{doc.name}</p>
                   <p className="text-xs text-emerald-700 dark:text-emerald-300">{doc.phone} — tap to dial</p>
                 </div>
               </a>
@@ -207,7 +207,7 @@ export default function PatientDashboard() {
                   <Phone className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">Dr. {doc.name}</p>
+                  <p className="font-semibold text-sm">{doc.name}</p>
                   <p className="text-xs text-muted-foreground">No phone number added yet</p>
                 </div>
               </div>
@@ -228,14 +228,14 @@ export default function PatientDashboard() {
         <Link to="/chat">
           <div className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors">
             <Activity className="h-5 w-5 text-primary mb-2" />
-            <p className="text-sm font-medium">Chat Doctor</p>
-            <p className="text-xs text-muted-foreground">Ask your doctor</p>
+            <p className="text-sm font-medium">Chat Health Coach</p>
+            <p className="text-xs text-muted-foreground">Ask your Health Coach</p>
           </div>
         </Link>
         <Link to="/join">
           <div className="bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-colors">
             <QrCode className="h-5 w-5 text-primary mb-2" />
-            <p className="text-sm font-medium">Link Doctor</p>
+            <p className="text-sm font-medium">Link Health Coach</p>
             <p className="text-xs text-muted-foreground">Scan QR or enter email</p>
           </div>
         </Link>

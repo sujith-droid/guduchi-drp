@@ -7,7 +7,7 @@ export function isPatientRole(role) {
 }
 
 export function roleDisplayLabel(role) {
-  if (role === "doctor") return "Doctor";
+  if (role === "doctor") return "Health Coach";
   if (role === "admin") return "Admin";
   return "Patient"; // "patient" and "user" both display as "Patient"
 }

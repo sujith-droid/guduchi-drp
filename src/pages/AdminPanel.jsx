@@ -66,12 +66,12 @@ export default function AdminPanel() {
     if (!selectedPatient || !selectedDoctor) return;
     const patientAssignments = assignments.filter((a) => a.patient_email === selectedPatient);
     if (patientAssignments.length >= 3) {
-      toast.error("A patient can only be assigned to a maximum of 3 doctors.");
+      toast.error("A patient can only be assigned to a maximum of 3 Health Coaches.");
       return;
     }
     const alreadyAssigned = patientAssignments.some((a) => a.doctor_email === selectedDoctor);
     if (alreadyAssigned) {
-      toast.error("This patient is already assigned to this doctor.");
+      toast.error("This patient is already assigned to this Health Coach.");
       return;
     }
     try {
@@ -80,7 +80,7 @@ export default function AdminPanel() {
         adminToken, action: "assign",
         patientEmail: selectedPatient, doctorEmail: selectedDoctor,
       });
-      toast.success("Patient assigned to doctor!");
+      toast.success("Patient assigned to Health Coach!");
     } catch (e) {
       toast.error(e?.response?.data?.error || e?.message || "Failed to assign.");
       return;
@@ -209,13 +209,13 @@ export default function AdminPanel() {
         </div>
         <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
           <DialogTrigger asChild>
-            <Button className="gap-2" aria-label="Assign patient to doctor">
+            <Button className="gap-2" aria-label="Assign patient to Health Coach">
               <Link2 className="h-4 w-4" /> Assign
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Assign Patient to Doctor</DialogTitle>
+              <DialogTitle>Assign Patient to Health Coach</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -229,12 +229,12 @@ export default function AdminPanel() {
                 />
               </div>
               <div>
-                <Label>Doctor</Label>
+                <Label>Health Coach</Label>
                 <MobileSelect
                   value={selectedDoctor}
                   onValueChange={setSelectedDoctor}
                   options={doctors.map((d) => ({ value: d.email, label: d.full_name || d.email }))}
-                  placeholder="Select doctor..."
+                  placeholder="Select Health Coach..."
                   triggerClassName="mt-1"
                 />
               </div>
@@ -259,7 +259,7 @@ export default function AdminPanel() {
           <CardContent className="p-4 text-center">
             <UserPlus className="h-5 w-5 mx-auto mb-1 text-primary" />
             <p className="text-2xl font-bold font-heading">{doctors.length}</p>
-            <p className="text-xs text-muted-foreground">Doctors</p>
+            <p className="text-xs text-muted-foreground">Health Coaches</p>
           </CardContent>
         </Card>
         <Card>
@@ -292,7 +292,7 @@ export default function AdminPanel() {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="text-sm font-medium">{a.patient_name || a.patient_email}</p>
-                      <p className="text-xs text-muted-foreground">→ Dr. {a.doctor_name || a.doctor_email}</p>
+                      <p className="text-xs text-muted-foreground">→ {a.doctor_name || a.doctor_email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -329,7 +329,7 @@ export default function AdminPanel() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> Message Templates (Doctors Only)
+            <FileText className="h-4 w-4 text-primary" /> Message Templates (Health Coaches Only)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -382,7 +382,7 @@ export default function AdminPanel() {
                     onValueChange={(val) => changeUserRole(u.id, val)}
                     options={[
                       { value: "patient", label: "Patient" },
-                      { value: "doctor", label: "Doctor" },
+                      { value: "doctor", label: "Health Coach" },
                       { value: "admin", label: "Admin" },
                     ]}
                     placeholder="Select role"

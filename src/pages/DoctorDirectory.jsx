@@ -49,7 +49,7 @@ export default function DoctorDirectory() {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center px-6">
         <AlertCircle className="h-10 w-10 text-destructive mb-2" />
-        <p className="text-sm text-muted-foreground">Couldn't load doctors. Please try again.</p>
+        <p className="text-sm text-muted-foreground">Couldn't load Health Coaches. Please try again.</p>
       </div>
     );
   }
@@ -57,9 +57,9 @@ export default function DoctorDirectory() {
   return (
     <div className="space-y-4 pb-20 md:pb-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Find a Doctor</h1>
+        <h1 className="text-2xl font-heading font-bold">Find a Health Coach</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Browse doctors in the program and connect with one to start your care.
+          Browse Health Coaches in the program and connect with one to start your care.
         </p>
       </div>
 
@@ -78,7 +78,7 @@ export default function DoctorDirectory() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <UserCircle className="h-12 w-12 text-muted-foreground/40 mb-2" />
           <p className="text-sm text-muted-foreground">
-            {doctors.length === 0 ? "No doctors available yet." : "No doctors match your search."}
+            {doctors.length === 0 ? "No Health Coaches available yet." : "No Health Coaches match your search."}
           </p>
         </div>
       ) : (
@@ -93,7 +93,7 @@ export default function DoctorDirectory() {
                   <UserCircle className="h-6 w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">Dr. {doc.full_name || doc.email}</p>
+                  <p className="font-semibold truncate">{doc.full_name || doc.email}</p>
                   {doc.specialty && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                       <Stethoscope className="h-3 w-3" /> {doc.specialty}

@@ -61,7 +61,7 @@ export default function JoinDoctor() {
         {status === "loading" && (
           <>
             <Loader2 className="h-12 w-12 text-primary animate-spin" />
-            <p className="font-heading font-semibold text-lg">Connecting you to your doctor…</p>
+            <p className="font-heading font-semibold text-lg">Connecting you to your Health Coach…</p>
           </>
         )}
 
@@ -71,20 +71,20 @@ export default function JoinDoctor() {
               <Stethoscope className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <p className="font-heading font-bold text-xl">Link to Your Doctor</p>
+              <p className="font-heading font-bold text-xl">Link to Your Health Coach</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Browse the directory to pick a doctor, or enter their email below to connect.
+                Browse the directory to pick a Health Coach, or enter their email below to connect.
               </p>
             </div>
             <Button asChild className="w-full gap-2">
-              <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Doctors</Link>
+              <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Health Coaches</Link>
             </Button>
             <form onSubmit={handleManualSubmit} className="w-full space-y-3 text-left">
               <div>
-                <Label>Doctor's Email</Label>
+                <Label>Health Coach's Email</Label>
                 <Input
                   type="email"
-                  placeholder="doctor@example.com"
+                  placeholder="healthcoach@example.com"
                   value={manualEmail}
                   onChange={(e) => setManualEmail(e.target.value)}
                   className="mt-1"
@@ -93,7 +93,7 @@ export default function JoinDoctor() {
               </div>
               <Button type="submit" className="w-full gap-2" disabled={submitting || !manualEmail.trim()}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                {submitting ? "Connecting…" : "Connect to Doctor"}
+                {submitting ? "Connecting…" : "Connect to Health Coach"}
               </Button>
             </form>
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">Back to Dashboard</Link>
@@ -106,7 +106,7 @@ export default function JoinDoctor() {
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
             <p className="font-heading font-bold text-xl text-emerald-700">You're connected!</p>
-            <p className="text-sm text-muted-foreground">You have been successfully assigned to Dr. {doctorName}.</p>
+            <p className="text-sm text-muted-foreground">You have been successfully assigned to {doctorName}.</p>
             <Button className="w-full" onClick={goHome}>Go to Dashboard</Button>
           </>
         )}
@@ -117,7 +117,7 @@ export default function JoinDoctor() {
               <CheckCircle2 className="h-10 w-10 text-blue-500" />
             </div>
             <p className="font-heading font-bold text-xl">Already Connected</p>
-            <p className="text-sm text-muted-foreground">You are already assigned to Dr. {doctorName}.</p>
+            <p className="text-sm text-muted-foreground">You are already assigned to {doctorName}.</p>
             <Button className="w-full" onClick={goHome}>Go to Dashboard</Button>
           </>
         )}
@@ -128,7 +128,7 @@ export default function JoinDoctor() {
               <AlertCircle className="h-10 w-10 text-orange-500" />
             </div>
             <p className="font-heading font-bold text-xl">Limit Reached</p>
-            <p className="text-sm text-muted-foreground">You already have a doctor assigned. Please remove the current one before selecting a new doctor.</p>
+            <p className="text-sm text-muted-foreground">You already have a Health Coach assigned. Please remove the current one before selecting a new Health Coach.</p>
             <Button className="w-full" onClick={goHome}>Go to Dashboard</Button>
           </>
         )}

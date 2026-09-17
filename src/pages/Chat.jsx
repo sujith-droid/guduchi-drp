@@ -399,7 +399,7 @@ export default function Chat() {
         {conversations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-sm">No conversations yet.</p>
-            <p className="text-xs mt-1">You'll be able to chat once assigned to a {user?.role === "doctor" ? "patient" : "doctor"}.</p>
+            <p className="text-xs mt-1">You'll be able to chat once assigned to a {user?.role === "doctor" ? "patient" : "Health Coach"}.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -421,7 +421,7 @@ export default function Chat() {
                     {doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {doctorSide ? (a.latest_message || "Tap to open chat") : "Your Doctor"}
+                    {doctorSide ? (a.latest_message || "Tap to open chat") : "Your Health Coach"}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -457,7 +457,7 @@ export default function Chat() {
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{chatPartner?.name || "Chat"}</p>
           <p className="text-xs text-muted-foreground">
-            {!isPatientRole(user.role) ? "Patient" : "Your Doctor"}
+            {!isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
           </p>
         </div>
         {partnerPhone ? (

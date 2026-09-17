@@ -129,7 +129,7 @@ export default function Profile() {
     );
   }
 
-  const roleLabel = user?.role === "doctor" ? "Doctor" : user?.role === "admin" ? "Admin" : "Patient";
+  const roleLabel = user?.role === "doctor" ? "Health Coach" : user?.role === "admin" ? "Admin" : "Patient";
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -176,7 +176,7 @@ export default function Profile() {
             <p className="text-xs text-muted-foreground mt-1">
               {user?.role === "doctor"
                 ? "Patients will use this number to call you directly."
-                : "Your doctor will use this number to call you directly."}
+                : "Your Health Coach will use this number to call you directly."}
             </p>
           </div>
 
@@ -261,7 +261,7 @@ export default function Profile() {
               <li>All daily health logs</li>
               <li>HbA1c records</li>
               <li>Chat messages</li>
-              <li>Doctor assignments</li>
+              <li>Health Coach assignments</li>
             </ul>
             <p className="font-semibold mt-2">What requires admin action:</p>
             <p className="text-destructive/80">Your login account — the administrator will be notified automatically.</p>
@@ -276,7 +276,7 @@ export default function Profile() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently delete all your health logs, HbA1c records, chat messages, and doctor assignments — and send a deletion request to the administrator. This cannot be undone.
+                  This will permanently delete all your health logs, HbA1c records, chat messages, and Health Coach assignments — and send a deletion request to the administrator. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -290,20 +290,20 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Assigned Doctors (patients only) */}
+      {/* Assigned Health Coaches (patients only) */}
       {isPatientRole(user?.role) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 text-primary" /> Assigned Doctors
+              <Stethoscope className="h-4 w-4 text-primary" /> Assigned Health Coaches
             </CardTitle>
           </CardHeader>
           <CardContent>
             {assignedDoctors.length === 0 ? (
               <div className="text-center py-3 space-y-3">
-                <p className="text-sm text-muted-foreground">No doctors assigned yet.</p>
+                <p className="text-sm text-muted-foreground">No Health Coaches assigned yet.</p>
                 <Button asChild className="w-full gap-2">
-                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Find a Doctor</Link>
+                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Find a Health Coach</Link>
                 </Button>
               </div>
             ) : (
@@ -322,7 +322,7 @@ export default function Profile() {
                   ))}
                 </div>
                 <Button asChild variant="outline" className="w-full gap-2">
-                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Doctors</Link>
+                  <Link to="/find-doctor"><Stethoscope className="h-4 w-4" /> Browse Health Coaches</Link>
                 </Button>
               </div>
             )}

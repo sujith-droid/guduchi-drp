@@ -19,10 +19,10 @@ export default async function(req: Request): Promise<Response> {
           status: 'active',
         });
         if (existing.length >= 3) {
-          return Response.json({ error: 'A patient can only be assigned to a maximum of 3 doctors.' }, { status: 400 });
+          return Response.json({ error: 'A patient can only be assigned to a maximum of 3 Health Coaches.' }, { status: 400 });
         }
         if (existing.some((a) => a.doctor_email === doctorEmail)) {
-          return Response.json({ error: 'This patient is already assigned to this doctor.' }, { status: 400 });
+          return Response.json({ error: 'This patient is already assigned to this Health Coach.' }, { status: 400 });
         }
         const patientUsers = await base44.asServiceRole.entities.User.filter({ email: patientEmail });
         const doctorUsers = await base44.asServiceRole.entities.User.filter({ email: doctorEmail });
@@ -44,8 +44,8 @@ export default async function(req: Request): Promise<Response> {
         });
         await base44.asServiceRole.entities.Notification.create({
           user_email: patientEmail,
-          title: 'Doctor Assigned',
-          message: `Dr. ${doctor?.full_name || doctorEmail} has been assigned as your doctor.`,
+          title: 'Health Coach Assigned',
+          message: `${doctor?.full_name || doctorEmail} has been assigned as your Health Coach.`,
           type: 'info',
         });
         return Response.json({ success: true });

@@ -62,7 +62,7 @@ export default async function(req: Request): Promise<Response> {
             await base44.asServiceRole.entities.Notification.create({
               user_email: patientEmail,
               title: "Patient ID Assigned",
-              message: `Your doctor has assigned you the Patient ID: ${(patientId || "").trim()}. You can view it on your profile.`,
+              message: `Your Health Coach has assigned you the Patient ID: ${(patientId || "").trim()}. You can view it on your profile.`,
               type: "info",
             });
           }
@@ -147,7 +147,7 @@ export default async function(req: Request): Promise<Response> {
         if (receiverEmail) {
           await base44.asServiceRole.entities.Notification.create({
             user_email: receiverEmail,
-            title: `New message from Dr. ${doctorEmail}`,
+            title: `New message from ${doctorEmail}`,
             message: (message || (imageUrl ? "📷 Photo" : (audioUrl ? "🎤 Voice message" : "New message"))).substring(0, 100),
             type: "info",
             related_patient_email: receiverEmail,

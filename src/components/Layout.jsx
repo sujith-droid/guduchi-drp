@@ -30,7 +30,7 @@ const patientNav = [
 { path: "/progress", label: "Progress", icon: TrendingUp },
 { path: "/chat", label: "Chat", icon: MessageCircle },
 { path: "/notifications", label: "Alerts", icon: Bell },
-{ path: "/find-doctor", label: "Find Doctor", icon: Stethoscope },
+{ path: "/find-doctor", label: "Find Health Coach", icon: Stethoscope },
 { path: "/profile", label: "Profile", icon: UserCircle }];
 
 

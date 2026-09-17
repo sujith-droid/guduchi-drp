@@ -86,13 +86,13 @@ export default async function(req: Request): Promise<Response> {
         await base44.asServiceRole.entities.Notification.create({
           user_email: patientEmail,
           title: 'Welcome to the Program!',
-          message: `You have been successfully connected to Dr. ${doctorName}. Your diabetes reversal journey begins now!`,
+          message: `You have been successfully connected to ${doctorName}. Your diabetes reversal journey begins now!`,
           type: 'achievement',
         }).catch(() => {});
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: patientEmail,
           subject: 'Welcome to Guduchi Diabetes Reversal Program!',
-          body: `Hello ${patient.full_name || ""},\n\nYou have been successfully connected to Dr. ${doctorName}.\n\nStart logging your daily health metrics and track your progress toward reversing diabetes!\n\n— Guduchi Health Team`,
+          body: `Hello ${patient.full_name || ""},\n\nYou have been successfully connected to ${doctorName}.\n\nStart logging your daily health metrics and track your progress toward reversing diabetes!\n\n— Guduchi Health Team`,
         }).catch(() => {});
 
         return Response.json({ status: 'done', doctorName });

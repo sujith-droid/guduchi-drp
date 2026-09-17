@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
     // Also send an in-app notification to the patient
     await base44.asServiceRole.entities.Notification.create({
       user_email: patient_email,
-      title: `Message from Dr. ${doctor_name || doctor_email}`,
-      message: `You have a new welcome message from your doctor. Check your chat!`,
+      title: `Message from ${doctor_name || doctor_email}`,
+      message: `You have a new welcome message from your Health Coach. Check your chat!`,
       type: "info",
       related_patient_email: patient_email,
     });
