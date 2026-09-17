@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2 } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -35,6 +35,9 @@ export default function Chat() {
   const recordingTimerRef = useRef(null);
   const [unreadMap, setUnreadMap] = useState({});
   const [partnerPhone, setPartnerPhone] = useState(null);
+  const [editingMsgId, setEditingMsgId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
@@ -215,6 +218,30 @@ export default function Chat() {
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     } catch (e) {
       console.error("Failed to delete message", e);
+    }
+  };
+
+  const startEditMessage = (msg) => {
+    setEditingMsgId(msg.id);
+    setEditText(msg.message || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingMsgId(null);
+    setEditText("");
+  };
+
+  const saveEditMessage = async (msg) => {
+    if (!editText.trim()) return;
+    setSavingEdit(true);
+    try {
+      await base44.entities.ChatMessage.update(msg.id, { message: editText.trim() });
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, message: editText.trim() } : m));
+      cancelEdit();
+    } catch (e) {
+      console.error("Failed to edit message", e);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -512,15 +539,62 @@ export default function Chat() {
                       </a>
                     )
                   )}
-                  {msg.message && <p className="text-sm">{msg.message}</p>}
-                  {!isPatientRole(user.role) && !msg._pending && (
-                    <button
-                      onClick={() => deleteMessage(msg)}
-                      aria-label="Delete message"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-md"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                  {editingMsgId === msg.id ? (
+                    <div className="flex flex-col gap-2 min-w-[180px]">
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="w-full rounded-lg bg-black/10 border border-white/20 px-2 py-1 text-sm text-primary-foreground resize-none focus:outline-none"
+                        rows={2}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={cancelEdit}
+                          className="text-xs px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-primary-foreground"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => saveEditMessage(msg)}
+                          disabled={savingEdit || !editText.trim()}
+                          className="text-xs px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-primary-foreground font-medium disabled:opacity-50"
+                        >
+                          {savingEdit ? "Saving..." : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {msg.message && <p className="text-sm">{msg.message}</p>}
+                      {isMe && !msg._pending && msg.message_type === "text" && (
+                        <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => startEditMessage(msg)}
+                            aria-label="Edit message"
+                            className="h-6 w-6 rounded-full bg-card border border-border text-foreground flex items-center justify-center shadow-md hover:bg-accent"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => deleteMessage(msg)}
+                            aria-label="Delete message"
+                            className="h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      {isMe && !msg._pending && msg.message_type !== "text" && (
+                        <button
+                          onClick={() => deleteMessage(msg)}
+                          aria-label="Delete message"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-md"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </>
                   )}
                   </div>
                 <p className={`text-xs text-muted-foreground mt-1 flex items-center gap-1 ${isMe ? "justify-end" : ""}`}>
