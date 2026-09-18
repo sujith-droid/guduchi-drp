@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { validateAdminToken } from '../../shared/admin-session.ts';
+import { sendOnboardingMessages } from '../../shared/onboarding-messages.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -53,6 +54,19 @@ export default async function(req: Request): Promise<Response> {
           message: `${doctor?.full_name || doctorEmail} has been assigned as your Health Coach.`,
           type: 'info',
         });
+        // Send immediate batch of onboarding messages from the Health Coach to the patient
+        try {
+          await sendOnboardingMessages(
+            base44,
+            patientEmail,
+            doctorEmail,
+            patient?.full_name || patientEmail,
+            doctor?.full_name || doctorEmail
+          );
+        } catch (e) {
+          // Non-fatal: assignment succeeded even if messages fail
+          console.error('Failed to send onboarding messages:', e);
+        }
         return Response.json({ success: true });
       }
       case 'addTemplate': {
