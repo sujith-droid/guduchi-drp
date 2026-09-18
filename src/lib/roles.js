@@ -6,6 +6,10 @@ export function isPatientRole(role) {
   return role === "patient" || role === "user";
 }
 
+export function isAdminRole(role) {
+  return role === "admin";
+}
+
 export function roleDisplayLabel(role) {
   if (role === "doctor") return "Health Coach";
   if (role === "admin") return "Admin";

@@ -8,7 +8,7 @@ import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { appParams } from "@/lib/app-params";
-import { isPatientRole } from "@/lib/roles";
+import { isPatientRole, isAdminRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
@@ -93,6 +93,53 @@ export default function Chat() {
 
   const loadConversations = async (me) => {
     const doctorSide = !isPatientRole(me.role);
+    const admin = isAdminRole(me.role);
+
+    if (admin) {
+      // Admin: load ALL patient–health coach conversations
+      const [allMessages, allAssignments] = await Promise.all([
+        base44.entities.ChatMessage.list("-created_date", 500),
+        base44.entities.PatientDoctorAssignment.filter({ status: "active" }),
+      ]);
+
+      const convMap = {};
+      for (const m of allMessages) {
+        const cid = m.conversation_id;
+        if (!convMap[cid] || new Date(m.created_date) > new Date(convMap[cid].created_date)) {
+          convMap[cid] = m;
+        }
+      }
+      // Include assigned pairs that have no messages yet
+      for (const a of allAssignments) {
+        const cid = [a.patient_email, a.doctor_email].sort().join("_");
+        if (!convMap[cid]) convMap[cid] = { created_date: null };
+      }
+
+      const convList = Object.entries(convMap).map(([cid, latest]) => {
+        const assignment = allAssignments.find(a =>
+          [a.patient_email, a.doctor_email].sort().join("_") === cid
+        );
+        return {
+          id: cid,
+          conversation_id: cid,
+          patient_email: assignment?.patient_email || cid.split("_")[0],
+          doctor_email: assignment?.doctor_email || cid.split("_")[1],
+          patient_name: assignment?.patient_name || assignment?.patient_email || cid.split("_")[0],
+          doctor_name: assignment?.doctor_name || assignment?.doctor_email || cid.split("_")[1],
+          latest_message: latest?.created_date ? (latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : "")) : null,
+          latest_time: latest?.created_date || null,
+        };
+      });
+
+      convList.sort((a, b) => {
+        if (!a.latest_time && !b.latest_time) return a.patient_name.localeCompare(b.patient_name);
+        if (!a.latest_time) return 1;
+        if (!b.latest_time) return -1;
+        return new Date(b.latest_time) - new Date(a.latest_time);
+      });
+      setConversations(convList);
+      return;
+    }
 
     if (doctorSide) {
       // Doctors: list all assigned patients, with latest message preview if any
@@ -170,7 +217,9 @@ export default function Chat() {
     });
     if (match) {
       setChatPartner(
-        !isPatientRole(user.role)
+        isAdminRole(user.role)
+          ? { name: `${match.patient_name} ↔ ${match.doctor_name}`, email: match.patient_email, patientEmail: match.patient_email, doctorEmail: match.doctor_email, patientName: match.patient_name, doctorName: match.doctor_name }
+          : !isPatientRole(user.role)
           ? { name: match.patient_name, email: match.patient_email }
           : { name: match.doctor_name, email: match.doctor_email }
       );
@@ -203,8 +252,8 @@ export default function Chat() {
     try {
       const msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
       setMessages(msgs);
-      // Mark incoming messages as read
-      if (user) {
+      // Mark incoming messages as read (admins are read-only observers)
+      if (user && !isAdminRole(user.role)) {
         const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
         for (const m of unread) {
           await base44.entities.ChatMessage.update(m.id, { is_read: true });
@@ -421,10 +470,10 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">
-                    {doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
+                    {isAdminRole(user.role) ? `${a.patient_name} ↔ ${a.doctor_name}` : doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {doctorSide ? (a.latest_message || "Tap to open chat") : "Your Health Coach"}
+                    {isAdminRole(user.role) ? (a.latest_message || "No messages yet") : doctorSide ? (a.latest_message || "Tap to open chat") : "Your Health Coach"}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -458,10 +507,10 @@ export default function Chat() {
           {chatPartner?.name?.[0]?.toUpperCase() || "?"}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{chatPartner?.name || "Chat"}</p>
-          <p className="text-xs text-muted-foreground">
-            {!isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
-          </p>
+        <p className="font-medium text-sm truncate">{chatPartner?.name || "Chat"}</p>
+        <p className="text-xs text-muted-foreground">
+          {isAdminRole(user.role) ? "Admin (read-only)" : !isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
+        </p>
         </div>
         {partnerPhone ? (
           <a href={`tel:${partnerPhone}`}>
@@ -485,6 +534,7 @@ export default function Chat() {
         )}
         {messages.map((msg, idx) => {
           const isMe = msg.sender_email === user.email;
+          const adminSender = isAdminRole(user.role) ? (msg.sender_email === chatPartner?.patientEmail ? chatPartner.patientName : chatPartner?.doctorName) : null;
           const prevMsg = messages[idx - 1];
           const showDateSep = !prevMsg || !moment.utc(prevMsg.created_date).tz("Asia/Kolkata").isSame(moment.utc(msg.created_date).tz("Asia/Kolkata"), "day");
           const dateLabel = (() => {
@@ -505,6 +555,9 @@ export default function Chat() {
               animate={{ opacity: 1, y: 0 }}
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
+              {adminSender && (
+                <span className="text-xs font-medium text-muted-foreground mr-2 self-center">{adminSender}</span>
+              )}
               <div className={`max-w-[80%] ${isMe ? "order-1" : ""} group/msg`}>
                 <div className={`relative rounded-2xl px-4 py-2.5 ${
                   isMe
@@ -616,7 +669,8 @@ export default function Chat() {
         <div ref={messagesEnd} />
       </div>
 
-      {/* Input */}
+      {/* Input — hidden for admin (read-only) */}
+      {!isAdminRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
         <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleImageUpload} />
         <input type="file" ref={fileDocRef} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleFileUpload} />
@@ -673,7 +727,8 @@ export default function Chat() {
             </Button>
           </>
         )}
-      </div>
-    </div>
-  );
-}
+        </div>
+        )}
+        </div>
+        );
+        }
