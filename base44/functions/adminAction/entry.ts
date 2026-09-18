@@ -6,7 +6,12 @@ export default async function(req: Request): Promise<Response> {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
     const { adminToken, action, ...payload } = body;
-    await validateAdminToken(base44, adminToken);
+    const session = await validateAdminToken(base44, adminToken);
+
+    // Subadmins can only assign patients to health coaches — no other actions.
+    if (session.role === "subadmin" && action !== "assign") {
+      return Response.json({ error: "Subadmins can only assign patients to Health Coaches." }, { status: 403 });
+    }
 
     switch (action) {
       case 'assign': {

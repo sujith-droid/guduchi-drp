@@ -10,8 +10,17 @@ export function isAdminRole(role) {
   return role === "admin";
 }
 
+export function isSubadminRole(role) {
+  return role === "subadmin";
+}
+
+export function isAdminOrSubadmin(role) {
+  return role === "admin" || role === "subadmin";
+}
+
 export function roleDisplayLabel(role) {
   if (role === "doctor") return "Health Coach";
   if (role === "admin") return "Admin";
+  if (role === "subadmin") return "Subadmin";
   return "Patient"; // "patient" and "user" both display as "Patient"
 }

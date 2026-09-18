@@ -20,7 +20,7 @@ export async function validateAdminToken(base44, adminToken) {
     if (sessions && sessions.length > 0) {
       const session = sessions[0];
       const notExpired = new Date(session.expires_at) >= new Date();
-      const validRole = session.role === "admin" || session.role === "doctor";
+      const validRole = session.role === "admin" || session.role === "doctor" || session.role === "subadmin";
       if (notExpired && validRole) {
         return session;
       }
@@ -30,7 +30,7 @@ export async function validateAdminToken(base44, adminToken) {
   // 2. Fallback: platform email/password auth (builder or invited admin/doctor)
   try {
     const me = await base44.auth.me();
-    if (me && (me.role === "admin" || me.role === "doctor" || me.email?.includes("sujith@guduchiayurveda"))) {
+    if (me && (me.role === "admin" || me.role === "subadmin" || me.role === "doctor" || me.email?.includes("sujith@guduchiayurveda"))) {
       return { user_email: me.email, role: me.role || "admin", user_id: me.id };
     }
   } catch (e) {

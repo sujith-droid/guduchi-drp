@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
-import { isPatientRole } from "@/lib/roles";
+import { isPatientRole, isAdminRole, isSubadminRole, isAdminOrSubadmin } from "@/lib/roles";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -31,9 +31,12 @@ export default function AdminPanel() {
 
   const { user: currentUser } = useAuth();
 
+  const isSubadmin = isSubadminRole(currentUser?.role);
+  const isFullAdmin = isAdminRole(currentUser?.role) || currentUser?.email?.includes("sujith@guduchiayurveda");
+
   useEffect(() => {
     if (!currentUser) return;
-    if (currentUser.role !== "admin" && !currentUser.email?.includes("sujith@guduchiayurveda")) {
+    if (!isFullAdmin && !isSubadmin) {
       setLoading(false);
       return;
     }
@@ -177,12 +180,12 @@ export default function AdminPanel() {
     );
   }
 
-  if (currentUser?.role !== "admin" && !currentUser?.email?.includes("sujith@guduchiayurveda")) {
+  if (!isFullAdmin && !isSubadmin) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
         <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
         <p className="font-semibold">Access Denied</p>
-        <p className="text-sm text-muted-foreground">Only the admin can access this panel.</p>
+        <p className="text-sm text-muted-foreground">Only admins can access this panel.</p>
       </div>
     );
   }
@@ -296,6 +299,8 @@ export default function AdminPanel() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isFullAdmin && (
+                    <>
                     <MobileSelect
                       value={a.program_duration || ""}
                       onValueChange={(val) => updateProgram(a.id, val)}
@@ -317,6 +322,8 @@ export default function AdminPanel() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -325,7 +332,8 @@ export default function AdminPanel() {
         </CardContent>
       </Card>
 
-      {/* Message Templates */}
+      {/* Message Templates — full admin only */}
+      {isFullAdmin && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -358,10 +366,12 @@ export default function AdminPanel() {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+        )}
 
-      {/* Users List */}
-      <Card>
+        {/* Users List — full admin only */}
+        {isFullAdmin && (
+        <Card>
         <CardHeader>
           <CardTitle className="text-base">All Users — Manage Roles</CardTitle>
         </CardHeader>
@@ -383,6 +393,7 @@ export default function AdminPanel() {
                     options={[
                       { value: "patient", label: "Patient" },
                       { value: "doctor", label: "Health Coach" },
+                      { value: "subadmin", label: "Subadmin" },
                       { value: "admin", label: "Admin" },
                     ]}
                     placeholder="Select role"
@@ -403,8 +414,10 @@ export default function AdminPanel() {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Delete User Confirmation */}
+      {/* Delete User Confirmation — full admin only */}
+      {isFullAdmin && (
       <AlertDialog open={!!deleteUserId} onOpenChange={(open) => { if (!open) { setDeleteUserId(null); setDeleteUserName(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -421,6 +434,7 @@ export default function AdminPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      )}
     </div>
   );
 }
