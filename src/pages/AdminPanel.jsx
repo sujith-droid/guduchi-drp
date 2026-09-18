@@ -74,7 +74,7 @@ export default function AdminPanel() {
     }
   };
 
-  const doctors = users.filter((u) => u.role === "doctor");
+  const doctors = users.filter((u) => u.role === "doctor").map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
   const patients = users.filter((u) => isPatientRole(u.role));
 
   const assignPatient = async () => {
@@ -482,6 +482,42 @@ export default function AdminPanel() {
                 className="flex-1 gap-2"
               >
                 <Plus className="h-4 w-4" /> Add Onboarding Message
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const coachUpdates = [
+                    { email: "guduchidrp3@gmail.com", fullName: "Vishnu Priya", city: "Bangalore" },
+                    { email: "hublidrp@gmail.com", fullName: "Meghashree", city: "Mysore" },
+                    { email: "ahmedabaddrp@gmail.com", fullName: "Hetvi", city: "Ahmedabad" },
+                    { email: "drp1udupi@gmail.com", fullName: "Jeshlee", city: "Udupi" },
+                    { email: "udupidrp3@gmail.com", fullName: "Arshiya", city: "Udupi" },
+                    { email: "drp5guduchi@gmail.com", fullName: "Lokeshwari", city: "Gulbarga" },
+                    { email: "guduchidrp6@gmail.com", fullName: "Reethu", city: "Bangalore" },
+                    { email: "hyd.guduchi@gmail.com", fullName: "Supraja", city: "Hyderabad" },
+                    { email: "guduchidrp4@gmail.com", fullName: "Likitha", city: "Bangalore" },
+                    { email: "drp1mangalre@gmail.com", fullName: "Angel", city: "Mangalore" },
+                  ];
+                  const adminToken = localStorage.getItem("admin_session_token");
+                  for (const c of coachUpdates) {
+                    const doc = doctors.find((d) => d.email === c.email);
+                    if (!doc) continue;
+                    try {
+                      await base44.functions.invoke("adminAction", {
+                        adminToken, action: "updateUserName",
+                        userId: doc.id, fullName: c.fullName, city: c.city, doctorEmail: c.email,
+                      });
+                    } catch (e) { console.error("Failed:", c.email, e); }
+                  }
+                  toast.success("Health Coach names updated!");
+                  await loadData();
+                }}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" /> Sync Coach Names
               </Button>
             </div>
           </div>

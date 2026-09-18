@@ -167,7 +167,7 @@ export default function Layout() {
         <div className="flex items-center gap-2">
           {user &&
           <div className="text-right mr-2 hidden sm:block">
-              <p className="text-sm font-medium">{user.full_name || "User"}</p>
+              <p className="text-sm font-medium">{user.display_name || user.full_name || "User"}</p>
               <p className="text-xs text-muted-foreground">{roleDisplayLabel(user.role)}</p>
             </div>
           }

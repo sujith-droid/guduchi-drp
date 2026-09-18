@@ -117,6 +117,26 @@ export default async function(req: Request): Promise<Response> {
         await base44.asServiceRole.entities.User.update(payload.userId, { role: payload.newRole });
         return Response.json({ success: true });
       }
+      case 'updateUserName': {
+        if (!payload.userId || !payload.fullName) {
+          return Response.json({ error: 'userId and fullName are required' }, { status: 400 });
+        }
+        const updateData = { display_name: payload.fullName };
+        if (payload.city) updateData.city = payload.city;
+        await base44.asServiceRole.entities.User.update(payload.userId, updateData);
+        // Sync doctor_name to all their assignments
+        try {
+          const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ doctor_email: payload.doctorEmail });
+          for (const a of assignments) {
+            if (a.doctor_name !== payload.fullName) {
+              await base44.asServiceRole.entities.PatientDoctorAssignment.update(a.id, { doctor_name: payload.fullName });
+            }
+          }
+        } catch (e) {
+          console.error('Could not sync doctor_name to assignments:', e);
+        }
+        return Response.json({ success: true });
+      }
       case 'deleteUser': {
         if (!payload.userId) return Response.json({ error: 'userId is required' }, { status: 400 });
         await base44.asServiceRole.entities.User.delete(payload.userId);

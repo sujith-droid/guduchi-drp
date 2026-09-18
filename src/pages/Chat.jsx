@@ -242,7 +242,7 @@ export default function Chat() {
       .then((res) => res.ok ? res.json() : Promise.reject(new Error(String(res.status))))
       .then((data) => {
         if (data?.phone) setPartnerPhone(data.phone);
-        if (data?.full_name) setChatPartner((prev) => prev ? { ...prev, name: data.full_name } : prev);
+        if (data?.full_name || data?.display_name) setChatPartner((prev) => prev ? { ...prev, name: data.display_name || data.full_name } : prev);
       })
       .catch(() => {});
   }, [chatPartner?.email]);
@@ -307,7 +307,7 @@ export default function Chat() {
     const patientEmail = isPatientRole(user.role) ? user.email : receiverEmail;
     await base44.entities.Notification.create({
       user_email: receiverEmail,
-      title: `New message from ${user.full_name || user.email}`,
+      title: `New message from ${user.display_name || user.full_name || user.email}`,
       message: preview.substring(0, 100),
       type: "info",
       related_patient_email: patientEmail,

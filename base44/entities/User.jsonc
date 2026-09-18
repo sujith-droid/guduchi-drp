@@ -39,6 +39,10 @@
       "type": "string",
       "description": "Doctor's city"
     },
+    "display_name": {
+      "type": "string",
+      "description": "Editable display name (used when full_name is just the email prefix)"
+    },
     "profile_complete": {
       "type": "boolean",
       "default": false
