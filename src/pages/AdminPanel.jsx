@@ -29,10 +29,16 @@ export default function AdminPanel() {
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteUserName, setDeleteUserName] = useState("");
   const [onboardingMessages, setOnboardingMessages] = useState([]);
-  const [onboardingDoctor, setOnboardingDoctor] = useState("");
+  const [onboardingDoctors, setOnboardingDoctors] = useState([]);
   const [onboardingContent, setOnboardingContent] = useState("");
   const [onboardingSequence, setOnboardingSequence] = useState(1);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
+
+  const toggleOnboardingDoctor = (email) => {
+    setOnboardingDoctors((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+    );
+  };
 
   const { user: currentUser } = useAuth();
 
@@ -179,22 +185,24 @@ export default function AdminPanel() {
   };
 
   const addOnboardingMessage = async () => {
-    if (!onboardingDoctor.trim() || !onboardingContent.trim()) return;
+    if (onboardingDoctors.length === 0 || !onboardingContent.trim()) return;
     setSavingOnboarding(true);
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      const doctor = doctors.find((d) => d.email === onboardingDoctor);
-      await base44.functions.invoke("adminAction", {
-        adminToken, action: "addOnboardingMessage",
-        doctorEmail: onboardingDoctor,
-        doctorName: doctor?.full_name || onboardingDoctor,
-        content: onboardingContent.trim(),
-        sequence: onboardingSequence,
-      });
-      setOnboardingDoctor("");
+      for (const email of onboardingDoctors) {
+        const doctor = doctors.find((d) => d.email === email);
+        await base44.functions.invoke("adminAction", {
+          adminToken, action: "addOnboardingMessage",
+          doctorEmail: email,
+          doctorName: doctor?.full_name || email,
+          content: onboardingContent.trim(),
+          sequence: onboardingSequence,
+        });
+      }
+      setOnboardingDoctors([]);
       setOnboardingContent("");
       setOnboardingSequence(1);
-      toast.success("Onboarding message added!");
+      toast.success(`Onboarding message added to ${onboardingDoctors.length} Health Coach(es)!`);
       await loadData();
     } catch (e) {
       toast.error(e?.response?.data?.error || "Failed to add onboarding message.");
@@ -423,14 +431,31 @@ export default function AdminPanel() {
           <p className="text-xs text-muted-foreground">These messages are automatically sent to a patient's chat when they are assigned to a Health Coach. Use {"{patient_name}"} and {"{doctor_name}"} as placeholders.</p>
           <div className="space-y-2">
             <div>
-              <Label>Health Coach</Label>
-              <MobileSelect
-                value={onboardingDoctor}
-                onValueChange={setOnboardingDoctor}
-                options={doctors.map((d) => ({ value: d.email, label: d.full_name ? `${d.full_name} (${d.email})` : d.email }))}
-                placeholder="Select Health Coach..."
-                triggerClassName="mt-1"
-              />
+              <Label>Health Coaches ({onboardingDoctors.length} selected)</Label>
+              <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-input p-2 space-y-1">
+                {doctors.map((d) => (
+                  <label
+                    key={d.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer min-h-[40px]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={onboardingDoctors.includes(d.email)}
+                      onChange={() => toggleOnboardingDoctor(d.email)}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    <span className="text-sm">{d.full_name ? `${d.full_name} (${d.email})` : d.email}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button variant="ghost" size="sm" onClick={() => setOnboardingDoctors(doctors.map((d) => d.email))} className="text-xs h-7">
+                  Select All
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setOnboardingDoctors([])} className="text-xs h-7">
+                  Clear
+                </Button>
+              </div>
             </div>
             <div>
               <Label>Message (Sequence #{onboardingSequence})</Label>
@@ -453,7 +478,7 @@ export default function AdminPanel() {
               />
               <Button
                 onClick={addOnboardingMessage}
-                disabled={savingOnboarding || !onboardingDoctor || !onboardingContent.trim()}
+                disabled={savingOnboarding || onboardingDoctors.length === 0 || !onboardingContent.trim()}
                 className="flex-1 gap-2"
               >
                 <Plus className="h-4 w-4" /> Add Onboarding Message
