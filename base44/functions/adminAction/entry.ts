@@ -37,21 +37,23 @@ export default async function(req: Request): Promise<Response> {
         await base44.asServiceRole.entities.PatientDoctorAssignment.create({
           patient_email: patientEmail,
           doctor_email: doctorEmail,
-          patient_name: patient?.full_name || patientEmail,
-          doctor_name: doctor?.full_name || doctorEmail,
+          patient_name: patient?.display_name || patient?.full_name || patientEmail,
+          doctor_name: doctor?.display_name || doctor?.full_name || doctorEmail,
           status: 'active',
         });
+        const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
+        const doctorDisplayName = doctor?.display_name || doctor?.full_name || doctorEmail;
         await base44.asServiceRole.entities.Notification.create({
           user_email: doctorEmail,
           title: 'New Patient Assigned',
-          message: `${patient?.full_name || patientEmail} has been assigned to you by the admin.`,
+          message: `${patientDisplayName} has been assigned to you by the admin.`,
           type: 'info',
           related_patient_email: patientEmail,
         });
         await base44.asServiceRole.entities.Notification.create({
           user_email: patientEmail,
           title: 'Health Coach Assigned',
-          message: `${doctor?.full_name || doctorEmail} has been assigned as your Health Coach.`,
+          message: `${doctorDisplayName} has been assigned as your Health Coach.`,
           type: 'info',
         });
         // Send immediate batch of onboarding messages from the Health Coach to the patient
@@ -60,8 +62,8 @@ export default async function(req: Request): Promise<Response> {
             base44,
             patientEmail,
             doctorEmail,
-            patient?.full_name || patientEmail,
-            doctor?.full_name || doctorEmail
+            patientDisplayName,
+            doctorDisplayName
           );
         } catch (e) {
           // Non-fatal: assignment succeeded even if messages fail
