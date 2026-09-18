@@ -1,0 +1,58 @@
+{
+  "name": "OnboardingMessage",
+  "type": "object",
+  "properties": {
+    "doctor_email": {
+      "type": "string",
+      "description": "Email of the Health Coach this onboarding message belongs to"
+    },
+    "doctor_name": {
+      "type": "string",
+      "description": "Display name of the Health Coach (for convenience)"
+    },
+    "content": {
+      "type": "string",
+      "description": "The onboarding message content. Supports {patient_name} and {doctor_name} placeholders."
+    },
+    "sequence": {
+      "type": "number",
+      "description": "Order in which the message is sent (1, 2, 3...)",
+      "default": 1
+    }
+  },
+  "required": [
+    "doctor_email",
+    "content"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "doctor"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

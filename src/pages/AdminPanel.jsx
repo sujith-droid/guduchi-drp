@@ -8,7 +8,7 @@ import MobileSelect from "@/components/MobileSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus } from "lucide-react";
+import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, MessageSquareText } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -28,6 +28,11 @@ export default function AdminPanel() {
   const [savingTpl, setSavingTpl] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteUserName, setDeleteUserName] = useState("");
+  const [onboardingMessages, setOnboardingMessages] = useState([]);
+  const [onboardingDoctor, setOnboardingDoctor] = useState("");
+  const [onboardingContent, setOnboardingContent] = useState("");
+  const [onboardingSequence, setOnboardingSequence] = useState(1);
+  const [savingOnboarding, setSavingOnboarding] = useState(false);
 
   const { user: currentUser } = useAuth();
 
@@ -54,6 +59,7 @@ export default function AdminPanel() {
       setUsers(d.users || []);
       setAssignments(d.assignments || []);
       setTemplates(d.templates || []);
+      setOnboardingMessages(d.onboardingMessages || []);
     } catch (e) {
       console.error("Failed to load admin data", e);
       setLoadError(true);
@@ -169,6 +175,42 @@ export default function AdminPanel() {
       loadData();
     } catch (e) {
       toast.error(e?.response?.data?.error || "Failed to update program.");
+    }
+  };
+
+  const addOnboardingMessage = async () => {
+    if (!onboardingDoctor.trim() || !onboardingContent.trim()) return;
+    setSavingOnboarding(true);
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      const doctor = doctors.find((d) => d.email === onboardingDoctor);
+      await base44.functions.invoke("adminAction", {
+        adminToken, action: "addOnboardingMessage",
+        doctorEmail: onboardingDoctor,
+        doctorName: doctor?.full_name || onboardingDoctor,
+        content: onboardingContent.trim(),
+        sequence: onboardingSequence,
+      });
+      setOnboardingDoctor("");
+      setOnboardingContent("");
+      setOnboardingSequence(1);
+      toast.success("Onboarding message added!");
+      await loadData();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to add onboarding message.");
+    } finally {
+      setSavingOnboarding(false);
+    }
+  };
+
+  const deleteOnboardingMessage = async (id) => {
+    try {
+      const adminToken = localStorage.getItem("admin_session_token");
+      await base44.functions.invoke("adminAction", { adminToken, action: "deleteOnboardingMessage", id });
+      setOnboardingMessages((prev) => prev.filter((m) => m.id !== id));
+      toast.success("Onboarding message deleted");
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to delete onboarding message.");
     }
   };
 
@@ -366,8 +408,99 @@ export default function AdminPanel() {
             </div>
           )}
         </CardContent>
-        </Card>
-        )}
+      </Card>
+      )}
+
+      {/* Onboarding Messages — full admin only */}
+      {isFullAdmin && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquareText className="h-4 w-4 text-primary" /> Onboarding Messages (Per Health Coach)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">These messages are automatically sent to a patient's chat when they are assigned to a Health Coach. Use {"{patient_name}"} and {"{doctor_name}"} as placeholders.</p>
+          <div className="space-y-2">
+            <div>
+              <Label>Health Coach</Label>
+              <MobileSelect
+                value={onboardingDoctor}
+                onValueChange={setOnboardingDoctor}
+                options={doctors.map((d) => ({ value: d.email, label: d.full_name || d.email }))}
+                placeholder="Select Health Coach..."
+                triggerClassName="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Message (Sequence #{onboardingSequence})</Label>
+              <Textarea
+                placeholder="Type the onboarding message... Use {patient_name} and {doctor_name}"
+                value={onboardingContent}
+                onChange={(e) => setOnboardingContent(e.target.value)}
+                rows={3}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs whitespace-nowrap">Sequence #</Label>
+              <Input
+                type="number"
+                min={1}
+                value={onboardingSequence}
+                onChange={(e) => setOnboardingSequence(parseInt(e.target.value) || 1)}
+                className="w-20"
+              />
+              <Button
+                onClick={addOnboardingMessage}
+                disabled={savingOnboarding || !onboardingDoctor || !onboardingContent.trim()}
+                className="flex-1 gap-2"
+              >
+                <Plus className="h-4 w-4" /> Add Onboarding Message
+              </Button>
+            </div>
+          </div>
+
+          {doctors.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-3">No Health Coaches found</p>
+          ) : (
+            <div className="space-y-4">
+              {doctors.map((doc) => {
+                const docMessages = onboardingMessages
+                  .filter((m) => m.doctor_email === doc.email)
+                  .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+                if (docMessages.length === 0) return null;
+                return (
+                  <div key={doc.id} className="space-y-2">
+                    <p className="text-sm font-medium text-primary">{doc.full_name || doc.email}</p>
+                    {docMessages.map((m) => (
+                      <div key={m.id} className="flex items-start justify-between p-3 bg-muted/50 rounded-lg gap-3">
+                        <div className="flex-1 min-w-0">
+                          <Badge variant="secondary" className="text-xs mb-1">#{m.sequence}</Badge>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-3 whitespace-pre-wrap">{m.content}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete onboarding message"
+                          onClick={() => deleteOnboardingMessage(m.id)}
+                          className="text-destructive hover:text-destructive flex-shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              {onboardingMessages.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-3">No onboarding messages configured. Default messages will be used.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      )}
 
         {/* Users List — full admin only */}
         {isFullAdmin && (

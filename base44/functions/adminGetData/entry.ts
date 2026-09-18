@@ -7,13 +7,14 @@ export default async function(req: Request): Promise<Response> {
     const { adminToken } = await req.json();
     await validateAdminToken(base44, adminToken);
 
-    const [users, assignments, templates] = await Promise.all([
+    const [users, assignments, templates, onboardingMessages] = await Promise.all([
       base44.asServiceRole.entities.User.list('-created_date', 200),
       base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }),
       base44.asServiceRole.entities.MessageTemplate.list('-created_date', 100),
+      base44.asServiceRole.entities.OnboardingMessage.list('sequence', 200),
     ]);
 
-    return Response.json({ users, assignments, templates });
+    return Response.json({ users, assignments, templates, onboardingMessages });
   } catch (error) {
     return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }

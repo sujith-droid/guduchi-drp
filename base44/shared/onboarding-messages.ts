@@ -1,10 +1,8 @@
 /**
- * Defines the default onboarding message sequence sent to a patient
- * immediately after being assigned to a Health Coach.
- * Each message is sent from the Health Coach to the patient in the chat.
+ * Default onboarding messages used as fallback when no per-coach messages are configured.
  * {patient_name} and {doctor_name} placeholders are replaced at send time.
  */
-export const ONBOARDING_MESSAGES: string[] = [
+const DEFAULT_ONBOARDING_MESSAGES: string[] = [
   "Welcome to Guduchi DRP, {patient_name}! I'm {doctor_name}, your Health Coach. I'll be guiding you through your diabetes reversal journey. 🌿",
   "Here's what to expect:\n• Daily blood sugar tracking in the Logbook\n• Regular progress reviews\n• Personalized diet & lifestyle guidance\n• Ongoing support via this chat",
   "To get started, please:\n1. Log your blood sugar readings today in the Logbook\n2. Fill in your profile details (weight, step count)\n3. Feel free to share any questions or concerns here anytime",
@@ -25,7 +23,9 @@ export function personalizeMessage(
 }
 
 /**
- * Sends the onboarding message batch from a Health Coach to a patient.
+ * Sends onboarding messages from a Health Coach to a patient.
+ * If per-coach messages are configured in the OnboardingMessage entity, uses those.
+ * Otherwise falls back to DEFAULT_ONBOARDING_MESSAGES.
  * Returns the number of messages sent.
  */
 export async function sendOnboardingMessages(
@@ -35,8 +35,27 @@ export async function sendOnboardingMessages(
   patientName: string,
   doctorName: string
 ): Promise<number> {
+  // Fetch per-coach onboarding messages, ordered by sequence
+  let customMessages: string[] = [];
+  try {
+    const records = await base44.asServiceRole.entities.OnboardingMessage.filter(
+      { doctor_email: doctorEmail },
+      "sequence",
+      50
+    );
+    if (records && records.length > 0) {
+      customMessages = records
+        .sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0))
+        .map((r: any) => r.content);
+    }
+  } catch (e) {
+    // Entity might not exist yet — fall back to defaults
+    console.error("Failed to fetch onboarding messages:", e);
+  }
+
+  const templates = customMessages.length > 0 ? customMessages : DEFAULT_ONBOARDING_MESSAGES;
   const convId = [patientEmail, doctorEmail].sort().join("_");
-  const messages = ONBOARDING_MESSAGES.map((template) =>
+  const messages = templates.map((template) =>
     personalizeMessage(template, patientName, doctorName)
   );
 

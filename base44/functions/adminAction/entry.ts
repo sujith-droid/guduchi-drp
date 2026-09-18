@@ -82,6 +82,24 @@ export default async function(req: Request): Promise<Response> {
         await base44.asServiceRole.entities.MessageTemplate.delete(payload.id);
         return Response.json({ success: true });
       }
+      case 'addOnboardingMessage': {
+        const { doctorEmail, doctorName, content, sequence } = payload;
+        if (!doctorEmail || !content) {
+          return Response.json({ error: 'doctorEmail and content are required' }, { status: 400 });
+        }
+        await base44.asServiceRole.entities.OnboardingMessage.create({
+          doctor_email: doctorEmail,
+          doctor_name: doctorName || doctorEmail,
+          content,
+          sequence: sequence || 1,
+        });
+        return Response.json({ success: true });
+      }
+      case 'deleteOnboardingMessage': {
+        if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
+        await base44.asServiceRole.entities.OnboardingMessage.delete(payload.id);
+        return Response.json({ success: true });
+      }
       case 'removeAssignment': {
         if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
         await base44.asServiceRole.entities.PatientDoctorAssignment.update(payload.id, { status: 'inactive' });
