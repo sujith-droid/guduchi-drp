@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Send, CheckSquare, Square } from "lucide-react";
 import { toast } from "sonner";
 
-export default function BulkMessageModal({ open, onClose, patients, doctorEmail }) {
+export default function BulkMessageModal({ open, onClose, patients, patientNames = {}, doctorEmail }) {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedPatients, setSelectedPatients] = useState([]);
@@ -112,9 +112,9 @@ export default function BulkMessageModal({ open, onClose, patients, doctorEmail 
                     onCheckedChange={() => togglePatient(p.patient_email)}
                   />
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs">
-                    {(p.patient_name || p.patient_email)[0]?.toUpperCase()}
+                    {(patientNames[p.patient_email] || p.patient_name || p.patient_email)[0]?.toUpperCase()}
                   </div>
-                  <Label className="text-sm cursor-pointer flex-1">{p.patient_name || p.patient_email}</Label>
+                  <Label className="text-sm cursor-pointer flex-1">{patientNames[p.patient_email] || p.patient_name || p.patient_email}</Label>
                 </div>
               ))}
             </div>

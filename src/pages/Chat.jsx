@@ -191,7 +191,10 @@ export default function Chat() {
       body: JSON.stringify({ target_email: chatPartner.email, adminToken }),
     })
       .then((res) => res.ok ? res.json() : Promise.reject(new Error(String(res.status))))
-      .then((data) => setPartnerPhone(data?.phone || null))
+      .then((data) => {
+        if (data?.phone) setPartnerPhone(data.phone);
+        if (data?.full_name) setChatPartner((prev) => prev ? { ...prev, name: data.full_name } : prev);
+      })
       .catch(() => {});
   }, [chatPartner?.email]);
 

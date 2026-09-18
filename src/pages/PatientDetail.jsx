@@ -19,7 +19,7 @@ import { appParams } from "@/lib/app-params";
 export default function PatientDetail() {
   const [searchParams] = useSearchParams();
   const patientEmail = searchParams.get("email");
-  const patientName = searchParams.get("name") || "Patient";
+  const urlName = searchParams.get("name") || "Patient";
   const navigate = useNavigate();
 
   const [logs, setLogs] = useState([]);
@@ -29,6 +29,7 @@ export default function PatientDetail() {
   const [assignment, setAssignment] = useState(null);
   const [patientIdInput, setPatientIdInput] = useState("");
   const [savingId, setSavingId] = useState(false);
+  const [patientFullName, setPatientFullName] = useState(urlName);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -82,13 +83,15 @@ export default function PatientDetail() {
   const loadPatientPhone = async () => {
     try {
       const res = await base44.functions.invoke('getUserPhone', { target_email: patientEmail });
-      setPatientPhone(res.data.phone || null);
+      const data = res.data || res;
+      setPatientPhone(data.phone || null);
+      if (data.full_name) setPatientFullName(data.full_name);
     } catch (e) {
       console.error("Failed to load patient phone", e);
     }
   };
 
-  const loadLogs = async () => {
+const loadLogs = async () => {
     setLoading(true);
     const data = await base44.entities.DailyLog.filter(
       { patient_email: patientEmail },
@@ -117,7 +120,7 @@ export default function PatientDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-heading font-bold">{patientName}</h1>
+            <h1 className="text-xl font-heading font-bold">{patientFullName}</h1>
             <p className="text-xs text-muted-foreground">{patientEmail}</p>
             {assignment?.patient_id && (
               <span className="text-xs bg-primary/10 text-primary font-mono px-2 py-0.5 rounded-full">ID: {assignment.patient_id}</span>
@@ -142,7 +145,7 @@ export default function PatientDetail() {
             </Button>
           </Link>
           {patientPhone ? (
-            <a href={`tel:${patientPhone}`} aria-label={`Call ${patientName}`}>
+            <a href={`tel:${patientPhone}`} aria-label={`Call ${patientFullName}`}>
               <Button size="sm" className="gap-1 bg-emerald-500 hover:bg-emerald-600">
                 <Phone className="h-3 w-3" /> Call
               </Button>

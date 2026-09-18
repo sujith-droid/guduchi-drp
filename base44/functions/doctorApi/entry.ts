@@ -22,13 +22,15 @@ export default async function(req: Request): Promise<Response> {
         // Fetch phone numbers for all assigned patients.
         const patientEmails = [...new Set(assignments.map((a) => a.patient_email))];
         const patientPhones = {};
+        const patientNames = {};
         for (const email of patientEmails) {
           try {
             const users = await base44.asServiceRole.entities.User.filter({ email });
             if (users[0]?.phone) patientPhones[email] = users[0].phone;
+            if (users[0]?.full_name) patientNames[email] = users[0].full_name;
           } catch (e) {}
         }
-        return Response.json({ assignments, recentLogs, patientPhones });
+        return Response.json({ assignments, recentLogs, patientPhones, patientNames });
       }
 
       // ── PatientDetail ─────────────────────────────────────────────

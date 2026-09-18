@@ -54,7 +54,8 @@ export default async function(req: Request): Promise<Response> {
         }
 
         const users = await base44.asServiceRole.entities.User.filter({ email: target_email });
-        return Response.json({ phone: users.length > 0 ? users[0].phone : null });
+        const u = users.length > 0 ? users[0] : null;
+        return Response.json({ phone: u?.phone || null, full_name: u?.full_name || null });
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
     }

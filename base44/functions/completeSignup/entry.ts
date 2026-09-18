@@ -36,8 +36,10 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.User.update(user.id, updateData);
     }
 
-    // Best-effort: register() ignores full_name and updateMe can't change it, so set it via service role.
-    if (full_name && !user.full_name) {
+    // Always set full_name from the registration form — the platform's register()
+    // call defaults full_name to the email prefix, so we must override it here
+    // with the real name the user entered.
+    if (full_name) {
       try {
         await base44.asServiceRole.entities.User.update(user.id, { full_name });
       } catch (e) {

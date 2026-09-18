@@ -15,6 +15,7 @@ export default function DoctorDashboard() {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
   const [patientLogs, setPatientLogs] = useState({});
+  const [patientNames, setPatientNames] = useState({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -35,16 +36,31 @@ export default function DoctorDashboard() {
 
   const loadData = async () => {
     const me = user;
-
     const isAdmin = me.role === "admin";
-    const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
-    const assignments = await base44.entities.PatientDoctorAssignment.filter(query);
+
+    // Use doctorApi getData (service role) so we get the real full_name from
+    // the User entity instead of the possibly-stale patient_name on the
+    // assignment record.
+    const adminToken = localStorage.getItem("admin_session_token");
+    let assignments, recentLogs, namesMap = {};
+    try {
+      const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getData" });
+      const data = res.data || res;
+      assignments = data.assignments || [];
+      recentLogs = data.recentLogs || [];
+      namesMap = data.patientNames || {};
+    } catch {
+      // Fallback to direct SDK calls if the function invoke fails
+      const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
+      assignments = await base44.entities.PatientDoctorAssignment.filter(query);
+      recentLogs = await base44.entities.DailyLog.list("-date", 200);
+    }
     setPatients(assignments);
+    setPatientNames(namesMap);
 
     // Load all recent logs in one batch query, then group by patient
     const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
     const patientEmails = new Set(assignments.map((a) => a.patient_email));
-    const recentLogs = await base44.entities.DailyLog.list("-date", 200);
     const logsMap = {};
     for (const log of recentLogs) {
       if (!patientEmails.has(log.patient_email)) continue;
@@ -80,8 +96,10 @@ export default function DoctorDashboard() {
     return Minus;
   };
 
+  const getPatientName = (p) => patientNames[p.patient_email] || p.patient_name || p.patient_email;
+
   const filteredPatients = patients.filter((p) =>
-    (p.patient_name || "").toLowerCase().includes(search.toLowerCase())
+    getPatientName(p).toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {
@@ -113,6 +131,7 @@ export default function DoctorDashboard() {
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
         patients={patients}
+        patientNames={patientNames}
         doctorEmail={user?.email}
       />
 
@@ -163,16 +182,16 @@ export default function DoctorDashboard() {
                 transition={{ delay: i * 0.05 }}
               >
                 <Link
-                  to={`/patient-detail?email=${encodeURIComponent(patient.patient_email)}&name=${encodeURIComponent(patient.patient_name || "")}`}
+                  to={`/patient-detail?email=${encodeURIComponent(patient.patient_email)}&name=${encodeURIComponent(getPatientName(patient))}`}
                   className="block bg-card rounded-xl border border-border p-4 hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                        {(patient.patient_name || "?")[0]?.toUpperCase()}
+                        {getPatientName(patient)[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{patient.patient_name || "Unknown"}</p>
+                        <p className="font-medium text-sm">{getPatientName(patient)}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <Badge variant="outline" className={`text-xs px-1.5 py-0 ${status.color}`}>
                             {status.label}

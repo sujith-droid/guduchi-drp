@@ -14,18 +14,21 @@ export default function ProfileSetup() {
   const navigate = useNavigate();
   const { user, loginWithToken } = useAuth(); // Need loginWithToken to update user in context
 
+  const [fullName, setFullName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
+      if (user.full_name) setFullName(user.full_name);
       if (user.age) setAge(String(user.age));
       if (user.gender) setGender(user.gender);
     }
   }, [user]);
 
   const handleSave = async () => {
+    if (!fullName.trim() || fullName.trim().length < 2) return toast.error("Please enter your full name.");
     if (!age || age < 1 || age > 120) return toast.error("Please enter a valid age.");
     if (!gender) return toast.error("Please select your gender.");
 
@@ -37,6 +40,7 @@ export default function ProfileSetup() {
       // client session token (phone-OTP login only has a dummy token).
       const res = await base44.functions.invoke("completeProfile", {
         email: user.email,
+        full_name: fullName.trim(),
         age: Number(age),
         gender,
         patient_id: patientId
@@ -77,6 +81,17 @@ export default function ProfileSetup() {
         </div>
 
         <div className="bg-white dark:bg-card dark:text-card-foreground p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-border space-y-4">
+          <div className="space-y-1.5 text-left">
+            <Label className="text-slate-700 dark:text-foreground">Full Name</Label>
+            <Input
+              type="text"
+              placeholder="e.g. John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="text-lg"
+            />
+          </div>
+
           <div className="space-y-1.5 text-left">
             <Label className="text-slate-700 dark:text-foreground">Age</Label>
             <Input

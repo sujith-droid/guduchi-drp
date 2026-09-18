@@ -26,6 +26,7 @@ import { Link } from "react-router-dom";
 
 export default function Profile() {
   const { user, logout } = useAuth();
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -38,6 +39,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return;
+    setFullName(user.full_name || "");
     setPhone(user.phone || "");
     setAge(user.age ? String(user.age) : "");
     setGender(user.gender || "");
@@ -107,6 +109,7 @@ export default function Profile() {
     try {
       await base44.functions.invoke("updateProfile", {
         email: user.email,
+        full_name: fullName.trim(),
         phone: phone.trim(),
         address: address.trim(),
         age: age ? Number(age) : undefined,
@@ -164,6 +167,17 @@ export default function Profile() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label>Full Name <span className="text-destructive">*</span></Label>
+            <Input
+              type="text"
+              placeholder="e.g., John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
           <div>
             <Label>Mobile Number <span className="text-destructive">*</span></Label>
             <Input
@@ -315,7 +329,7 @@ export default function Profile() {
                         {(a.doctor_name || a.doctor_email)[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Dr. {a.doctor_name || a.doctor_email}</p>
+                        <p className="text-sm font-medium">{a.doctor_name || a.doctor_email}</p>
                         <p className="text-xs text-muted-foreground">{a.doctor_email}</p>
                       </div>
                     </div>
