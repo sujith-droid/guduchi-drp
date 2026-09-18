@@ -8,7 +8,7 @@ import MobileSelect from "@/components/MobileSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, MessageSquareText } from "lucide-react";
+import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, MessageSquareText, Phone } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -276,7 +276,7 @@ export default function AdminPanel() {
                 <MobileSelect
                   value={selectedPatient}
                   onValueChange={setSelectedPatient}
-                  options={patients.map((p) => ({ value: p.email, label: p.full_name || p.email }))}
+                  options={patients.map((p) => ({ value: p.email, label: p.phone ? `${p.display_name || p.full_name || p.email} (${p.phone})` : (p.display_name || p.full_name || p.email) }))}
                   placeholder="Select patient..."
                   triggerClassName="mt-1"
                 />
@@ -346,6 +346,15 @@ export default function AdminPanel() {
                     <div>
                       <p className="text-sm font-medium">{a.patient_name || a.patient_email}</p>
                       <p className="text-xs text-muted-foreground">→ {a.doctor_name || a.doctor_email}</p>
+                      {(() => {
+                        const pt = users.find((u) => u.email === a.patient_email);
+                        const phone = pt?.phone;
+                        return phone ? (
+                          <a href={`tel:${phone}`} className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> {phone}
+                          </a>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -574,8 +583,13 @@ export default function AdminPanel() {
             {users.map((u) => (
               <div key={u.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium">{u.full_name || "Unnamed"}</p>
+                  <p className="text-sm font-medium">{u.display_name || u.full_name || "Unnamed"}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
+                  {u.phone && (
+                    <a href={`tel:${u.phone}`} className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> {u.phone}
+                    </a>
+                  )}
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Joined: {u.created_date ? new Date(u.created_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </p>
