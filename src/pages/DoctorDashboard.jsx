@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send } from "lucide-react";
+import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, Phone } from "lucide-react";
 import BulkMessageModal from "../components/BulkMessageModal";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ export default function DoctorDashboard() {
   const [patients, setPatients] = useState([]);
   const [patientLogs, setPatientLogs] = useState({});
   const [patientNames, setPatientNames] = useState({});
+  const [patientPhones, setPatientPhones] = useState({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -42,13 +43,14 @@ export default function DoctorDashboard() {
     // the User entity instead of the possibly-stale patient_name on the
     // assignment record.
     const adminToken = localStorage.getItem("admin_session_token");
-    let assignments, recentLogs, namesMap = {};
+    let assignments, recentLogs, namesMap = {}, phonesMap = {};
     try {
       const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getData" });
       const data = res.data || res;
       assignments = data.assignments || [];
       recentLogs = data.recentLogs || [];
       namesMap = data.patientNames || {};
+      phonesMap = data.patientPhones || {};
     } catch {
       // Fallback to direct SDK calls if the function invoke fails
       const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
@@ -57,6 +59,7 @@ export default function DoctorDashboard() {
     }
     setPatients(assignments);
     setPatientNames(namesMap);
+    setPatientPhones(phonesMap);
 
     // Load all recent logs in one batch query, then group by patient
     const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
@@ -191,19 +194,28 @@ export default function DoctorDashboard() {
                         {getPatientName(patient)[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{getPatientName(patient)}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="outline" className={`text-xs px-1.5 py-0 ${status.color}`}>
-                            {status.label}
-                          </Badge>
-                          {lastLog && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-2.5 w-2.5" />
-                              {moment(lastLog.date).fromNow()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                         <p className="font-medium text-sm">{getPatientName(patient)}</p>
+                         <div className="flex items-center gap-2 mt-0.5">
+                           <Badge variant="outline" className={`text-xs px-1.5 py-0 ${status.color}`}>
+                             {status.label}
+                           </Badge>
+                           {lastLog && (
+                             <span className="text-xs text-muted-foreground flex items-center gap-1">
+                               <Clock className="h-2.5 w-2.5" />
+                               {moment(lastLog.date).fromNow()}
+                             </span>
+                           )}
+                         </div>
+                         {patientPhones[patient.patient_email] && (
+                           <a
+                             href={`tel:${patientPhones[patient.patient_email]}`}
+                             onClick={(e) => e.stopPropagation()}
+                             className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1"
+                           >
+                             <Phone className="h-3 w-3" /> {patientPhones[patient.patient_email]}
+                           </a>
+                         )}
+                       </div>
                     </div>
                     {lastLog?.fasting_sugar && (
                       <div className="text-right">
