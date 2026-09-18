@@ -453,7 +453,7 @@ export default function AdminPanel() {
                       onChange={() => toggleOnboardingDoctor(d.email)}
                       className="h-4 w-4 rounded border-input"
                     />
-                    <span className="text-sm">{d.full_name ? `${d.full_name} (${d.email})` : d.email}</span>
+                    <span className="text-sm">{(d.display_name || d.full_name) ? `${d.display_name || d.full_name} (${d.email})` : d.email}</span>
                   </label>
                 ))}
               </div>
@@ -542,7 +542,7 @@ export default function AdminPanel() {
                 if (docMessages.length === 0) return null;
                 return (
                   <div key={doc.id} className="space-y-2">
-                    <p className="text-sm font-medium text-primary">{doc.full_name || doc.email}</p>
+                    <p className="text-sm font-medium text-primary">{doc.display_name || doc.full_name || doc.email}</p>
                     {docMessages.map((m) => (
                       <div key={m.id} className="flex items-start justify-between p-3 bg-muted/50 rounded-lg gap-3">
                         <div className="flex-1 min-w-0">
