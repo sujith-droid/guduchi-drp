@@ -101,9 +101,12 @@ export default function DoctorDashboard() {
 
   const getPatientName = (p) => patientNames[p.patient_email] || p.patient_name || p.patient_email;
 
-  const filteredPatients = patients.filter((p) =>
-    getPatientName(p).toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPatients = patients.filter((p) => {
+    const q = search.toLowerCase();
+    const name = getPatientName(p).toLowerCase();
+    const phone = (patientPhones[p.patient_email] || "").toLowerCase();
+    return name.includes(q) || phone.includes(q);
+  });
 
   if (loading) {
     return (
