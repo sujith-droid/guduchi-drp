@@ -427,7 +427,7 @@ export default function AdminPanel() {
               <MobileSelect
                 value={onboardingDoctor}
                 onValueChange={setOnboardingDoctor}
-                options={doctors.map((d) => ({ value: d.email, label: d.full_name || d.email }))}
+                options={doctors.map((d) => ({ value: d.email, label: d.full_name ? `${d.full_name} (${d.email})` : d.email }))}
                 placeholder="Select Health Coach..."
                 triggerClassName="mt-1"
               />
