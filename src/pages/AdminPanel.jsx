@@ -8,7 +8,7 @@ import MobileSelect from "@/components/MobileSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, MessageSquareText, Phone } from "lucide-react";
+import { Shield, Users, UserPlus, Link2, Trash2, FileText, Plus, MessageSquareText, Phone, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -33,6 +33,7 @@ export default function AdminPanel() {
   const [onboardingContent, setOnboardingContent] = useState("");
   const [onboardingSequence, setOnboardingSequence] = useState(1);
   const [savingOnboarding, setSavingOnboarding] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
 
   const toggleOnboardingDoctor = (email) => {
     setOnboardingDoctors((prev) =>
@@ -76,6 +77,18 @@ export default function AdminPanel() {
 
   const doctors = users.filter((u) => u.role === "doctor" || isViewerRole(u.role)).map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
   const patients = users.filter((u) => isPatientRole(u.role));
+
+  const filteredUsers = userSearch.trim()
+    ? users.filter((u) => {
+        const q = userSearch.toLowerCase().trim();
+        return (
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.full_name || "").toLowerCase().includes(q) ||
+          (u.display_name || "").toLowerCase().includes(q) ||
+          (u.phone || "").toLowerCase().includes(q)
+        );
+      })
+    : users;
 
   const assignPatient = async () => {
     if (!selectedPatient || !selectedDoctor) return;
@@ -579,8 +592,20 @@ export default function AdminPanel() {
           <CardTitle className="text-base">All Users — Manage Roles</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {filteredUsers.length === 0 && userSearch.trim() ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No users match "{userSearch}"</p>
+          ) : (
           <div className="space-y-2">
-            {users.map((u) => (
+            {filteredUsers.map((u) => (
               <div key={u.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium">{u.display_name || u.full_name || "Unnamed"}</p>
@@ -620,12 +645,13 @@ export default function AdminPanel() {
                 </div>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-      )}
+            </div>
+            )}
+            </CardContent>
+            </Card>
+            )}
 
-      {/* Delete User Confirmation — full admin only */}
+            {/* Delete User Confirmation — full admin only */}
       {isFullAdmin && (
       <AlertDialog open={!!deleteUserId} onOpenChange={(open) => { if (!open) { setDeleteUserId(null); setDeleteUserName(""); } }}>
         <AlertDialogContent>
