@@ -8,7 +8,7 @@ import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { appParams } from "@/lib/app-params";
-import { isPatientRole, isAdminRole } from "@/lib/roles";
+import { isPatientRole, isAdminRole, isViewerRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
@@ -75,7 +75,7 @@ export default function Chat() {
   const initChat = async () => {
     try {
       await loadConversations(user);
-      if (user.role === 'doctor') {
+      if (user.role === 'doctor' || isViewerRole(user.role)) {
         try {
           const adminToken = localStorage.getItem("admin_session_token");
           const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getTemplates" });
@@ -451,7 +451,7 @@ export default function Chat() {
         {conversations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-sm">No conversations yet.</p>
-            <p className="text-xs mt-1">You'll be able to chat once assigned to a {user?.role === "doctor" ? "patient" : "Health Coach"}.</p>
+            <p className="text-xs mt-1">You'll be able to chat once assigned to a {(user?.role === "doctor" || isViewerRole(user?.role)) ? "patient" : "Health Coach"}.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -509,7 +509,7 @@ export default function Chat() {
         <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{chatPartner?.name || "Chat"}</p>
         <p className="text-xs text-muted-foreground">
-          {isAdminRole(user.role) ? "Admin (read-only)" : !isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
+         {isAdminRole(user.role) ? "Admin (read-only)" : isViewerRole(user.role) ? "Doctor" : !isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
         </p>
         </div>
         {partnerPhone ? (
@@ -697,7 +697,7 @@ export default function Chat() {
             <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
               <Paperclip className="h-5 w-5" />
             </Button>
-            {user?.role === 'doctor' && (
+            {(user?.role === 'doctor' || isViewerRole(user?.role)) && (
               <Button variant="ghost" size="icon" aria-label="Message templates" onClick={() => setShowTemplates((v) => !v)} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
                 <LayoutTemplate className="h-5 w-5" />
               </Button>

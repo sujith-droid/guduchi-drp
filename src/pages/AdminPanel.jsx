@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
-import { isPatientRole, isAdminRole, isSubadminRole, isAdminOrSubadmin } from "@/lib/roles";
+import { isPatientRole, isAdminRole, isSubadminRole, isAdminOrSubadmin, isViewerRole } from "@/lib/roles";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -74,7 +74,7 @@ export default function AdminPanel() {
     }
   };
 
-  const doctors = users.filter((u) => u.role === "doctor").map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
+  const doctors = users.filter((u) => u.role === "doctor" || isViewerRole(u.role)).map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
   const patients = users.filter((u) => isPatientRole(u.role));
 
   const assignPatient = async () => {
@@ -596,11 +596,12 @@ export default function AdminPanel() {
                 </div>
                 <div className="flex items-center gap-2">
                   <MobileSelect
-                    value={isPatientRole(u.role) ? "patient" : u.role}
+                    value={isPatientRole(u.role) ? "patient" : (isViewerRole(u.role) ? "viewer" : u.role)}
                     onValueChange={(val) => changeUserRole(u.id, val)}
                     options={[
                       { value: "patient", label: "Patient" },
                       { value: "doctor", label: "Health Coach" },
+                      { value: "viewer", label: "Doctor" },
                       { value: "subadmin", label: "Subadmin" },
                       { value: "admin", label: "Admin" },
                     ]}

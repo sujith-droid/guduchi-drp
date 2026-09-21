@@ -61,6 +61,11 @@ const AuthenticatedApp = () => {
     return <Navigate to="/login" replace />;
   }
 
+  // Redirect viewer role (Doctor) to the patient dashboard instead of the home page
+  if (user && user.role === "viewer" && location.pathname === "/") {
+    return <Navigate to="/doctor" replace />;
+  }
+
   // Redirect to setup if profile is not complete (explicitly false, not null —
   // protects existing users who never had profile_complete set from being
   // forced through setup). They are not already on login/signup/setup.

@@ -22,7 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
-import { roleDisplayLabel, isSubadminRole } from "@/lib/roles";
+import { roleDisplayLabel, isSubadminRole, isViewerRole } from "@/lib/roles";
 
 const patientNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -38,6 +38,11 @@ const doctorNav = [
 { path: "/doctor", label: "Patients", icon: Users },
 { path: "/chat", label: "Messages", icon: MessageCircle },
 { path: "/notifications", label: "Alerts", icon: Bell },
+{ path: "/profile", label: "Profile", icon: UserCircle }];
+
+const viewerNav = [
+{ path: "/doctor", label: "Patients", icon: Users },
+{ path: "/chat", label: "Messages", icon: MessageCircle },
 { path: "/profile", label: "Profile", icon: UserCircle }];
 
 
@@ -108,6 +113,7 @@ export default function Layout() {
     if (!user) return patientNav;
     if (user.role === "admin") return adminNav;
     if (isSubadminRole(user.role)) return subadminNav;
+    if (isViewerRole(user.role)) return viewerNav;
     if (user.role === "doctor") return doctorNav;
     return patientNav;
   };

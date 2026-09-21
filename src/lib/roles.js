@@ -14,12 +14,17 @@ export function isSubadminRole(role) {
   return role === "subadmin";
 }
 
+export function isViewerRole(role) {
+  return role === "viewer";
+}
+
 export function isAdminOrSubadmin(role) {
   return role === "admin" || role === "subadmin";
 }
 
 export function roleDisplayLabel(role) {
   if (role === "doctor") return "Health Coach";
+  if (role === "viewer") return "Doctor";
   if (role === "admin") return "Admin";
   if (role === "subadmin") return "Subadmin";
   return "Patient"; // "patient" and "user" both display as "Patient"
