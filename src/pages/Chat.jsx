@@ -184,9 +184,9 @@ export default function Chat() {
     if (match) {
       setChatPartner(
         isAdminRole(user.role)
-          ? { name: `${match.patient_name} ↔ ${match.doctor_name}`, email: match.patient_email, patientEmail: match.patient_email, doctorEmail: match.doctor_email, patientName: match.patient_name, doctorName: match.doctor_name }
+          ? { name: `${match.patient_name} ↔ ${match.doctor_name}`, email: match.patient_email, patientEmail: match.patient_email, doctorEmail: match.doctor_email, patientName: match.patient_name, doctorName: match.doctor_name, patientId: match.patient_id }
           : !isPatientRole(user.role)
-          ? { name: match.patient_name, email: match.patient_email }
+          ? { name: match.patient_name, email: match.patient_email, patientId: match.patient_id }
           : { name: match.doctor_name, email: match.doctor_email }
       );
     }
@@ -488,6 +488,9 @@ export default function Chat() {
         <p className="text-xs text-muted-foreground">
          {isAdminRole(user.role) ? "Admin (read-only)" : isViewerRole(user.role) ? "Doctor" : !isPatientRole(user.role) ? "Patient" : "Your Health Coach"}
         </p>
+        {chatPartner?.patientId && (
+          <p className="text-xs text-primary font-medium">ID: {chatPartner.patientId}</p>
+        )}
         </div>
         {partnerPhone ? (
           <a href={`tel:${partnerPhone}`}>
