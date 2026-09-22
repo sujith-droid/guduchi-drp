@@ -7,10 +7,13 @@ export default async function(req: Request): Promise<Response> {
     const { adminToken, conversationId } = await req.json();
     await validateAdminToken(base44, adminToken);
 
-    const [allMessages, allAssignments] = await Promise.all([
+    const [allMessages, allAssignments, allUsers] = await Promise.all([
       base44.asServiceRole.entities.ChatMessage.list('-created_date', 500),
       base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }),
+      base44.asServiceRole.entities.User.list('-created_date', 500),
     ]);
+    const userMap = {};
+    for (const u of allUsers) { userMap[u.email] = u; }
 
     // If a specific conversation is requested, return its messages directly
     if (conversationId) {
@@ -33,13 +36,15 @@ export default async function(req: Request): Promise<Response> {
       const assignment = allAssignments.find(a =>
         [a.patient_email, a.doctor_email].sort().join('_') === cid
       );
+      const patientEmail = assignment?.patient_email || latest.sender_email || cid.split('_')[0];
+      const doctorEmail = assignment?.doctor_email || latest.receiver_email || cid.split('_')[1];
       return {
         id: cid,
         conversation_id: cid,
-        patient_email: assignment?.patient_email || latest.sender_email || cid.split('_')[0],
-        doctor_email: assignment?.doctor_email || latest.receiver_email || cid.split('_')[1],
-        patient_name: assignment?.patient_name || assignment?.patient_email || cid.split('_')[0],
-        doctor_name: assignment?.doctor_name || assignment?.doctor_email || cid.split('_')[1],
+        patient_email: patientEmail,
+        doctor_email: doctorEmail,
+        patient_name: userMap[patientEmail]?.display_name || userMap[patientEmail]?.full_name || assignment?.patient_name || patientEmail || cid.split('_')[0],
+        doctor_name: userMap[doctorEmail]?.display_name || userMap[doctorEmail]?.full_name || assignment?.doctor_name || doctorEmail || cid.split('_')[1],
         latest_message: latest.message || (latest.audio_url ? '🎤 Voice message' : latest.image_url ? '📷 Photo' : ''),
         latest_time: latest.created_date || null,
       };
