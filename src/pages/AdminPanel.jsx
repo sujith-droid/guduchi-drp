@@ -94,11 +94,16 @@ export default function AdminPanel() {
     }
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", {
+      const res = await base44.functions.invoke("adminAction", {
         adminToken, action: "assign",
         patientEmail: selectedPatient, doctorEmail: selectedDoctor,
       });
-      toast.success("Patient assigned to Health Coach!");
+      const data = res.data || res;
+      if (data?.warning) {
+        toast.warning(data.warning);
+      } else {
+        toast.success("Patient assigned to Health Coach!");
+      }
     } catch (e) {
       toast.error(e?.response?.data?.error || e?.message || "Failed to assign.");
       return;

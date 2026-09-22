@@ -57,6 +57,8 @@ export default async function(req: Request): Promise<Response> {
           type: 'info',
         });
         // Send immediate batch of onboarding messages from the Health Coach to the patient
+        // Retries internally; if all retries fail, admins get a notification and the
+        // error is surfaced in the response so the admin sees it.
         try {
           await sendOnboardingMessages(
             base44,
@@ -66,8 +68,10 @@ export default async function(req: Request): Promise<Response> {
             doctorDisplayName
           );
         } catch (e) {
-          // Non-fatal: assignment succeeded even if messages fail
-          console.error('Failed to send onboarding messages:', e);
+          return Response.json({
+            success: true,
+            warning: `Patient assigned, but onboarding messages could not be sent. Please send them manually from the chat.`,
+          });
         }
         return Response.json({ success: true });
       }

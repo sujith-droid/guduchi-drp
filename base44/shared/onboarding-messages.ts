@@ -59,15 +59,42 @@ export async function sendOnboardingMessages(
     personalizeMessage(template, patientName, doctorName)
   );
 
-  await base44.asServiceRole.entities.ChatMessage.bulkCreate(
-    messages.map((message) => ({
-      sender_email: doctorEmail,
-      receiver_email: patientEmail,
-      conversation_id: convId,
-      message,
-      message_type: "text",
-    }))
-  );
+  // Retry bulkCreate up to 3 times to handle transient errors
+  let lastError: any;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await base44.asServiceRole.entities.ChatMessage.bulkCreate(
+        messages.map((message) => ({
+          sender_email: doctorEmail,
+          receiver_email: patientEmail,
+          conversation_id: convId,
+          message,
+          message_type: "text",
+        }))
+      );
+      return messages.length;
+    } catch (e) {
+      lastError = e;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
 
-  return messages.length;
+  // All retries failed — notify admins so they can manually retry
+  try {
+    const adminUsers = await base44.asServiceRole.entities.User.filter({ role: "admin" });
+    const adminEmails = adminUsers.map((u: any) => u.email).filter(Boolean);
+    await base44.asServiceRole.entities.Notification.bulkCreate(
+      adminEmails.map((email: string) => ({
+        user_email: email,
+        title: "Onboarding messages failed",
+        message: `Onboarding messages failed to send to ${patientName} (${patientEmail}) from ${doctorName}. Please assign them again or send manually.`,
+        type: "alert",
+        related_patient_email: patientEmail,
+      }))
+    );
+  } catch {
+    // If even the notification fails, log it — nothing more we can do
+    console.error("Failed to send onboarding messages and admin notification:", lastError);
+  }
+  throw lastError;
 }
