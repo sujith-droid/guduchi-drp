@@ -17,7 +17,8 @@ import {
   Shield,
   Stethoscope,
   UserCircle,
-  ArrowLeft } from
+  ArrowLeft,
+  MessageSquare } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ const viewerNav = [
 
 const adminNav = [
 { path: "/admin", label: "Admin", icon: Shield },
+{ path: "/onboarding-messages", label: "Onboarding", icon: MessageSquare },
 { path: "/doctor", label: "Patients", icon: Users },
 { path: "/notifications", label: "Alerts", icon: Bell },
 { path: "/profile", label: "Profile", icon: UserCircle }];
