@@ -131,6 +131,7 @@ export default function Chat() {
           patient_email: a.patient_email,
           doctor_email: a.doctor_email,
           patient_name: a.patient_name || a.patient_email,
+          patient_id: a.patient_id || null,
           latest_message: latest ? (latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : "")) : null,
           latest_time: latest ? latest.created_date : null,
         };
@@ -445,7 +446,7 @@ export default function Chat() {
                   <p className="font-medium text-sm truncate">
                     {isAdminRole(user.role) ? `${a.patient_name} ↔ ${a.doctor_name}` : doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
-                  {isAdminRole(user.role) && a.patient_id && (
+                  {(isAdminRole(user.role) || !isPatientRole(user.role)) && a.patient_id && (
                     <p className="text-xs text-primary font-medium">ID: {a.patient_id}</p>
                   )}
                   <p className="text-xs text-muted-foreground truncate">
