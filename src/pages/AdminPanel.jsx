@@ -30,6 +30,7 @@ export default function AdminPanel() {
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [deleteUserName, setDeleteUserName] = useState("");
   const [userSearch, setUserSearch] = useState("");
+  const [selectedCoachFilter, setSelectedCoachFilter] = useState("");
 
   const { user: currentUser } = useAuth();
 
@@ -438,6 +439,65 @@ export default function AdminPanel() {
         </CardContent>
       </Card>
       )}
+
+      {/* Coach-wise Patients List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> Patients by Health Coach
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>Select Health Coach</Label>
+            <MobileSelect
+              value={selectedCoachFilter}
+              onValueChange={setSelectedCoachFilter}
+              options={doctors.map((d) => ({ value: d.email, label: d.display_name || d.full_name || d.email }))}
+              placeholder="All Health Coaches"
+              triggerClassName="mt-1"
+            />
+          </div>
+          {(() => {
+            const coachPatients = selectedCoachFilter
+              ? assignments.filter((a) => a.doctor_email === selectedCoachFilter)
+              : assignments;
+            if (coachPatients.length === 0) {
+              return <p className="text-sm text-muted-foreground text-center py-6">{selectedCoachFilter ? "No patients assigned to this Health Coach." : "No assignments yet."}</p>;
+            }
+            return (
+              <div className="space-y-2">
+                {coachPatients.map((a, i) => (
+                  <motion.div
+                    key={a.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{a.patient_name || a.patient_email}</p>
+                      <p className="text-xs text-muted-foreground">{a.patient_email}</p>
+                      {(() => {
+                        const pt = users.find((u) => u.email === a.patient_email);
+                        const phone = pt?.phone;
+                        return phone ? (
+                          <a href={`tel:${phone}`} className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1">
+                            <Phone className="h-3 w-3" /> {phone}
+                          </a>
+                        ) : null;
+                      })()}
+                    </div>
+                    {!selectedCoachFilter && (
+                      <p className="text-xs text-muted-foreground">→ {a.doctor_name || a.doctor_email}</p>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {/* Onboarding Messages link — full admin only */}
       {isFullAdmin && (
