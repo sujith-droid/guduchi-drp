@@ -38,6 +38,7 @@ export default function Chat() {
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
 
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
@@ -216,6 +217,7 @@ export default function Chat() {
 
   const loadMessages = async () => {
     if (!activeConvId) return;
+    setMessagesLoading(true);
     try {
       let msgs;
       if (user && isAdminRole(user.role)) {
@@ -237,6 +239,8 @@ export default function Chat() {
       }
     } catch {
       // Silently ignore transient network errors during polling
+    } finally {
+      setMessagesLoading(false);
     }
   };
 
@@ -512,9 +516,14 @@ export default function Chat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 space-y-3 chat-messages-scroll">
-        {messages.length === 0 && (
+        {messages.length === 0 && !messagesLoading && (
           <div className="text-center py-12 text-muted-foreground text-sm">
             Start the conversation by sending a message.
+          </div>
+        )}
+        {messages.length === 0 && messagesLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-6 h-6 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
           </div>
         )}
         {messages.map((msg, idx) => {
