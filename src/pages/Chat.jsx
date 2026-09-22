@@ -109,11 +109,6 @@ export default function Chat() {
           convMap[cid] = m;
         }
       }
-      // Include assigned pairs that have no messages yet
-      for (const a of allAssignments) {
-        const cid = [a.patient_email, a.doctor_email].sort().join("_");
-        if (!convMap[cid]) convMap[cid] = { created_date: null };
-      }
 
       const convList = Object.entries(convMap).map(([cid, latest]) => {
         const assignment = allAssignments.find(a =>
