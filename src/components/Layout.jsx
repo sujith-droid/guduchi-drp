@@ -51,6 +51,7 @@ const adminNav = [
 { path: "/admin", label: "Admin", icon: Shield },
 { path: "/onboarding-messages", label: "Onboarding", icon: MessageSquare },
 { path: "/coach-patients", label: "Patients", icon: Users },
+{ path: "/chat", label: "Messages", icon: MessageCircle },
 { path: "/notifications", label: "Alerts", icon: Bell },
 { path: "/profile", label: "Profile", icon: UserCircle }];
 
