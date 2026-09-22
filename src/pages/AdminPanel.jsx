@@ -77,6 +77,7 @@ export default function AdminPanel() {
 
   const doctors = users.filter((u) => u.role === "doctor" || isViewerRole(u.role)).map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
   const patients = users.filter((u) => isPatientRole(u.role));
+  const unassignedPatients = patients.filter((p) => !assignments.some((a) => a.patient_email === p.email));
 
   const filteredUsers = userSearch.trim()
     ? users.filter((u) => {
@@ -336,6 +337,52 @@ export default function AdminPanel() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Unassigned Patients */}
+      {unassignedPatients.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-primary" /> Unassigned Patients ({unassignedPatients.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {unassignedPatients.map((p, i) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+              >
+                <div>
+                  <p className="text-sm font-medium">{p.display_name || p.full_name || p.email}</p>
+                  <p className="text-xs text-muted-foreground">{p.email}</p>
+                  {p.phone && (
+                    <a href={`tel:${p.phone}`} className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> {p.phone}
+                    </a>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  aria-label={`Assign ${p.display_name || p.full_name || p.email} to a Health Coach`}
+                  onClick={() => {
+                    setSelectedPatient(p.email);
+                    setSelectedDoctor("");
+                    setAssignDialog(true);
+                  }}
+                >
+                  <Link2 className="h-4 w-4" /> Assign
+                </Button>
+              </motion.div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      )}
 
       {/* Assignments */}
       <Card>
