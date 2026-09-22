@@ -410,7 +410,10 @@ export default function Chat() {
     loadMessages();
   };
 
-  if (loading) {
+  // Only show full-page loading spinner for the conversation list when it's
+  // truly empty (initial mount). When returning to an active conversation,
+  // render the chat view immediately so messages don't vanish behind a spinner.
+  if (loading && !activeConvId && conversations.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
