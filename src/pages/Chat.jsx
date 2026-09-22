@@ -102,6 +102,7 @@ export default function Chat() {
       const adminToken = localStorage.getItem("admin_session_token");
       const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
       const data = res.data || res;
+      if (data.error) throw new Error(data.error);
       setConversations(data.conversations || []);
       return;
     }
@@ -221,6 +222,7 @@ export default function Chat() {
         const adminToken = localStorage.getItem("admin_session_token");
         const res = await base44.functions.invoke("adminGetChatConversations", { adminToken, conversationId: activeConvId });
         const data = res.data || res;
+        if (data.error) throw new Error(data.error);
         msgs = data.messages || [];
       } else {
         msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
