@@ -96,43 +96,13 @@ export default function Chat() {
     const admin = isAdminRole(me.role);
 
     if (admin) {
-      // Admin: load ALL patient–health coach conversations
-      const [allMessages, allAssignments] = await Promise.all([
-        base44.entities.ChatMessage.list("-created_date", 500),
-        base44.entities.PatientDoctorAssignment.filter({ status: "active" }),
-      ]);
-
-      const convMap = {};
-      for (const m of allMessages) {
-        const cid = m.conversation_id;
-        if (!convMap[cid] || new Date(m.created_date) > new Date(convMap[cid].created_date)) {
-          convMap[cid] = m;
-        }
-      }
-
-      const convList = Object.entries(convMap).map(([cid, latest]) => {
-        const assignment = allAssignments.find(a =>
-          [a.patient_email, a.doctor_email].sort().join("_") === cid
-        );
-        return {
-          id: cid,
-          conversation_id: cid,
-          patient_email: assignment?.patient_email || cid.split("_")[0],
-          doctor_email: assignment?.doctor_email || cid.split("_")[1],
-          patient_name: assignment?.patient_name || assignment?.patient_email || cid.split("_")[0],
-          doctor_name: assignment?.doctor_name || assignment?.doctor_email || cid.split("_")[1],
-          latest_message: latest?.created_date ? (latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : "")) : null,
-          latest_time: latest?.created_date || null,
-        };
-      });
-
-      convList.sort((a, b) => {
-        if (!a.latest_time && !b.latest_time) return a.patient_name.localeCompare(b.patient_name);
-        if (!a.latest_time) return 1;
-        if (!b.latest_time) return -1;
-        return new Date(b.latest_time) - new Date(a.latest_time);
-      });
-      setConversations(convList);
+      // Admin: load ALL patient–health coach conversations via backend
+      // (admin session token is a UUID, not a platform token — SDK calls
+      // from the frontend get 401, so we go through a service-role function)
+      const adminToken = localStorage.getItem("admin_session_token");
+      const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
+      const data = res.data || res;
+      setConversations(data.conversations || []);
       return;
     }
 
@@ -245,7 +215,15 @@ export default function Chat() {
   const loadMessages = async () => {
     if (!activeConvId) return;
     try {
-      const msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
+      let msgs;
+      if (user && isAdminRole(user.role)) {
+        const adminToken = localStorage.getItem("admin_session_token");
+        const res = await base44.functions.invoke("adminGetChatConversations", { adminToken, conversationId: activeConvId });
+        const data = res.data || res;
+        msgs = data.messages || [];
+      } else {
+        msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
+      }
       setMessages(msgs);
       // Mark incoming messages as read (admins are read-only observers)
       if (user && !isAdminRole(user.role)) {
