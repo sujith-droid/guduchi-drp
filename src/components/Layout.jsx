@@ -50,7 +50,7 @@ const viewerNav = [
 const adminNav = [
 { path: "/admin", label: "Admin", icon: Shield },
 { path: "/onboarding-messages", label: "Onboarding", icon: MessageSquare },
-{ path: "/doctor", label: "Patients", icon: Users },
+{ path: "/coach-patients", label: "Patients", icon: Users },
 { path: "/notifications", label: "Alerts", icon: Bell },
 { path: "/profile", label: "Profile", icon: UserCircle }];
 
