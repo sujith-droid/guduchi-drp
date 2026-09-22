@@ -45,6 +45,7 @@ export default async function(req: Request): Promise<Response> {
         doctor_email: doctorEmail,
         patient_name: userMap[patientEmail]?.display_name || userMap[patientEmail]?.full_name || assignment?.patient_name || patientEmail || cid.split('_')[0],
         doctor_name: userMap[doctorEmail]?.display_name || userMap[doctorEmail]?.full_name || assignment?.doctor_name || doctorEmail || cid.split('_')[1],
+        patient_id: assignment?.patient_id || null,
         latest_message: latest.message || (latest.audio_url ? '🎤 Voice message' : latest.image_url ? '📷 Photo' : ''),
         latest_time: latest.created_date || null,
       };

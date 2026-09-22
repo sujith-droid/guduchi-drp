@@ -445,6 +445,9 @@ export default function Chat() {
                   <p className="font-medium text-sm truncate">
                     {isAdminRole(user.role) ? `${a.patient_name} ↔ ${a.doctor_name}` : doctorSide ? a.patient_name : a.doctor_name || "Doctor"}
                   </p>
+                  {isAdminRole(user.role) && a.patient_id && (
+                    <p className="text-xs text-primary font-medium">ID: {a.patient_id}</p>
+                  )}
                   <p className="text-xs text-muted-foreground truncate">
                     {isAdminRole(user.role) ? (a.latest_message || "No messages yet") : doctorSide ? (a.latest_message || "Tap to open chat") : "Your Health Coach"}
                   </p>
