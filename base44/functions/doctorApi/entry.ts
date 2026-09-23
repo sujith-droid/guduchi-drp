@@ -172,6 +172,26 @@ export default async function(req: Request): Promise<Response> {
         return Response.json({ templates });
       }
 
+      case 'deleteMessage': {
+        const { messageId } = payload;
+        if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
+        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
+        if (msgs[0].sender_email !== doctorEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
+        await base44.asServiceRole.entities.ChatMessage.delete(messageId);
+        return Response.json({ success: true });
+      }
+
+      case 'editMessage': {
+        const { messageId, message: newMessage } = payload;
+        if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
+        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
+        if (msgs[0].sender_email !== doctorEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
+        await base44.asServiceRole.entities.ChatMessage.update(messageId, { message: newMessage });
+        return Response.json({ success: true });
+      }
+
       case 'logout': {
         const sessions = await base44.asServiceRole.entities.AdminSession.filter({ token: adminToken });
         if (sessions[0]) {

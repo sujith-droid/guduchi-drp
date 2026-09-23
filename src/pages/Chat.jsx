@@ -43,6 +43,18 @@ export default function Chat() {
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
 
+  // Route chat operations through backend functions for mobile-OTP users.
+  // Direct SDK entity calls fail with 401 because the AdminSession UUID
+  // is not a valid Base44 platform token.
+  const chatApi = async (action, payload = {}) => {
+    const adminToken = localStorage.getItem("admin_session_token");
+    const fnName = isPatientRole(user?.role) ? "patientApi" : "doctorApi";
+    const res = await base44.functions.invoke(fnName, { adminToken, action, ...payload });
+    const data = res.data || res;
+    if (data.error) throw new Error(data.error);
+    return data;
+  };
+
   useEffect(() => {
     if (user) initChat();
   }, [user]);
@@ -115,24 +127,9 @@ export default function Chat() {
     }
 
     if (doctorSide) {
-      // Doctors: list all assigned patients, with latest message preview if any
-      const [sent, received] = await Promise.all([
-        base44.entities.ChatMessage.filter({ sender_email: me.email }, "-created_date", 500),
-        base44.entities.ChatMessage.filter({ receiver_email: me.email }, "-created_date", 500),
-      ]);
-      const assignments = await base44.entities.PatientDoctorAssignment.filter({ doctor_email: me.email, status: "active" });
-
-      const msgMap = {};
-      for (const m of [...sent, ...received]) {
-        const cid = m.conversation_id;
-        if (!msgMap[cid] || new Date(m.created_date) > new Date(msgMap[cid].created_date)) {
-          msgMap[cid] = m;
-        }
-      }
-
-      const convList = assignments.map((a) => {
+      const data = await chatApi("getConversations");
+      const convList = (data.assignments || []).map((a) => {
         const cid = [a.patient_email, a.doctor_email].sort().join("_");
-        const latest = msgMap[cid];
         return {
           id: cid,
           conversation_id: cid,
@@ -140,43 +137,22 @@ export default function Chat() {
           doctor_email: a.doctor_email,
           patient_name: a.patient_name || a.patient_email,
           patient_id: a.patient_id || null,
-          latest_message: latest ? (latest.message || (latest.audio_url ? "🎤 Voice message" : latest.image_url ? "📷 Photo" : "")) : null,
-          latest_time: latest ? latest.created_date : null,
+          latest_message: a.last_message || null,
+          latest_time: a.last_message_date || null,
         };
       });
-      convList.sort((a, b) => {
-        if (!a.latest_time && !b.latest_time) return a.patient_name.localeCompare(b.patient_name);
-        if (!a.latest_time) return 1;
-        if (!b.latest_time) return -1;
-        return new Date(b.latest_time) - new Date(a.latest_time);
-      });
       setConversations(convList);
-
-      const map = {};
-      for (const m of received) {
-        if (!m.is_read) map[m.conversation_id] = (map[m.conversation_id] || 0) + 1;
-      }
-      setUnreadMap(map);
+      setUnreadMap(data.unreadMap || {});
       return;
     }
 
     // Patient flow — list assigned doctors
-    const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: 'active' });
-    setConversations(assignments);
-    let allUnread = [];
-    try {
-      allUnread = await base44.entities.ChatMessage.filter({ receiver_email: me.email, is_read: false });
-    } catch (e) {
-      console.error("Failed to load unread messages", e);
-    }
-    const map = {};
-    for (const m of allUnread) {
-      map[m.conversation_id] = (map[m.conversation_id] || 0) + 1;
-    }
-    setUnreadMap(map);
+    const data = await chatApi("getConversations");
+    setConversations(data.conversations || []);
+    setUnreadMap(data.unreadMap || {});
 
-    if (!convIdParam && assignments.length === 1) {
-      const a = assignments[0];
+    if (!convIdParam && (data.conversations || []).length === 1) {
+      const a = data.conversations[0];
       const cId = [a.patient_email, a.doctor_email].sort().join("_");
       navigate(`/chat/${encodeURIComponent(cId)}`, { replace: true });
     }
@@ -233,7 +209,8 @@ export default function Chat() {
         if (data.error) throw new Error(data.error);
         msgs = data.messages || [];
       } else {
-        msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
+        const data = await chatApi("getMessages", { conversationId: activeConvId });
+        msgs = data.messages || [];
       }
       // Merge server messages with any pending optimistic messages that
       // haven't been confirmed by the server yet (prevents race condition
@@ -246,8 +223,8 @@ export default function Chat() {
       // Mark incoming messages as read (admins are read-only observers)
       if (user && !isAdminRole(user.role)) {
         const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
-        for (const m of unread) {
-          await base44.entities.ChatMessage.update(m.id, { is_read: true });
+        if (unread.length > 0) {
+          await chatApi("markRead", { messageIds: unread.map(m => m.id) });
         }
       }
     } catch {
@@ -259,7 +236,7 @@ export default function Chat() {
 
   const deleteMessage = async (msg) => {
     try {
-      await base44.entities.ChatMessage.delete(msg.id);
+      await chatApi("deleteMessage", { messageId: msg.id });
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     } catch (e) {
       console.error("Failed to delete message", e);
@@ -280,7 +257,7 @@ export default function Chat() {
     if (!editText.trim()) return;
     setSavingEdit(true);
     try {
-      await base44.entities.ChatMessage.update(msg.id, { message: editText.trim() });
+      await chatApi("editMessage", { messageId: msg.id, message: editText.trim() });
       setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, message: editText.trim() } : m));
       cancelEdit();
     } catch (e) {
@@ -313,26 +290,32 @@ export default function Chat() {
     setSending(true);
 
     try {
-      const msgData = {
+      const messageType = imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text";
+      // Optimistic update — show message instantly
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMsg = {
         sender_email: user.email,
         receiver_email: chatPartner.email,
         conversation_id: activeConvId,
         message: newMsg.trim() || undefined,
-        message_type: imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text",
+        image_url: imageUrl,
+        message_type: messageType,
+        id: optimisticId,
+        created_date: new Date().toISOString(),
+        _pending: true,
       };
-      if (imageUrl) msgData.image_url = imageUrl;
-
-      // Optimistic update — show message instantly
-      const optimisticId = `optimistic-${Date.now()}`;
-      const optimisticMsg = { ...msgData, id: optimisticId, created_date: new Date().toISOString(), _pending: true };
       setMessages((prev) => [...prev, optimisticMsg]);
       setNewMsg("");
 
-      const created = await base44.entities.ChatMessage.create(msgData);
-      await notifyReceiver(chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
-      // Replace optimistic message with the real created record — no full reload needed
-      // (the subscribe event will handle any incoming messages from the other side)
-      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...created, _pending: false } : m));
+      const res = await chatApi("sendMessage", {
+        receiverEmail: chatPartner.email,
+        conversationId: activeConvId,
+        message: newMsg.trim() || undefined,
+        imageUrl,
+        messageType,
+      });
+      // Replace optimistic message with the real created record
+      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...res.message, _pending: false } : m));
     } catch (e) {
       console.error("Failed to send message", e);
       // Remove any optimistic message since the send failed
@@ -365,16 +348,14 @@ export default function Chat() {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       const partnerEmail = chatPartner.email;
-      const created = await base44.entities.ChatMessage.create({
-        sender_email: user.email,
-        receiver_email: partnerEmail,
-        conversation_id: activeConvId,
+      const res = await chatApi("sendMessage", {
+        receiverEmail: partnerEmail,
+        conversationId: activeConvId,
         message: file.name,
-        message_type: 'text',
-        image_url: file_url,
+        imageUrl: file_url,
+        messageType: "text",
       });
-      await notifyReceiver(partnerEmail, `📎 ${file.name}`);
-      setMessages((prev) => [...prev, created]);
+      setMessages((prev) => [...prev, res.message]);
     } catch (e) {
       console.error("Failed to upload file", e);
     } finally {
@@ -388,15 +369,13 @@ export default function Chat() {
     setSending(true);
     const partnerEmail = chatPartner.email;
     try {
-      const created = await base44.entities.ChatMessage.create({
-        sender_email: user.email,
-        receiver_email: partnerEmail,
-        conversation_id: activeConvId,
+      const res = await chatApi("sendMessage", {
+        receiverEmail: partnerEmail,
+        conversationId: activeConvId,
         message: template.content,
-        message_type: 'text',
+        messageType: "text",
       });
-      await notifyReceiver(partnerEmail, template.content);
-      setMessages((prev) => [...prev, created]);
+      setMessages((prev) => [...prev, res.message]);
     } catch (e) {
       console.error("Failed to send template", e);
     } finally {
@@ -445,15 +424,13 @@ export default function Chat() {
         created_date: new Date().toISOString(), _pending: true,
       }]);
 
-      const created = await base44.entities.ChatMessage.create({
-        sender_email: user.email,
-        receiver_email: partnerEmail,
-        conversation_id: activeConvId,
-        message_type: "audio",
-        audio_url: file_url,
+      const res = await chatApi("sendMessage", {
+        receiverEmail: partnerEmail,
+        conversationId: activeConvId,
+        messageType: "audio",
+        audioUrl: file_url,
       });
-      await notifyReceiver(partnerEmail, "🎤 Voice message");
-      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...created, _pending: false } : m));
+      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...res.message, _pending: false } : m));
     } catch (e) {
       console.error("Failed to send voice message", e);
       setMessages((prev) => prev.filter((m) => !m.id?.startsWith?.("optimistic-")));
