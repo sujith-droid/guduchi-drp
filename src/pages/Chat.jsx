@@ -177,20 +177,13 @@ export default function Chat() {
   }, [activeConvId, conversations, user]);
 
   // Fetch the chat partner's phone number so the Call button can dial it.
-  // Use fetch directly (not base44.functions.invoke) so the AdminSession UUID
-  // is NOT sent as a Bearer token — the Base44 platform rejects it as 401
-  // before the function runs. The adminToken goes in the request body instead.
   useEffect(() => {
     setPartnerPhone(null);
     if (!chatPartner?.email) return;
     const adminToken = localStorage.getItem("admin_session_token");
-    fetch(`/api/apps/${appParams.appId}/functions/getUserPhone`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_email: chatPartner.email, adminToken }),
-    })
-      .then((res) => res.ok ? res.json() : Promise.reject(new Error(String(res.status))))
-      .then((data) => {
+    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email, adminToken })
+      .then((res) => {
+        const data = res.data || res;
         if (data?.phone) setPartnerPhone(data.phone);
         if (data?.full_name || data?.display_name) setChatPartner((prev) => prev ? { ...prev, name: data.display_name || data.full_name } : prev);
       })
