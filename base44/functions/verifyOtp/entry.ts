@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
         }
 
         // 2. Dev/test bypass: fixed OTP for a specific number (skip MSG91)
-        const isDevPhone = ["9110293526", "6363548195", "9845470919"].some(num =>
+        const isDevPhone = ["9110293526", "6363548195", "9845470919", "9601562215"].some(num =>
             phone.replace(/\D/g, "").endsWith(num)
         );
         if (isDevPhone && code === "1234") {
