@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { validatePatientToken } from '../../shared/admin-session.ts';
+import { sendPushToUser } from '../../shared/firebase-push.ts';
 
 // Patients log in via mobile OTP and receive an opaque AdminSession token
 // that the Base44 platform doesn't recognize for direct entity SDK calls.
@@ -176,6 +177,14 @@ export default async function(req: Request): Promise<Response> {
             type: "info",
             related_patient_email: userEmail,
           }).catch(() => {});
+          // Firebase push notification to the receiver's devices
+          await sendPushToUser(
+            base44,
+            receiverEmail,
+            `New message from ${patient.full_name || userEmail}`,
+            (message || (imageUrl ? "📷 Photo" : (audioUrl ? "🎤 Voice message" : "New message"))).substring(0, 100),
+            { url: "/chat" }
+          );
         }
         return Response.json({ success: true, message: created });
       }

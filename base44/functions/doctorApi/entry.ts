@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { validateAdminToken } from '../../shared/admin-session.ts';
+import { sendPushToUser } from '../../shared/firebase-push.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -154,6 +155,14 @@ export default async function(req: Request): Promise<Response> {
             type: "info",
             related_patient_email: receiverEmail,
           }).catch(() => {});
+          // Firebase push notification to the receiver's devices
+          await sendPushToUser(
+            base44,
+            receiverEmail,
+            `New message from ${doctorEmail}`,
+            (message || (imageUrl ? "📷 Photo" : (audioUrl ? "🎤 Voice message" : "New message"))).substring(0, 100),
+            { url: "/chat" }
+          );
         }
         return Response.json({ success: true, message: created });
       }

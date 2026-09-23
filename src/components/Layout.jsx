@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
 import { roleDisplayLabel, isSubadminRole, isViewerRole } from "@/lib/roles";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 const patientNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -64,6 +65,7 @@ export default function Layout() {
   // Reads the authenticated user + session logout from the app AuthContext
   // (mobile-OTP session). See src/lib/AuthContext.jsx.
   const { user, logout: authLogout } = useAuth();
+  usePushNotifications();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const location = useLocation();
