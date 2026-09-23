@@ -52,7 +52,13 @@ export default function Chat() {
       loadMessages();
       const unsubscribe = base44.entities.ChatMessage.subscribe((event) => {
         if (event.data?.conversation_id === activeConvId) {
-          loadMessages();
+          // Skip messages sent by the current user — they're already handled
+          // by the optimistic update in sendMessage. Reloading here causes a
+          // race condition where the new message isn't indexed yet on the
+          // server, so setMessages(msgs) wipes the optimistic message.
+          if (event.data?.sender_email !== user.email) {
+            loadMessages();
+          }
         }
       });
       return unsubscribe;
@@ -229,11 +235,14 @@ export default function Chat() {
       } else {
         msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
       }
-      // Safeguard: don't clear existing messages if the fetch returns empty
-      // unexpectedly (e.g., transient indexing delay after a send)
-      if (msgs.length > 0 || messages.length === 0) {
-        setMessages(msgs);
-      }
+      // Merge server messages with any pending optimistic messages that
+      // haven't been confirmed by the server yet (prevents race condition
+      // where a just-sent message isn't indexed yet and gets wiped)
+      setMessages(prev => {
+        const pending = prev.filter(m => m.id?.startsWith?.("optimistic-"));
+        if (msgs.length === 0 && prev.length > 0) return prev;
+        return [...msgs, ...pending];
+      });
       // Mark incoming messages as read (admins are read-only observers)
       if (user && !isAdminRole(user.role)) {
         const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
