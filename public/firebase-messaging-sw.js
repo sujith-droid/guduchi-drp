@@ -4,12 +4,12 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCqYbGxLZFU61uDL8C8MjB_xRCYpdr2mqA",
+  authDomain: "guduchi-ayurveda-drp.firebaseapp.com",
+  projectId: "guduchi-ayurveda-drp",
+  storageBucket: "guduchi-ayurveda-drp.firebasestorage.app",
+  messagingSenderId: "511099665271",
+  appId: "1:511099665271:web:6dd1bb6fa570c88e9f7f72",
 });
 
 const messaging = firebase.messaging();

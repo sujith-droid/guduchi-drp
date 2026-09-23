@@ -1,15 +1,5 @@
 // Firebase web configuration — fill these in from your Firebase project.
 // Firebase Console → Project Settings → Your apps → Add app → Web
-
-// export const firebaseConfig = {
-//   apiKey: "YOUR_API_KEY",
-//   authDomain: "guduchi-ayurveda-drp.firebaseapp.com",
-//   projectId: "guduchi-ayurveda-drp",
-//   storageBucket: "guduchi-ayurveda-drp.appspot.com",
-//   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-//   appId: "1:511099665271:android:1ee4ceeebc09b3809f7f72",
-// };
-
 export const firebaseConfig = {
   apiKey: "AIzaSyCqYbGxLZFU61uDL8C8MjB_xRCYpdr2mqA",
   authDomain: "guduchi-ayurveda-drp.firebaseapp.com",
