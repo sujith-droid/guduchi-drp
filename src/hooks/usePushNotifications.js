@@ -3,7 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { base44 } from "@/api/base44Client";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
-import { detectPlatform } from "@/lib/platform";
+import { detectPlatform, isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 
@@ -19,6 +19,10 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!user || !isFirebaseConfigured()) return;
+    // Native mobile apps receive push through Base44's SendPushNotification
+    // integration (handled server-side); the WebView cannot register a web
+    // FCM token, so skip the service-worker flow on mobile.
+    if (isMobileApp()) return;
     if (!("serviceWorker" in navigator)) return;
 
     try {
