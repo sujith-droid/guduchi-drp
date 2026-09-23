@@ -28,28 +28,23 @@ export default async function(req: Request): Promise<Response> {
 
     if (action === 'registerToken') {
       if (!token) return Response.json({ error: 'token is required' }, { status: 400 });
-      // Avoid duplicate tokens for the same user
-      const existing = await base44.asServiceRole.entities.DeviceToken.filter(
-        { user_email: userEmail, token },
-        undefined,
-        5
-      );
       const resolvedPlatform = platform || 'web';
-      if (existing.length === 0) {
-        await base44.asServiceRole.entities.DeviceToken.create({
-          user_email: userEmail,
-          token,
-          platform: resolvedPlatform,
-        });
-      } else if (existing[0].platform !== resolvedPlatform) {
-        // Same token already registered under a different platform (e.g. the
-        // user moved from a desktop browser to the mobile app). Update the
-        // platform so the record reflects the current device.
-        await base44.asServiceRole.entities.DeviceToken.update(
-          existing[0].id,
-          { platform: resolvedPlatform }
-        ).catch(() => {});
+      // Keep only one token per user: delete all previously registered tokens
+      // for this user (old devices/browsers) before inserting the new one.
+      // This prevents duplicate DeviceToken rows accumulating across logins.
+      const oldTokens = await base44.asServiceRole.entities.DeviceToken.filter(
+        { user_email: userEmail },
+        undefined,
+        100
+      );
+      for (const t of oldTokens) {
+        await base44.asServiceRole.entities.DeviceToken.delete(t.id).catch(() => {});
       }
+      await base44.asServiceRole.entities.DeviceToken.create({
+        user_email: userEmail,
+        token,
+        platform: resolvedPlatform,
+      });
       return Response.json({ success: true });
     }
 
