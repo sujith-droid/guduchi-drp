@@ -87,8 +87,20 @@ export default function Chat() {
     // users — the AdminSession UUID is not a valid Base44 platform token, so
     // the WebSocket connection silently fails. Polling is the reliable
     // fallback so the receiver sees new messages without a manual reload.
-    const interval = setInterval(() => loadMessages(true), 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") loadMessages(true);
+    }, 5000);
+    // When the receiver's tab becomes visible again, immediately reload and
+    // mark messages as read — so double ticks (✓✓) only appear once they
+    // actually see the chat, not while the tab was hidden in the background.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") loadMessages(true);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [activeConvId, user]);
 
   useEffect(() => {
@@ -224,8 +236,10 @@ export default function Chat() {
         if (msgs.length === 0 && prev.length > 0) return prev;
         return [...msgs, ...pending];
       });
-      // Mark incoming messages as read (admins are read-only observers)
-      if (user && !isAdminRole(user.role)) {
+      // Mark incoming messages as read ONLY when the tab is actually visible.
+      // This ensures the sender's double ticks (✓✓) reflect that the receiver
+      // genuinely saw the message — not that a background poll ran silently.
+      if (user && !isAdminRole(user.role) && document.visibilityState === "visible") {
         const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
         if (unread.length > 0) {
           await chatApi("markRead", { messageIds: unread.map(m => m.id) });
