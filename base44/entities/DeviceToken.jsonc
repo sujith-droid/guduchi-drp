@@ -1,0 +1,78 @@
+{
+  "name": "DeviceToken",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this device token"
+    },
+    "token": {
+      "type": "string",
+      "description": "FCM device token from Firebase Cloud Messaging"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "web",
+        "android",
+        "ios"
+      ],
+      "description": "Device platform"
+    }
+  },
+  "required": [
+    "user_email",
+    "token",
+    "platform"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
