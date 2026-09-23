@@ -300,24 +300,25 @@ export default function Chat() {
 
   const sendMessage = async (imageUrl, audioUrl) => {
     if (!newMsg.trim() && !imageUrl && !audioUrl) return;
+    if (!chatPartner || !activeConvId) return;
     setSending(true);
 
-    const msgData = {
-      sender_email: user.email,
-      receiver_email: chatPartner.email,
-      conversation_id: activeConvId,
-      message: newMsg.trim() || undefined,
-      message_type: imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text",
-    };
-    if (imageUrl) msgData.image_url = imageUrl;
-
-    // Optimistic update — show message instantly
-    const optimisticId = `optimistic-${Date.now()}`;
-    const optimisticMsg = { ...msgData, id: optimisticId, created_date: new Date().toISOString(), _pending: true };
-    setMessages((prev) => [...prev, optimisticMsg]);
-    setNewMsg("");
-
     try {
+      const msgData = {
+        sender_email: user.email,
+        receiver_email: chatPartner.email,
+        conversation_id: activeConvId,
+        message: newMsg.trim() || undefined,
+        message_type: imageUrl ? (newMsg.trim() ? "text_image" : "image") : "text",
+      };
+      if (imageUrl) msgData.image_url = imageUrl;
+
+      // Optimistic update — show message instantly
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMsg = { ...msgData, id: optimisticId, created_date: new Date().toISOString(), _pending: true };
+      setMessages((prev) => [...prev, optimisticMsg]);
+      setNewMsg("");
+
       const created = await base44.entities.ChatMessage.create(msgData);
       await notifyReceiver(chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
       // Replace optimistic message with the real created record — no full reload needed
@@ -325,8 +326,8 @@ export default function Chat() {
       setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...created, _pending: false } : m));
     } catch (e) {
       console.error("Failed to send message", e);
-      // Remove the optimistic message since the send failed
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      // Remove any optimistic message since the send failed
+      setMessages((prev) => prev.filter((m) => !m.id?.startsWith?.("optimistic-")));
     } finally {
       setSending(false);
     }
@@ -335,15 +336,22 @@ export default function Chat() {
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!chatPartner || !activeConvId) return;
     setSending(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await sendMessage(file_url, null);
-    setSending(false);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await sendMessage(file_url, null);
+    } catch (e) {
+      console.error("Failed to upload image", e);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!chatPartner || !activeConvId) return;
     setSending(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -367,6 +375,7 @@ export default function Chat() {
 
   const sendTemplate = async (template) => {
     setShowTemplates(false);
+    if (!chatPartner || !activeConvId) return;
     setSending(true);
     const partnerEmail = chatPartner.email;
     try {
@@ -410,6 +419,7 @@ export default function Chat() {
 
   const sendVoiceMessage = async () => {
     await stopRecording();
+    if (!chatPartner || !activeConvId) return;
     setSending(true);
     const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
     const file = new File([blob], "voice.webm", { type: "audio/webm" });
@@ -735,7 +745,7 @@ export default function Chat() {
             <Button size="icon" variant="ghost" aria-label="Record voice message" onClick={startRecording} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
               <Mic className="h-5 w-5" />
             </Button>
-            <Button size="icon" aria-label="Send message" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim()} className="shrink-0 min-h-[44px] min-w-[44px]">
+            <Button size="icon" aria-label="Send message" onClick={() => sendMessage(null, null)} disabled={sending || !newMsg.trim() || !chatPartner} className="shrink-0 min-h-[44px] min-w-[44px]">
               <Send className="h-4 w-4" />
             </Button>
           </>
