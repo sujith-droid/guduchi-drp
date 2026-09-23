@@ -18,29 +18,39 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!user || !isFirebaseConfigured()) return;
+    if (!("serviceWorker" in navigator)) return;
 
     try {
       const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
       messagingInstance = getMessaging(app);
 
-      // Request permission + get FCM token
-      Notification.requestPermission().then((permission) => {
-        if (permission !== "granted") return;
-        getToken(messagingInstance, { vapidKey: firebaseVapidKey })
-          .then((token) => {
-            if (!token) return;
-            const adminToken = localStorage.getItem("admin_session_token");
-            base44.functions
-              .invoke("pushNotification", {
-                adminToken,
-                action: "registerToken",
-                token,
-                platform: "web",
-              })
-              .catch((e) => console.error("Failed to register push token", e));
-          })
-          .catch((err) => console.error("FCM token error", err));
-      });
+      // Register the service worker FIRST, then get the FCM token.
+      // Without an explicit registration, getToken may fail to find the
+      // service worker on some browsers.
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          return Notification.requestPermission().then((permission) => {
+            if (permission !== "granted") return null;
+            return getToken(messagingInstance, {
+              vapidKey: firebaseVapidKey,
+              serviceWorkerRegistration: registration,
+            });
+          });
+        })
+        .then((token) => {
+          if (!token) return;
+          const adminToken = localStorage.getItem("admin_session_token");
+          base44.functions
+            .invoke("pushNotification", {
+              adminToken,
+              action: "registerToken",
+              token,
+              platform: "web",
+            })
+            .catch((e) => console.error("Failed to register push token", e));
+        })
+        .catch((err) => console.error("Push setup error", err));
 
       // Foreground message → toast
       const unsub = onMessage(messagingInstance, (payload) => {

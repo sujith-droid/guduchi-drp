@@ -1,0 +1,44 @@
+{
+  "name": "Weekly Summary",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "weekly_summary",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_summary": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "weeklySummary"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Send weekly summaries",
+            "description": "Email + push to each health coach"
+          }
+        }
+      }
+    ]
+  },
+  "description": "Every Monday at 9 AM IST, emails and pushes a weekly health summary to each health coach.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 9 * * 1",
+      "one_time_date": null,
+      "timezone": "Asia/Kolkata",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}

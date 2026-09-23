@@ -1,7 +1,7 @@
-// Firebase Messaging Service Worker for background push notifications.
-// Fill in the firebaseConfig below with your project values (same as src/lib/firebase-config.js).
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
+// Firebase Cloud Messaging Service Worker
+// Handles background push notifications for the web app.
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
   apiKey: "AIzaSyCqYbGxLZFU61uDL8C8MjB_xRCYpdr2mqA",
@@ -14,28 +14,28 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Background message handler — shows a notification when a push arrives
+// and the app is not in the foreground.
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || "New Message";
-  const body = payload.notification?.body || "";
-  self.registration.showNotification(title, {
-    body,
+  const notificationTitle = payload.notification?.title || "Guduchi DRP";
+  const notificationOptions = {
+    body: payload.notification?.body || "",
     icon: "/icon.png",
     data: payload.data || {},
-  });
+  };
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-self.addEventListener("notificationclick", (event) => {
+// Notification click handler — focus existing tab or open new one.
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/chat";
+  const targetUrl = event.notification.data?.url || '/chat';
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        const client = clientList[0];
-        client.focus();
-        client.navigate(targetUrl);
-      } else {
-        clients.openWindow(targetUrl);
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
       }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
 });

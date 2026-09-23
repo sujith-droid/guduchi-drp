@@ -80,21 +80,15 @@ export default function Chat() {
   }, [user]);
 
   useEffect(() => {
-    if (activeConvId) {
-      loadMessages();
-      const unsubscribe = base44.entities.ChatMessage.subscribe((event) => {
-        if (event.data?.conversation_id === activeConvId) {
-          // Skip messages sent by the current user — they're already handled
-          // by the optimistic update in sendMessage. Reloading here causes a
-          // race condition where the new message isn't indexed yet on the
-          // server, so setMessages(msgs) wipes the optimistic message.
-          if (event.data?.sender_email !== user.email) {
-            loadMessages();
-          }
-        }
-      });
-      return unsubscribe;
-    }
+    if (!activeConvId || !user) return;
+    loadMessages();
+    // Poll for new messages every 5 seconds. The SDK realtime subscription
+    // (base44.entities.ChatMessage.subscribe) does NOT work for OTP-authenticated
+    // users — the AdminSession UUID is not a valid Base44 platform token, so
+    // the WebSocket connection silently fails. Polling is the reliable
+    // fallback so the receiver sees new messages without a manual reload.
+    const interval = setInterval(() => loadMessages(true), 5000);
+    return () => clearInterval(interval);
   }, [activeConvId, user]);
 
   useEffect(() => {
@@ -209,9 +203,9 @@ export default function Chat() {
       .catch(() => {});
   }, [chatPartner?.email]);
 
-  const loadMessages = async () => {
+  const loadMessages = async (silent = false) => {
     if (!activeConvId) return;
-    setMessagesLoading(true);
+    if (!silent) setMessagesLoading(true);
     try {
       let msgs;
       if (user && isAdminRole(user.role)) {

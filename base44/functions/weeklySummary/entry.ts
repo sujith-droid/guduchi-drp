@@ -1,6 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { sendPushToUser } from '../../shared/firebase-push.ts';
 
-Deno.serve(async (req) => {
+export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
 
@@ -90,13 +91,16 @@ Deno.serve(async (req) => {
         body: emailBody,
       });
 
-      // In-app notification for doctor
+      // In-app notification + FCM push for doctor
+      const notifTitle = "Weekly Patient Summary Sent";
+      const notifMsg = `Your weekly summary for ${patients.length} patient(s) has been emailed to you.`;
       await base44.asServiceRole.entities.Notification.create({
         user_email: doctorEmail,
-        title: "Weekly Patient Summary Sent",
-        message: `Your weekly summary for ${patients.length} patient(s) has been emailed to you.`,
+        title: notifTitle,
+        message: notifMsg,
         type: "info",
       });
+      await sendPushToUser(base44, doctorEmail, notifTitle, notifMsg, { url: "/doctor" });
 
       emailsSent++;
     }
@@ -105,4 +109,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

@@ -1,6 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { sendPushToUser } from '../../shared/firebase-push.ts';
 
-Deno.serve(async (req) => {
+export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
 
@@ -18,16 +19,21 @@ Deno.serve(async (req) => {
     const todayLogs = await base44.asServiceRole.entities.DailyLog.filter({ date: today });
     const loggedEmails = new Set(todayLogs.map((l) => l.patient_email));
 
-    // Send reminder to patients who haven't logged yet
+    // Send reminder to patients who haven't logged yet — create an in-app
+    // Notification AND send a Firebase push to their registered devices.
     let reminded = 0;
     for (const email of patientEmails) {
       if (!loggedEmails.has(email)) {
+        const title = "⏰ Daily Log Reminder";
+        const message = "You haven't submitted your health log today. Please record your blood sugar, weight, and steps!";
         await base44.asServiceRole.entities.Notification.create({
           user_email: email,
-          title: "⏰ Daily Log Reminder",
-          message: "You haven't submitted your health log today. Please record your blood sugar, weight, and steps!",
+          title,
+          message,
           type: "reminder",
         });
+        // Send push notification via FCM (silently ignores if no tokens)
+        await sendPushToUser(base44, email, title, message, { url: "/logbook" });
         reminded++;
       }
     }
@@ -36,4 +42,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

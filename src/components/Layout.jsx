@@ -89,19 +89,13 @@ export default function Layout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    if (user) loadNotifications();
-  }, [user]);
-
-  useEffect(() => {
     if (!user) return;
-    const unsubscribe = base44.entities.Notification.subscribe((event) => {
-      if (event.type === "create" && event.data?.user_email === user.email) {
-        const n = event.data;
-        toast(n.title, { description: n.message });
-        setUnreadCount((c) => c + 1);
-      }
-    });
-    return unsubscribe;
+    loadNotifications();
+    // Poll for new notifications every 15 seconds. The SDK realtime
+    // subscription does not work for OTP-authenticated users (AdminSession
+    // UUID is not a valid platform token), so polling is the reliable path.
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const loadNotifications = async () => {

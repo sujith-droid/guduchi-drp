@@ -1,0 +1,44 @@
+{
+  "name": "Daily Log Reminder",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "daily_log_reminder",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_reminders": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "dailyLogReminder"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Send daily log reminders",
+            "description": "Push + in-app to patients who haven't logged today"
+          }
+        }
+      }
+    ]
+  },
+  "description": "Sends push + in-app notifications every day at 10 AM IST to patients who haven't logged their health data yet.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 10 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Kolkata",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}
