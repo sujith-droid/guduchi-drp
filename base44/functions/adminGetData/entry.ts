@@ -8,7 +8,7 @@ export default async function(req: Request): Promise<Response> {
     await validateAdminToken(base44, adminToken);
 
     const [users, assignments, templates, onboardingMessages] = await Promise.all([
-      base44.asServiceRole.entities.User.list('-created_date', 200),
+      base44.asServiceRole.entities.User.list('-created_date', 500),
       base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }),
       base44.asServiceRole.entities.MessageTemplate.list('-created_date', 100),
       base44.asServiceRole.entities.OnboardingMessage.list('sequence', 200),
