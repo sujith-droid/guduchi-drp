@@ -229,7 +229,11 @@ export default function Chat() {
       } else {
         msgs = await base44.entities.ChatMessage.filter({ conversation_id: activeConvId }, "created_date", 100);
       }
-      setMessages(msgs);
+      // Safeguard: don't clear existing messages if the fetch returns empty
+      // unexpectedly (e.g., transient indexing delay after a send)
+      if (msgs.length > 0 || messages.length === 0) {
+        setMessages(msgs);
+      }
       // Mark incoming messages as read (admins are read-only observers)
       if (user && !isAdminRole(user.role)) {
         const unread = msgs.filter(m => m.receiver_email === user.email && !m.is_read);
@@ -313,11 +317,19 @@ export default function Chat() {
     setMessages((prev) => [...prev, optimisticMsg]);
     setNewMsg("");
 
-    await base44.entities.ChatMessage.create(msgData);
-    await notifyReceiver(chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
-    setSending(false);
-    // Replace optimistic with real data
-    loadMessages();
+    try {
+      const created = await base44.entities.ChatMessage.create(msgData);
+      await notifyReceiver(chatPartner.email, msgData.message || (imageUrl ? "📷 Photo" : "New message"));
+      // Replace optimistic message with the real created record — no full reload needed
+      // (the subscribe event will handle any incoming messages from the other side)
+      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...created, _pending: false } : m));
+    } catch (e) {
+      console.error("Failed to send message", e);
+      // Remove the optimistic message since the send failed
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleImageUpload = async (e) => {
@@ -333,35 +345,45 @@ export default function Chat() {
     const file = e.target.files?.[0];
     if (!file) return;
     setSending(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const partnerEmail = chatPartner.email;
-    await base44.entities.ChatMessage.create({
-      sender_email: user.email,
-      receiver_email: partnerEmail,
-      conversation_id: activeConvId,
-      message: file.name,
-      message_type: 'text',
-      image_url: file_url,
-    });
-    await notifyReceiver(partnerEmail, `📎 ${file.name}`);
-    setSending(false);
-    loadMessages();
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const partnerEmail = chatPartner.email;
+      const created = await base44.entities.ChatMessage.create({
+        sender_email: user.email,
+        receiver_email: partnerEmail,
+        conversation_id: activeConvId,
+        message: file.name,
+        message_type: 'text',
+        image_url: file_url,
+      });
+      await notifyReceiver(partnerEmail, `📎 ${file.name}`);
+      setMessages((prev) => [...prev, created]);
+    } catch (e) {
+      console.error("Failed to upload file", e);
+    } finally {
+      setSending(false);
+    }
   };
 
   const sendTemplate = async (template) => {
     setShowTemplates(false);
     setSending(true);
     const partnerEmail = chatPartner.email;
-    await base44.entities.ChatMessage.create({
-      sender_email: user.email,
-      receiver_email: partnerEmail,
-      conversation_id: activeConvId,
-      message: template.content,
-      message_type: 'text',
-    });
-    await notifyReceiver(partnerEmail, template.content);
-    setSending(false);
-    loadMessages();
+    try {
+      const created = await base44.entities.ChatMessage.create({
+        sender_email: user.email,
+        receiver_email: partnerEmail,
+        conversation_id: activeConvId,
+        message: template.content,
+        message_type: 'text',
+      });
+      await notifyReceiver(partnerEmail, template.content);
+      setMessages((prev) => [...prev, created]);
+    } catch (e) {
+      console.error("Failed to send template", e);
+    } finally {
+      setSending(false);
+    }
   };
 
   const startRecording = async () => {
@@ -391,27 +413,34 @@ export default function Chat() {
     setSending(true);
     const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
     const file = new File([blob], "voice.webm", { type: "audio/webm" });
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
     const partnerEmail = chatPartner.email;
 
-    // Optimistic
-    const optimisticId = `optimistic-${Date.now()}`;
-    setMessages((prev) => [...prev, {
-      id: optimisticId, sender_email: user.email, receiver_email: partnerEmail,
-      conversation_id: activeConvId, message_type: "audio", audio_url: file_url,
-      created_date: new Date().toISOString(), _pending: true,
-    }]);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-    await base44.entities.ChatMessage.create({
-      sender_email: user.email,
-      receiver_email: partnerEmail,
-      conversation_id: activeConvId,
-      message_type: "audio",
-      audio_url: file_url,
-    });
-    await notifyReceiver(partnerEmail, "🎤 Voice message");
-    setSending(false);
-    loadMessages();
+      // Optimistic
+      const optimisticId = `optimistic-${Date.now()}`;
+      setMessages((prev) => [...prev, {
+        id: optimisticId, sender_email: user.email, receiver_email: partnerEmail,
+        conversation_id: activeConvId, message_type: "audio", audio_url: file_url,
+        created_date: new Date().toISOString(), _pending: true,
+      }]);
+
+      const created = await base44.entities.ChatMessage.create({
+        sender_email: user.email,
+        receiver_email: partnerEmail,
+        conversation_id: activeConvId,
+        message_type: "audio",
+        audio_url: file_url,
+      });
+      await notifyReceiver(partnerEmail, "🎤 Voice message");
+      setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...created, _pending: false } : m));
+    } catch (e) {
+      console.error("Failed to send voice message", e);
+      setMessages((prev) => prev.filter((m) => !m.id?.startsWith?.("optimistic-")));
+    } finally {
+      setSending(false);
+    }
   };
 
   // Only show full-page loading spinner for the conversation list when it's

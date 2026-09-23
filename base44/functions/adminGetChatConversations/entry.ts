@@ -7,21 +7,26 @@ export default async function(req: Request): Promise<Response> {
     const { adminToken, conversationId } = await req.json();
     await validateAdminToken(base44, adminToken);
 
-    const [allMessages, allAssignments, allUsers] = await Promise.all([
-      base44.asServiceRole.entities.ChatMessage.list('-created_date', 500),
+    const [allAssignments, allUsers] = await Promise.all([
       base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }),
       base44.asServiceRole.entities.User.list('-created_date', 500),
     ]);
     const userMap = {};
     for (const u of allUsers) { userMap[u.email] = u; }
 
-    // If a specific conversation is requested, return its messages directly
+    // If a specific conversation is requested, fetch its messages directly
+    // (avoids loading all 500+ messages just to filter one conversation)
     if (conversationId) {
-      const msgs = allMessages
-        .filter(m => m.conversation_id === conversationId)
-        .sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      const msgs = await base44.asServiceRole.entities.ChatMessage.filter(
+        { conversation_id: conversationId },
+        'created_date',
+        500
+      );
       return Response.json({ messages: msgs });
     }
+
+    // Load all messages only when building the conversation list
+    const allMessages = await base44.asServiceRole.entities.ChatMessage.list('-created_date', 500);
 
     // Build conversation list from messages only (no empty conversations)
     const convMap = {};
