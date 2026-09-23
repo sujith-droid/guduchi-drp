@@ -7,7 +7,6 @@ import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTem
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
-import { appParams } from "@/lib/app-params";
 import { isPatientRole, isAdminRole, isViewerRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
@@ -53,6 +52,27 @@ export default function Chat() {
     const data = res.data || res;
     if (data.error) throw new Error(data.error);
     return data;
+  };
+
+  // Retry wrapper for 429 rate-limit errors — the admin opens a conversation
+  // and several API calls fire at once (conversations, messages, phone),
+  // some get 429'd. Retry with a short backoff so messages still load.
+  const invokeWithRetry = async (fnName, payload, retries = 2) => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await base44.functions.invoke(fnName, payload);
+        const data = res.data || res;
+        if (data.error) throw new Error(data.error);
+        return data;
+      } catch (e) {
+        const is429 = e?.status === 429 || e?.response?.status === 429 || String(e.message || "").includes("429");
+        if (is429 && attempt < retries) {
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
   };
 
   useEffect(() => {
@@ -181,9 +201,8 @@ export default function Chat() {
     setPartnerPhone(null);
     if (!chatPartner?.email) return;
     const adminToken = localStorage.getItem("admin_session_token");
-    base44.functions.invoke("getUserPhone", { target_email: chatPartner.email, adminToken })
-      .then((res) => {
-        const data = res.data || res;
+    invokeWithRetry("getUserPhone", { target_email: chatPartner.email, adminToken })
+      .then((data) => {
         if (data?.phone) setPartnerPhone(data.phone);
         if (data?.full_name || data?.display_name) setChatPartner((prev) => prev ? { ...prev, name: data.display_name || data.full_name } : prev);
       })
@@ -197,9 +216,7 @@ export default function Chat() {
       let msgs;
       if (user && isAdminRole(user.role)) {
         const adminToken = localStorage.getItem("admin_session_token");
-        const res = await base44.functions.invoke("adminGetChatConversations", { adminToken, conversationId: activeConvId });
-        const data = res.data || res;
-        if (data.error) throw new Error(data.error);
+        const data = await invokeWithRetry("adminGetChatConversations", { adminToken, conversationId: activeConvId });
         msgs = data.messages || [];
       } else {
         const data = await chatApi("getMessages", { conversationId: activeConvId });
@@ -220,8 +237,8 @@ export default function Chat() {
           await chatApi("markRead", { messageIds: unread.map(m => m.id) });
         }
       }
-    } catch {
-      // Silently ignore transient network errors during polling
+    } catch (e) {
+      console.error("Failed to load messages:", e);
     } finally {
       setMessagesLoading(false);
     }
