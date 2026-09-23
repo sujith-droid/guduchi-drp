@@ -34,12 +34,21 @@ export default async function(req: Request): Promise<Response> {
         undefined,
         5
       );
+      const resolvedPlatform = platform || 'web';
       if (existing.length === 0) {
         await base44.asServiceRole.entities.DeviceToken.create({
           user_email: userEmail,
           token,
-          platform: platform || 'web',
+          platform: resolvedPlatform,
         });
+      } else if (existing[0].platform !== resolvedPlatform) {
+        // Same token already registered under a different platform (e.g. the
+        // user moved from a desktop browser to the mobile app). Update the
+        // platform so the record reflects the current device.
+        await base44.asServiceRole.entities.DeviceToken.update(
+          existing[0].id,
+          { platform: resolvedPlatform }
+        ).catch(() => {});
       }
       return Response.json({ success: true });
     }

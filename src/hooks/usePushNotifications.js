@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { base44 } from "@/api/base44Client";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
+import { detectPlatform } from "@/lib/platform";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 
@@ -41,12 +42,13 @@ export function usePushNotifications() {
         .then((token) => {
           if (!token) return;
           const adminToken = localStorage.getItem("admin_session_token");
+          const platform = detectPlatform();
           base44.functions
             .invoke("pushNotification", {
               adminToken,
               action: "registerToken",
               token,
-              platform: "web",
+              platform,
             })
             .catch((e) => console.error("Failed to register push token", e));
         })
