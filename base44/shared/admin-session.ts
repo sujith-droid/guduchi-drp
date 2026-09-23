@@ -41,3 +41,37 @@ export async function validateAdminToken(base44, adminToken) {
   e.status = 401;
   throw e;
 }
+
+// Validates an AdminSession token for patient-role users. Patients log in via
+// mobile OTP just like admins/doctors, but validateAdminToken above rejects the
+// "patient"/"user" roles. This function mirrors it but only accepts those roles.
+export async function validatePatientToken(base44, adminToken) {
+  if (adminToken) {
+    const sessions = await base44.asServiceRole.entities.AdminSession.filter({
+      token: adminToken,
+      is_active: true,
+    });
+    if (sessions && sessions.length > 0) {
+      const session = sessions[0];
+      const notExpired = new Date(session.expires_at) >= new Date();
+      const validRole = session.role === "patient" || session.role === "user";
+      if (notExpired && validRole) {
+        return session;
+      }
+    }
+  }
+
+  // Fallback: platform email/password auth (patient invited via email)
+  try {
+    const me = await base44.auth.me();
+    if (me && (me.role === "patient" || me.role === "user")) {
+      return { user_email: me.email, role: me.role || "patient", user_id: me.id };
+    }
+  } catch (e) {
+    // Not authenticated via platform auth — fall through to unauthorized
+  }
+
+  const err = new Error("Unauthorized");
+  err.status = 401;
+  throw err;
+}

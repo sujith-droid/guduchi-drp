@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { validateAdminToken } from '../../shared/admin-session.ts';
+import { validatePatientToken } from '../../shared/admin-session.ts';
 
 // Patients log in via mobile OTP and receive an opaque AdminSession token
 // that the Base44 platform doesn't recognize for direct entity SDK calls.
@@ -15,7 +15,7 @@ export default async function(req: Request): Promise<Response> {
     // For chat actions, validate the admin token and use the email from the session
     let userEmail = patientEmail;
     if (adminToken) {
-      const session = await validateAdminToken(base44, adminToken);
+      const session = await validatePatientToken(base44, adminToken);
       userEmail = session.user_email;
     }
 
