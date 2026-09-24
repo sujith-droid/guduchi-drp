@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
 import { validateAdminToken } from '../../shared/admin-session.ts';
-import { listAll } from '../../shared/pagination.ts';
+import { listAll, filterAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
