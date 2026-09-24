@@ -80,7 +80,8 @@ export default async function(req: Request): Promise<Response> {
           : { doctor_email: doctorEmail };
         const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
 
-        // Get all messages involving this doctor
+        // Get all messages involving this doctor (500 per direction is ample
+        // for any single doctor's history).
         const [sentMsgs, receivedMsgs] = await Promise.all([
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: doctorEmail }, "-created_date", 500),
           base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: doctorEmail }, "-created_date", 500),
@@ -130,7 +131,8 @@ export default async function(req: Request): Promise<Response> {
       case 'getMessages': {
         const { conversationId } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "created_date", 100);
+        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "-created_date", 500);
+        msgs.reverse(); // newest-first → oldest-first for display
         return Response.json({ messages: msgs });
       }
 

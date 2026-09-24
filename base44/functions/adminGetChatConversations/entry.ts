@@ -19,14 +19,24 @@ export default async function(req: Request): Promise<Response> {
     if (conversationId) {
       const msgs = await base44.asServiceRole.entities.ChatMessage.filter(
         { conversation_id: conversationId },
-        'created_date',
+        '-created_date',
         500
       );
+      msgs.reverse(); // newest-first → oldest-first for display
       return Response.json({ messages: msgs });
     }
 
-    // Load all messages only when building the conversation list
-    const allMessages = await base44.asServiceRole.entities.ChatMessage.list('-created_date', 500);
+    // Load ALL messages by paginating (500 per batch) — the SDK caps each
+    // call at 500, so without pagination older conversations whose only
+    // messages fall beyond the first 500 disappear from the chat list.
+    const allMessages = [];
+    let skip = 0;
+    let batch;
+    do {
+      batch = await base44.asServiceRole.entities.ChatMessage.list('-created_date', 500, skip);
+      allMessages.push(...batch);
+      skip += batch.length;
+    } while (batch.length === 500);
 
     // Build conversation list from messages only (no empty conversations)
     const convMap = {};

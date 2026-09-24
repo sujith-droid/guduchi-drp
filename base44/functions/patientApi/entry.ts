@@ -152,7 +152,8 @@ export default async function(req: Request): Promise<Response> {
       case 'getMessages': {
         const { conversationId } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "created_date", 100);
+        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "-created_date", 500);
+        msgs.reverse(); // newest-first → oldest-first for display
         return Response.json({ messages: msgs });
       }
 
