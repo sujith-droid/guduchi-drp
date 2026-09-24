@@ -1,10 +1,10 @@
-// Firebase Cloud Messaging service worker for background push notifications.
-// Runs in the browser's background even when the app tab is closed.
-// Uses Firebase compat builds loaded from the gstatic CDN because service
-// workers cannot use the app's ES module bundler.
+// Firebase Cloud Messaging background service worker.
+// Handles push notifications when the web app is closed/in background.
+// Uses Firebase compat SDK via importScripts (service workers cannot use
+// bundler imports), matching the firebase-app/messaging v10 used client-side.
 
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
   apiKey: "AIzaSyCqYbGxLZFU61uDL8C8MjB_xRCYpdr2mqA",
@@ -16,42 +16,70 @@ firebase.initializeApp({
   measurementId: "G-3JLF7QJWK2"
 });
 
+const APP_ICON = "https://media.base44.com/images/public/6a112438497edb3c33861acd/2d4862fc4_generated_image.png";
+
 const messaging = firebase.messaging();
 
-// Show a notification when a push arrives in the background.
+// Background message handler — shows a notification when a push arrives
+// while no client page is in the foreground.
 messaging.onBackgroundMessage((payload) => {
-  const { title, body, icon } = payload.notification || {};
-  const url = payload.data?.url || "/";
-
-  const notificationTitle = title || "Guduchi DRP";
-  const notificationOptions = {
-    body: body || "",
-    icon: icon || "https://base44.com/logo_v2.svg",
-    badge: "https://base44.com/logo_v2.svg",
-    data: { url },
-    tag: "guduchi-notification",
-    renotify: true,
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  const notif = payload.notification || {};
+  const data = payload.data || {};
+  const title = notif.title || "Guduchi DRP";
+  const body = notif.body || "";
+  const url = data.url || "/chat";
+  return self.registration.showNotification(title, {
+    body,
+    icon: APP_ICON,
+    badge: APP_ICON,
+    tag: data.tag || "guduchi-message",
+    data: { url, ...data },
+    requireInteraction: false,
+  });
 });
 
-// Handle notification click — open/focus the app and navigate to the URL.
-self.addEventListener("notificationclick", (event) => {
+// Also handle raw push events (some browsers don't trigger
+// onBackgroundMessage when a notification payload is present).
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (e) {
+    return;
+  }
+  const notif = payload.notification || {};
+  const data = payload.data || {};
+  const title = notif.title || "Guduchi DRP";
+  const body = notif.body || "";
+  const url = data.url || "/chat";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: APP_ICON,
+      badge: APP_ICON,
+      tag: data.tag || "guduchi-message",
+      data: { url, ...data },
+      requireInteraction: false,
+    })
+  );
+});
+
+// Notification click — focus an existing tab and navigate to the target URL,
+// or open a new window if none exists.
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
+  const targetUrl = event.notification.data?.url || "/chat";
+  const fullUrl = new URL(targetUrl, self.location.origin).href;
 
   event.waitUntil(
-    clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clientList) => {
-        for (const client of clientList) {
-          if ("focus" in client) {
-            client.navigate(targetUrl);
-            return client.focus();
-          }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin)) {
+          return client.navigate(fullUrl).then(() => client.focus());
         }
-        if (clients.openWindow) return clients.openWindow(targetUrl);
-      })
+      }
+      return clients.openWindow(fullUrl);
+    })
   );
 });

@@ -57,7 +57,15 @@ export async function sendPushToUser(base44, userEmail, title, body, data = {}) 
                 data: stringData,
                 token: t.token,
                 webpush: {
-                  notification: { title, body, icon: "/icon.png", click_action: stringData.url || "/chat" },
+                  notification: {
+                    title,
+                    body,
+                    icon: "https://media.base44.com/images/public/6a112438497edb3c33861acd/2d4862fc4_generated_image.png",
+                    badge: "https://media.base44.com/images/public/6a112438497edb3c33861acd/2d4862fc4_generated_image.png",
+                    tag: stringData.tag || "guduchi-message",
+                    requireInteraction: false,
+                  },
+                  fcm_options: { link: stringData.url || "/chat" },
                 },
               })
               .catch((err) => ({ error: err }))
