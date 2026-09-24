@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
+import { listAll, filterAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -17,8 +18,8 @@ export default async function(req: Request): Promise<Response> {
       case 'getData': {
         const query = isAdmin ? { status: "active" } : { doctor_email: doctorEmail, status: "active" };
         const [assignments, recentLogs] = await Promise.all([
-          base44.asServiceRole.entities.PatientDoctorAssignment.filter(query),
-          base44.asServiceRole.entities.DailyLog.list("-date", 200),
+          filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, query),
+          listAll(base44.asServiceRole.entities.DailyLog, "-date"),
         ]);
         // Fetch phone numbers for all assigned patients.
         const patientEmails = [...new Set(assignments.map((a) => a.patient_email))];
@@ -131,7 +132,7 @@ export default async function(req: Request): Promise<Response> {
       case 'getMessages': {
         const { conversationId } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "-created_date", 500);
+        const msgs = await filterAll(base44.asServiceRole.entities.ChatMessage, { conversation_id: conversationId }, "-created_date");
         msgs.reverse(); // newest-first → oldest-first for display
         return Response.json({ messages: msgs });
       }

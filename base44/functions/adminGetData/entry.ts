@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { validateAdminToken } from '../../shared/admin-session.ts';
+import { listAll, filterAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -8,10 +9,10 @@ export default async function(req: Request): Promise<Response> {
     await validateAdminToken(base44, adminToken);
 
     const [users, assignments, templates, onboardingMessages] = await Promise.all([
-      base44.asServiceRole.entities.User.list('-created_date', 500),
-      base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }),
-      base44.asServiceRole.entities.MessageTemplate.list('-created_date', 100),
-      base44.asServiceRole.entities.OnboardingMessage.list('sequence', 200),
+      listAll(base44.asServiceRole.entities.User, '-created_date'),
+      filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }),
+      listAll(base44.asServiceRole.entities.MessageTemplate, '-created_date'),
+      listAll(base44.asServiceRole.entities.OnboardingMessage, 'sequence'),
     ]);
 
     return Response.json({ users, assignments, templates, onboardingMessages });

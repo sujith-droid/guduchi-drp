@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { listAll } from '../../shared/pagination.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -14,7 +15,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 200);
+    const allUsers = await listAll(base44.asServiceRole.entities.User, '-created_date');
     return Response.json({ users: allUsers });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

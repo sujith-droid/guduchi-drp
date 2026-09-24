@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
+import { filterAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -12,11 +13,11 @@ export default async function(req: Request): Promise<Response> {
     const today = istDate.toISOString().split("T")[0];
 
     // Get all active patient assignments (unique patients)
-    const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: "active" });
+    const assignments = await filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: "active" });
     const patientEmails = [...new Set(assignments.map((a) => a.patient_email))];
 
     // Get today's logs
-    const todayLogs = await base44.asServiceRole.entities.DailyLog.filter({ date: today });
+    const todayLogs = await filterAll(base44.asServiceRole.entities.DailyLog, { date: today });
     const loggedEmails = new Set(todayLogs.map((l) => l.patient_email));
 
     // Send reminder to patients who haven't logged yet — create an in-app

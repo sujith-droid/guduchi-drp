@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { filterAll } from '../../shared/pagination.ts';
 
 // Notifications have row-level security (user_email == logged-in user). Mobile-OTP
 // users carry a dummy token the platform doesn't recognize, so direct entity
@@ -28,7 +29,7 @@ export default async function(req: Request): Promise<Response> {
 
     switch (action) {
       case 'list': {
-        const notifs = await base44.asServiceRole.entities.Notification.filter({ user_email: email }, "-created_date", 50);
+        const notifs = await filterAll(base44.asServiceRole.entities.Notification, { user_email: email }, "-created_date");
         return Response.json({ notifications: notifs });
       }
       case 'markRead': {

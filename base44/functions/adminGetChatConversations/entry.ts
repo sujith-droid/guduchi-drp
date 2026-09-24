@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.48';
 import { validateAdminToken } from '../../shared/admin-session.ts';
+import { listAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -17,26 +18,18 @@ export default async function(req: Request): Promise<Response> {
     // If a specific conversation is requested, fetch its messages directly
     // (avoids loading all 500+ messages just to filter one conversation)
     if (conversationId) {
-      const msgs = await base44.asServiceRole.entities.ChatMessage.filter(
+      const msgs = await filterAll(
+        base44.asServiceRole.entities.ChatMessage,
         { conversation_id: conversationId },
-        '-created_date',
-        500
+        '-created_date'
       );
       msgs.reverse(); // newest-first → oldest-first for display
       return Response.json({ messages: msgs });
     }
 
-    // Load ALL messages by paginating (500 per batch) — the SDK caps each
-    // call at 500, so without pagination older conversations whose only
-    // messages fall beyond the first 500 disappear from the chat list.
-    const allMessages = [];
-    let skip = 0;
-    let batch;
-    do {
-      batch = await base44.asServiceRole.entities.ChatMessage.list('-created_date', 500, skip);
-      allMessages.push(...batch);
-      skip += batch.length;
-    } while (batch.length === 500);
+    // Load ALL messages by paginating — without this, older conversations
+    // whose only messages fall beyond the first 500 disappear from the list.
+    const allMessages = await listAll(base44.asServiceRole.entities.ChatMessage, '-created_date');
 
     // Build conversation list from messages only (no empty conversations)
     const convMap = {};

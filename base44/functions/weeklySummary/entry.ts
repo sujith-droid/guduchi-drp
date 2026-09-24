@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
+import { filterAll, listAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -14,7 +15,7 @@ export default async function(req: Request): Promise<Response> {
     const weekAgoStr = weekAgo.toISOString().split("T")[0];
 
     // Get all active assignments grouped by doctor
-    const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: "active" });
+    const assignments = await filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: "active" });
 
     // Group patients by doctor
     const doctorMap = {};
@@ -25,8 +26,8 @@ export default async function(req: Request): Promise<Response> {
       doctorMap[a.doctor_email].patients.push({ email: a.patient_email, name: a.patient_name || a.patient_email, patient_id: a.patient_id });
     }
 
-    // Get all logs for the past 7 days
-    const allLogs = await base44.asServiceRole.entities.DailyLog.list("-date", 2000);
+    // Get all logs (paginated) and filter to the past 7 days
+    const allLogs = await listAll(base44.asServiceRole.entities.DailyLog, "-date");
     const recentLogs = allLogs.filter((l) => l.date >= weekAgoStr && l.date <= todayStr);
 
     // Build a map: patient_email -> logs[]

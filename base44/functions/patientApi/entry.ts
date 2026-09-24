@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { validatePatientToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
+import { filterAll } from '../../shared/pagination.ts';
 
 // Patients log in via mobile OTP and receive an opaque AdminSession token
 // that the Base44 platform doesn't recognize for direct entity SDK calls.
@@ -152,7 +153,7 @@ export default async function(req: Request): Promise<Response> {
       case 'getMessages': {
         const { conversationId } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ conversation_id: conversationId }, "-created_date", 500);
+        const msgs = await filterAll(base44.asServiceRole.entities.ChatMessage, { conversation_id: conversationId }, "-created_date");
         msgs.reverse(); // newest-first → oldest-first for display
         return Response.json({ messages: msgs });
       }

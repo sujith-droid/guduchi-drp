@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { filterAll } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -7,7 +8,7 @@ export default async function(req: Request): Promise<Response> {
     }
     const base44 = createClientFromRequest(req);
 
-    const users = await base44.asServiceRole.entities.User.filter({ role: "doctor" });
+    const users = await filterAll(base44.asServiceRole.entities.User, { role: "doctor" });
 
     const doctors = users
       .filter((u) => u.email)
