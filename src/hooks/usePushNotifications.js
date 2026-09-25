@@ -3,7 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { base44 } from "@/api/base44Client";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
-import { detectPlatform } from "@/lib/platform";
+import { detectPlatform, isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/lib/AuthContext";
 
 let messagingInstance = null;
@@ -22,6 +22,10 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!user || !isFirebaseConfigured()) return;
+    // Inside the native mobile app WebView, web FCM cannot run (no service
+    // worker, no permission popup). The native Base44 mobile build registers
+    // the device token itself via the platform's native push integration.
+    if (isMobileApp()) return;
     if (!("serviceWorker" in navigator)) return;
 
     let cancelled = false;
