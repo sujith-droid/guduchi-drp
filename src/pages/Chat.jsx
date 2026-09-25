@@ -167,7 +167,15 @@ export default function Chat() {
           latest_time: a.last_message_date || null,
         };
       });
-      setConversations(convList);
+      // Deduplicate by conversation ID — if a patient has multiple assignments
+      // (e.g. an old inactive one that slipped through), only show one entry.
+      const seen = new Set();
+      const unique = convList.filter((c) => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+      setConversations(unique);
       setUnreadMap(data.unreadMap || {});
       return;
     }

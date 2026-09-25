@@ -78,7 +78,7 @@ export default async function(req: Request): Promise<Response> {
       case 'getConversations': {
         const query = isAdmin
           ? { status: "active" }
-          : { doctor_email: doctorEmail };
+          : { doctor_email: doctorEmail, status: "active" };
         const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
 
         // Get all messages involving this doctor (500 per direction is ample
