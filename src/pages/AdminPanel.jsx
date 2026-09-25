@@ -511,6 +511,9 @@ export default function AdminPanel() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Joined: {u.created_date ? new Date(u.created_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Registered: {u.created_date ? new Date(u.created_date).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <MobileSelect
