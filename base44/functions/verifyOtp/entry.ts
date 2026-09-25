@@ -47,12 +47,18 @@ Deno.serve(async (req) => {
         }
 
         // 4. Find the user.
-        //    Phone may be stored with or without the +91 country code, so try
-        //    the exact value first, then fall back to the last 10 digits.
+        //    Phone may be stored with or without the +91 country code, or with
+        //    stray spaces/dashes, so try the exact value, then the last 10
+        //    digits, then a digits-only normalized match.
         let users = await base44.asServiceRole.entities.User.filter({ phone });
         const normalizedDigits = phone.replace(/\D/g, "").slice(-10);
         if (users.length === 0 && normalizedDigits.length === 10) {
             users = await base44.asServiceRole.entities.User.filter({ phone: normalizedDigits });
+        }
+        if (users.length === 0) {
+            // Last resort: fetch a broader set and match by normalized digits
+            const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 500);
+            users = allUsers.filter(u => (u.phone || "").replace(/\D/g, "").slice(-10) === normalizedDigits);
         }
         if (users.length === 0) {
             return Response.json({ error: 'User not found' }, { status: 404 });
