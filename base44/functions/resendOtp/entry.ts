@@ -15,6 +15,14 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Phone number required' }, { status: 400 });
         }
 
+        // Dev/test bypass: skip MSG91 for fixed-OTP numbers
+        const isDevPhone = ["9110293526", "6363548195", "9845470919", "9601562215", "8160535340"].some(num =>
+            phone.replace(/\D/g, "").endsWith(num)
+        );
+        if (isDevPhone) {
+            return Response.json({ success: true, message: 'OTP resent successfully' });
+        }
+
         const authKey = Deno.env.get("MSG91_AUTH_KEY");
         if (!authKey) {
             return Response.json({ error: 'MSG91 credentials not configured in server.' }, { status: 500 });
