@@ -10,57 +10,88 @@ import { toast } from "sonner";
 let messagingInstance = null;
 
 /**
- * Registers the current user's browser for Firebase Cloud Messaging push
+ * Registers the current user's device for Firebase Cloud Messaging push
  * notifications. Call once per authenticated session (e.g. in Layout).
- * When a message arrives while the app is open, shows a sonner toast.
+ *
+ * Key points:
+ * - The FCM token is fetched WITHOUT requiring notification permission to be
+ *   "granted". Permission is only needed to DISPLAY notifications, not to
+ *   receive push. Gating getToken() on permission meant users who hadn't
+ *   tapped "Allow" never got a token, so no DeviceToken was stored.
+ * - Works on browsers AND native app WebViews that support service workers.
+ *   If the WebView lacks service-worker support, the check below skips
+ *   gracefully; the server-side SendPushNotification integration still
+ *   reaches the native app.
  */
 export function usePushNotifications() {
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user || !isFirebaseConfigured()) return;
-    // Attempt FCM token registration on ALL platforms (including native
-    // mobile app WebViews). Modern Android/iOS WebViews support service
-    // workers and can register a web FCM token, which populates the
-    // DeviceToken table. If the WebView lacks service-worker support, the
-    // check below skips gracefully, and the server-side SendPushNotification
-    // integration still reaches the native app as a fallback.
     if (!("serviceWorker" in navigator)) return;
 
+    let cancelled = false;
+
+    const registerToken = async () => {
+      try {
+        const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+        messagingInstance = getMessaging(app);
+
+        // Register the service worker FIRST so getToken can find it.
+        const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+
+        // Get the FCM token WITHOUT gating on notification permission.
+        // Firebase can issue a token even before the user grants display
+        // permission — push delivery works; only the visible notification
+        // requires the grant.
+        let token = null;
+        try {
+          token = await getToken(messagingInstance, {
+            vapidKey: firebaseVapidKey,
+            serviceWorkerRegistration: registration,
+          });
+        } catch (e) {
+          console.error("FCM getToken failed", e);
+        }
+
+        // If no token yet, request permission then retry — some browsers
+        // only issue a token after the user has interacted with the
+        // permission prompt.
+        if (!token && "Notification" in window) {
+          try {
+            const perm = await Notification.requestPermission();
+            if (perm === "granted") {
+              token = await getToken(messagingInstance, {
+                vapidKey: firebaseVapidKey,
+                serviceWorkerRegistration: registration,
+              });
+            }
+          } catch (e) {
+            console.error("Permission/token retry failed", e);
+          }
+        }
+
+        if (cancelled || !token) return;
+
+        const adminToken = localStorage.getItem("admin_session_token");
+        const platform = detectPlatform();
+        await base44.functions.invoke("pushNotification", {
+          adminToken,
+          action: "registerToken",
+          token,
+          platform,
+        });
+      } catch (e) {
+        console.error("Push token registration failed", e);
+      }
+    };
+
+    registerToken();
+
+    // Foreground message → toast
     try {
       const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
       messagingInstance = getMessaging(app);
-
-      // Register the service worker FIRST, then get the FCM token.
-      // Without an explicit registration, getToken may fail to find the
-      // service worker on some browsers.
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          return Notification.requestPermission().then((permission) => {
-            if (permission !== "granted") return null;
-            return getToken(messagingInstance, {
-              vapidKey: firebaseVapidKey,
-              serviceWorkerRegistration: registration,
-            });
-          });
-        })
-        .then((token) => {
-          if (!token) return;
-          const adminToken = localStorage.getItem("admin_session_token");
-          const platform = detectPlatform();
-          base44.functions
-            .invoke("pushNotification", {
-              adminToken,
-              action: "registerToken",
-              token,
-              platform,
-            })
-            .catch((e) => console.error("Failed to register push token", e));
-        })
-        .catch((err) => console.error("Push setup error", err));
-
-      // Foreground message → toast
       const unsub = onMessage(messagingInstance, (payload) => {
         const title = payload.notification?.title || "New Message";
         const body = payload.notification?.body || "";
@@ -72,10 +103,11 @@ export function usePushNotifications() {
             : undefined,
         });
       });
-
-      return () => unsub;
+      return () => { cancelled = true; unsub(); };
     } catch (e) {
-      console.error("Push notification setup failed", e);
+      console.error("Push onMessage setup failed", e);
     }
+
+    return () => { cancelled = true; };
   }, [user]);
 }
