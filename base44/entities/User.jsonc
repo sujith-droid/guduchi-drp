@@ -46,6 +46,11 @@
     "profile_complete": {
       "type": "boolean",
       "default": false
+    },
+    "signup_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Explicit timestamp when the user signed up (set at registration)"
     }
   },
   "required": [

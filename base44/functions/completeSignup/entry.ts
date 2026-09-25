@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
     if (user.profile_complete === undefined || user.profile_complete === null) {
       updateData.profile_complete = false;
     }
+    // Store an explicit signup timestamp so the admin panel can display when
+    // the user registered (created_date is platform-managed and not always reliable)
+    if (!user.signup_date) updateData.signup_date = new Date().toISOString();
 
     if (Object.keys(updateData).length > 0) {
       await base44.asServiceRole.entities.User.update(user.id, updateData);
