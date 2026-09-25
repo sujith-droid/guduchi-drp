@@ -72,13 +72,28 @@ export default function Login() {
     else navigate("/");
   };
 
+  const invokeWithRetry = async (fnName, payload, retries = 2) => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await base44.functions.invoke(fnName, payload);
+      } catch (err) {
+        const is429 = err?.status === 429 || err?.response?.status === 429 || String(err.message || "").includes("429") || String(err.message || "").toLowerCase().includes("rate limit");
+        if (is429 && attempt < retries) {
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
   const handleStep1 = async (e) => {
     e.preventDefault();
     const err = validateIdentifier();
     if (err) return setErrors({ identifier: err });
     setLoading(true);
     try {
-      await base44.functions.invoke("sendOtp", { phone: getFormattedPhone() });
+      await invokeWithRetry("sendOtp", { phone: getFormattedPhone() });
       setStep(3);
       setCountdown(30);
     } catch (err) {
@@ -98,7 +113,7 @@ export default function Login() {
     if (otp.length !== 4) return setErrors({ otp: "Please enter a valid 4-digit OTP." });
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("verifyOtp", { phone: getFormattedPhone(), code: otp });
+      const res = await invokeWithRetry("verifyOtp", { phone: getFormattedPhone(), code: otp });
       const responseData = res.data || res;
       if (!responseData.user) throw new Error("Login failed. Please try again.");
       if (isAdminMode && responseData.user.role !== "admin") {
@@ -121,7 +136,7 @@ export default function Login() {
     setLoading(true);
     setErrors({});
     try {
-      await base44.functions.invoke("resendOtp", { phone: getFormattedPhone() });
+      await invokeWithRetry("resendOtp", { phone: getFormattedPhone() });
       setCountdown(30);
       setOtp("");
     } catch (err) {
