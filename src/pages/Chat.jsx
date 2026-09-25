@@ -81,6 +81,11 @@ export default function Chat() {
 
   useEffect(() => {
     if (!activeConvId || !user) return;
+    // Clear messages immediately when switching conversations so stale
+    // messages from the previous chat don't briefly render (or persist
+    // if the new fetch fails).
+    setMessages([]);
+    setChatPartner(null);
     loadMessages();
     // Poll for new messages every 5 seconds. The SDK realtime subscription
     // (base44.entities.ChatMessage.subscribe) does NOT work for OTP-authenticated
