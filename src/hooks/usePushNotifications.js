@@ -38,7 +38,12 @@ export function usePushNotifications() {
         messagingInstance = getMessaging(app);
 
         // Register the service worker FIRST so getToken can find it.
-        const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+          scope: "/",
+        });
+        // Wait for the SW to be fully activated — calling getToken while the
+        // SW is still installing throws an error and the token is never issued.
+        await navigator.serviceWorker.ready;
 
         // Get the FCM token WITHOUT gating on notification permission.
         // Firebase can issue a token even before the user grants display
