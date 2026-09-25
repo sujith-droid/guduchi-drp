@@ -102,12 +102,11 @@ export default async function(req: Request): Promise<Response> {
           }
         }
 
-        // Only return assignments that have at least one message, sorted by latest message
+        // Return ALL assignments (so doctors can initiate chats with newly
+        // assigned patients), sorted by latest message — those with no
+        // messages sort to the end.
         const conversationsWithMsgs = assignments
-          .filter((a) => {
-            const cid = [a.patient_email, a.doctor_email].sort().join("_");
-            return convLatest[cid];
-          })
+          .slice()
           .sort((a, b) => {
             const cidA = [a.patient_email, a.doctor_email].sort().join("_");
             const cidB = [b.patient_email, b.doctor_email].sort().join("_");
