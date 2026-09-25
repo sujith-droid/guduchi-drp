@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/AuthContext";
 import { roleDisplayLabel, isSubadminRole, isViewerRole } from "@/lib/roles";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 
 const patientNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -247,6 +248,7 @@ export default function Layout() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden" id="main-scroll">
           <div className="max-w-5xl mx-auto p-4 md:p-6 pb-24 md:pb-6">
+            <NotificationPermissionPrompt />
             <PageTransition>
               <Outlet />
             </PageTransition>
