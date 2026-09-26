@@ -109,12 +109,20 @@ export default function SignUp() {
         full_name: formData.name
       });
 
-      await base44.functions.invoke("completeSignup", {
-        email: formData.email,
-        phone: formattedPhone,
-        role: "patient",
-        full_name: formData.name
-      });
+      // Profile enrichment (phone, role, patient_id) runs in a backend function
+      // with service-role access. If this step fails the platform account still
+      // exists, so we send the user to login rather than surfacing a hard error.
+      try {
+        await base44.functions.invoke("completeSignup", {
+          email: formData.email,
+          phone: formattedPhone,
+          role: "patient",
+          full_name: formData.name
+        });
+      } catch (profileErr) {
+        console.error("completeSignup failed:", profileErr);
+        // Account was created on the platform; direct to login so OTP works.
+      }
 
       // Successfully created! Send them to login.
       navigate("/login");
@@ -125,6 +133,8 @@ export default function SignUp() {
         setErrors({ email: msg });
       } else if (msg.toLowerCase().includes("phone number already registered")) {
         setErrors({ phone: msg });
+      } else if (msg.includes("500")) {
+        setErrors({ form: "Registration service is temporarily unavailable. Please try again in a moment." });
       } else {
         setErrors({ form: msg });
       }
