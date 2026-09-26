@@ -110,10 +110,24 @@ export default function SignUp() {
       });
 
       // Profile enrichment (phone, role, patient_id) runs in a backend function
-      // with service-role access. If this step fails the platform account still
-      // exists, so we send the user to login rather than surfacing a hard error.
+      // with service-role access. This step is critical — without it the user
+      // has no phone number and cannot login via OTP. Retry up to 3 times.
+      const invokeWithRetry = async (fnName, payload, retries = 3) => {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          try {
+            return await base44.functions.invoke(fnName, payload);
+          } catch (err) {
+            if (attempt < retries) {
+              await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              continue;
+            }
+            throw err;
+          }
+        }
+      };
+
       try {
-        await base44.functions.invoke("completeSignup", {
+        await invokeWithRetry("completeSignup", {
           email: formData.email,
           phone: formattedPhone,
           role: "patient",
@@ -121,7 +135,8 @@ export default function SignUp() {
         });
       } catch (profileErr) {
         console.error("completeSignup failed:", profileErr);
-        // Account was created on the platform; direct to login so OTP works.
+        setErrors({ form: "Your account was created but we couldn't save your phone number. Please contact support to complete registration." });
+        return;
       }
 
       // Successfully created! Send them to login.
