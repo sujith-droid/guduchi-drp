@@ -13,8 +13,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Email and phone are required' }, { status: 400 });
     }
 
-    // Find the just-registered user by email
-    const users = await base44.asServiceRole.entities.User.filter({ email });
+    // Find the just-registered user by email.
+    // The platform's register() creates the auth user immediately, but the
+    // User entity may not be queryable for a few seconds due to eventual
+    // consistency. Poll up to 10 times with 1.5s delays before giving up.
+    let users = [];
+    for (let attempt = 0; attempt < 10; attempt++) {
+      users = await base44.asServiceRole.entities.User.filter({ email });
+      if (users.length > 0) break;
+      await new Promise(r => setTimeout(r, 1500));
+    }
     if (users.length === 0) {
       return Response.json({ error: 'User not found. Please complete registration first.' }, { status: 404 });
     }
