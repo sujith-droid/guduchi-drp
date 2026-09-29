@@ -46,13 +46,10 @@ export default async function(req: Request): Promise<Response> {
         }
 
         // Deactivate existing active assignments — patient can only have one doctor at a time
-        const currentAssignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({
-          patient_email: userEmail,
-          status: 'active',
-        });
-        for (const a of currentAssignments) {
-          await base44.asServiceRole.entities.PatientDoctorAssignment.update(a.id, { status: 'inactive' });
-        }
+        await base44.asServiceRole.entities.PatientDoctorAssignment.updateMany(
+          { patient_email: userEmail, status: 'active' },
+          { $set: { status: 'inactive' } }
+        );
 
         // Get doctor name
         const doctorUsers = await base44.asServiceRole.entities.User.filter({ email: doctorEmail });
@@ -194,8 +191,13 @@ export default async function(req: Request): Promise<Response> {
       case 'markRead': {
         const { messageIds } = payload;
         if (!messageIds || !Array.isArray(messageIds)) return Response.json({ error: 'messageIds is required' }, { status: 400 });
-        for (const id of messageIds) {
-          await base44.asServiceRole.entities.ChatMessage.update(id, { is_read: true });
+        // Use updateMany instead of sequential updates to avoid rate limits
+        // when marking many messages as read at once.
+        if (messageIds.length > 0) {
+          await base44.asServiceRole.entities.ChatMessage.updateMany(
+            { id: { $in: messageIds } },
+            { $set: { is_read: true } }
+          );
         }
         return Response.json({ success: true });
       }
@@ -251,14 +253,16 @@ export default async function(req: Request): Promise<Response> {
           saved = await base44.asServiceRole.entities.DailyLog.create(data);
           // Notify assigned doctors of new log entry
           const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ patient_email: userEmail, status: "active" });
-          for (const a of assignments) {
-            await base44.asServiceRole.entities.Notification.create({
-              user_email: a.doctor_email,
-              title: "New Log Entry",
-              message: `${patient.full_name || userEmail} has submitted a new daily health log for ${date}.`,
-              type: "info",
-              related_patient_email: userEmail,
-            }).catch(() => {});
+          if (assignments.length > 0) {
+            await base44.asServiceRole.entities.Notification.bulkCreate(
+              assignments.map(a => ({
+                user_email: a.doctor_email,
+                title: "New Log Entry",
+                message: `${patient.full_name || userEmail} has submitted a new daily health log for ${date}.`,
+                type: "info",
+                related_patient_email: userEmail,
+              }))
+            ).catch(() => {});
           }
         }
         return Response.json({ success: true, log: saved });
