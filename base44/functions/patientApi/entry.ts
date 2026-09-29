@@ -220,6 +220,67 @@ export default async function(req: Request): Promise<Response> {
         return Response.json({ success: true });
       }
 
+      // ── Daily Logs ──────────────────────────────────────────────
+      case 'getLogs': {
+        const logs = await base44.asServiceRole.entities.DailyLog.filter({ patient_email: userEmail }, "-date", 14);
+        const hba1c = await base44.asServiceRole.entities.HbA1cRecord.filter({ patient_email: userEmail }, "-date", 10);
+        return Response.json({ logs, hba1c });
+      }
+
+      case 'getLogForDate': {
+        const { date } = payload;
+        if (!date) return Response.json({ error: 'date is required' }, { status: 400 });
+        const logs = await base44.asServiceRole.entities.DailyLog.filter({ patient_email: userEmail, date });
+        return Response.json({ log: logs[0] || null });
+      }
+
+      case 'saveLog': {
+        const { date, logData } = payload;
+        if (!date) return Response.json({ error: 'date is required' }, { status: 400 });
+        const existing = await base44.asServiceRole.entities.DailyLog.filter({ patient_email: userEmail, date });
+        const data: any = { patient_email: userEmail, date };
+        for (const key of ['before_food_morning','before_food_afternoon','before_food_night','after_food_morning','after_food_afternoon','after_food_night','random_sugar','weight','step_count','notes']) {
+          if (logData[key] !== undefined && logData[key] !== '') {
+            data[key] = key === 'notes' ? logData[key] : Number(logData[key]);
+          }
+        }
+        let saved;
+        if (existing.length > 0) {
+          saved = await base44.asServiceRole.entities.DailyLog.update(existing[0].id, data);
+        } else {
+          saved = await base44.asServiceRole.entities.DailyLog.create(data);
+          // Notify assigned doctors of new log entry
+          const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ patient_email: userEmail, status: "active" });
+          for (const a of assignments) {
+            await base44.asServiceRole.entities.Notification.create({
+              user_email: a.doctor_email,
+              title: "New Log Entry",
+              message: `${patient.full_name || userEmail} has submitted a new daily health log for ${date}.`,
+              type: "info",
+              related_patient_email: userEmail,
+            }).catch(() => {});
+          }
+        }
+        return Response.json({ success: true, log: saved });
+      }
+
+      case 'getHba1c': {
+        const hba1c = await base44.asServiceRole.entities.HbA1cRecord.filter({ patient_email: userEmail }, "-date", 10);
+        return Response.json({ hba1c });
+      }
+
+      case 'saveHba1c': {
+        const { date, value } = payload;
+        if (!date || !value) return Response.json({ error: 'date and value are required' }, { status: 400 });
+        await base44.asServiceRole.entities.HbA1cRecord.create({
+          patient_email: userEmail,
+          date,
+          value: Number(value),
+        });
+        const hba1c = await base44.asServiceRole.entities.HbA1cRecord.filter({ patient_email: userEmail }, "-date", 10);
+        return Response.json({ success: true, hba1c });
+      }
+
       default:
         return Response.json({ error: 'Unknown action' }, { status: 400 });
     }

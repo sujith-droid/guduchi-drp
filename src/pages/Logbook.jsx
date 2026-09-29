@@ -43,17 +43,25 @@ export default function Logbook() {
   const [hba1cDialogOpen, setHba1cDialogOpen] = useState(false);
   const [savingHba1c, setSavingHba1c] = useState(false);
 
+  // Route all entity operations through patientApi so OTP-authenticated users
+  // (whose AdminSession token isn't a valid Base44 platform token) can read
+  // and write their logs. Direct SDK calls fail with 401 for these users.
+  const logApi = async (action, payload = {}) => {
+    const adminToken = localStorage.getItem("admin_session_token");
+    const res = await base44.functions.invoke("patientApi", { adminToken, action, ...payload });
+    const data = res.data || res;
+    if (data.error) throw new Error(data.error);
+    return data;
+  };
+
   useEffect(() => {
     if (user) loadUser();
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
-    const logs = await base44.entities.DailyLog.filter({ patient_email: user.email }, "-date", 14);
-    setRecentLogs(logs);
+    await loadUser();
     await loadLogForDate();
-    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: user.email }, "-date", 10);
-    setHba1cRecords(hba1c);
   }, [user, selectedDate]);
 
   const scrollRef = useRef(null);
@@ -67,72 +75,79 @@ export default function Logbook() {
   }, [user, selectedDate]);
 
   const loadUser = async () => {
-    const me = user;
-    const logs = await base44.entities.DailyLog.filter({ patient_email: me.email }, "-date", 14);
-    setRecentLogs(logs);
-    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: me.email }, "-date", 10);
-    setHba1cRecords(hba1c);
-    setHba1cDate(moment().format("YYYY-MM-DD"));
-    setLoading(false);
+    try {
+      const data = await logApi("getLogs");
+      setRecentLogs(data.logs || []);
+      setHba1cRecords(data.hba1c || []);
+      setHba1cDate(moment().format("YYYY-MM-DD"));
+    } catch (e) {
+      console.error("Failed to load logs:", e);
+      toast.error("Could not load your logs. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const saveHba1c = async () => {
     if (!hba1cValue) return;
     setSavingHba1c(true);
-    await base44.entities.HbA1cRecord.create({
-      patient_email: user.email,
-      date: hba1cDate,
-      value: Number(hba1cValue),
-    });
-    setHba1cValue("");
-    setHba1cDialogOpen(false);
-    setSavingHba1c(false);
-    const hba1c = await base44.entities.HbA1cRecord.filter({ patient_email: user.email }, "-date", 10);
-    setHba1cRecords(hba1c);
+    try {
+      const data = await logApi("saveHba1c", { date: hba1cDate, value: hba1cValue });
+      setHba1cRecords(data.hba1c || []);
+      setHba1cValue("");
+      setHba1cDialogOpen(false);
+    } catch (e) {
+      console.error("Failed to save HbA1c:", e);
+      toast.error("Could not save HbA1c reading.");
+    } finally {
+      setSavingHba1c(false);
+    }
   };
 
   const loadLogForDate = async () => {
-    const logs = await base44.entities.DailyLog.filter({ patient_email: user.email, date: selectedDate });
-    if (logs.length > 0) {
-      const existing = logs[0];
-      setExistingLog(existing);
-      setLog({
-        before_food_morning: existing.before_food_morning || "",
-        before_food_afternoon: existing.before_food_afternoon || "",
-        before_food_night: existing.before_food_night || "",
-        after_food_morning: existing.after_food_morning || "",
-        after_food_afternoon: existing.after_food_afternoon || "",
-        after_food_night: existing.after_food_night || "",
-        random_sugar: existing.random_sugar || "",
-        weight: existing.weight || "",
-        step_count: existing.step_count || "",
-        notes: existing.notes || "",
-      });
-    } else {
-      setExistingLog(null);
-      setLog({ before_food_morning: "", before_food_afternoon: "", before_food_night: "", after_food_morning: "", after_food_afternoon: "", after_food_night: "", random_sugar: "", weight: "", step_count: "", notes: "" });
+    try {
+      const data = await logApi("getLogForDate", { date: selectedDate });
+      const existing = data.log;
+      if (existing) {
+        setExistingLog(existing);
+        setLog({
+          before_food_morning: existing.before_food_morning || "",
+          before_food_afternoon: existing.before_food_afternoon || "",
+          before_food_night: existing.before_food_night || "",
+          after_food_morning: existing.after_food_morning || "",
+          after_food_afternoon: existing.after_food_afternoon || "",
+          after_food_night: existing.after_food_night || "",
+          random_sugar: existing.random_sugar || "",
+          weight: existing.weight || "",
+          step_count: existing.step_count || "",
+          notes: existing.notes || "",
+        });
+      } else {
+        setExistingLog(null);
+        setLog({ before_food_morning: "", before_food_afternoon: "", before_food_night: "", after_food_morning: "", after_food_afternoon: "", after_food_night: "", random_sugar: "", weight: "", step_count: "", notes: "" });
+      }
+    } catch (e) {
+      console.error("Failed to load log for date:", e);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const data = {
-      patient_email: user.email,
-      date: selectedDate,
-      before_food_morning: log.before_food_morning ? Number(log.before_food_morning) : undefined,
-      before_food_afternoon: log.before_food_afternoon ? Number(log.before_food_afternoon) : undefined,
-      before_food_night: log.before_food_night ? Number(log.before_food_night) : undefined,
-      after_food_morning: log.after_food_morning ? Number(log.after_food_morning) : undefined,
-      after_food_afternoon: log.after_food_afternoon ? Number(log.after_food_afternoon) : undefined,
-      after_food_night: log.after_food_night ? Number(log.after_food_night) : undefined,
-      random_sugar: log.random_sugar ? Number(log.random_sugar) : undefined,
-      weight: log.weight ? Number(log.weight) : undefined,
-      step_count: log.step_count ? Number(log.step_count) : undefined,
-      notes: log.notes || undefined,
+    const logData = {
+      before_food_morning: log.before_food_morning,
+      before_food_afternoon: log.before_food_afternoon,
+      before_food_night: log.before_food_night,
+      after_food_morning: log.after_food_morning,
+      after_food_afternoon: log.after_food_afternoon,
+      after_food_night: log.after_food_night,
+      random_sugar: log.random_sugar,
+      weight: log.weight,
+      step_count: log.step_count,
+      notes: log.notes,
     };
 
     // Optimistic update — reflect changes in recent logs list immediately
-    const optimisticEntry = { ...data, id: existingLog?.id || `optimistic-${Date.now()}`, created_date: new Date().toISOString() };
+    const optimisticEntry = { ...logData, date: selectedDate, id: existingLog?.id || `optimistic-${Date.now()}`, created_date: new Date().toISOString() };
     setRecentLogs((prev) => {
       const filtered = prev.filter((l) => l.date !== selectedDate);
       return [optimisticEntry, ...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -140,31 +155,18 @@ export default function Logbook() {
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 2500);
 
-    if (existingLog) {
-      await base44.entities.DailyLog.update(existingLog.id, data);
-    } else {
-      await base44.entities.DailyLog.create(data);
-      // Notify assigned doctors of new log entry (best-effort)
-      try {
-        const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" });
-        for (const a of assignments) {
-          await base44.entities.Notification.create({
-            user_email: a.doctor_email,
-            title: "New Log Entry",
-            message: `${user.full_name || user.email} has submitted a new daily health log for ${data.date}.`,
-            type: "info",
-            related_patient_email: user.email,
-          });
-        }
-      } catch (_) {
-        // Notification permission error — log saved successfully regardless
-      }
+    try {
+      await logApi("saveLog", { date: selectedDate, logData });
+      // Reconcile with server truth after save
+      await loadLogForDate();
+      const data = await logApi("getLogs");
+      setRecentLogs(data.logs || []);
+    } catch (e) {
+      console.error("Failed to save log:", e);
+      toast.error("Could not save your log entry. Please try again.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    // Reconcile with server truth after save
-    loadLogForDate();
-    const logs = await base44.entities.DailyLog.filter({ patient_email: user.email }, "-date", 14);
-    setRecentLogs(logs);
   };
 
   const changeDate = (dir) => {
