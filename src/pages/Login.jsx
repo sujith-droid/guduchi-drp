@@ -72,15 +72,18 @@ export default function Login() {
     else navigate("/");
   };
 
-  const invokeWithRetry = async (fnName, payload, retries = 2) => {
+  const invokeWithRetry = async (fnName, payload, retries = 1) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         return await base44.functions.invoke(fnName, payload);
       } catch (err) {
         const is429 = err?.status === 429 || err?.response?.status === 429 || String(err.message || "").includes("429") || String(err.message || "").toLowerCase().includes("rate limit");
         if (is429 && attempt < retries) {
-          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
           continue;
+        }
+        if (is429) {
+          throw new Error("Rate limit exceeded. Please wait 1-2 minutes and try again.");
         }
         throw err;
       }

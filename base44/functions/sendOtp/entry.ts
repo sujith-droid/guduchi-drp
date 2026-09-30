@@ -19,15 +19,14 @@ Deno.serve(async (req) => {
         //    Phone may be stored with or without the +91 country code, or with
         //    stray spaces/dashes, so try the exact value, then the last 10
         //    digits, then a digits-only normalized match.
-        let users = await base44.asServiceRole.entities.User.filter({ phone });
         const normalizedDigits = phone.replace(/\D/g, "").slice(-10);
+        let users = await base44.asServiceRole.entities.User.filter({ phone });
         if (users.length === 0 && normalizedDigits.length === 10) {
             users = await base44.asServiceRole.entities.User.filter({ phone: normalizedDigits });
         }
-        if (users.length === 0) {
-            // Last resort: fetch a broader set and match by normalized digits
-            const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 500);
-            users = allUsers.filter(u => (u.phone || "").replace(/\D/g, "").slice(-10) === normalizedDigits);
+        if (users.length === 0 && normalizedDigits.length === 10) {
+            // Match by last-10-digits using regex — avoids fetching all users
+            users = await base44.asServiceRole.entities.User.filter({ phone: { $regex: normalizedDigits + "$" } });
         }
         if (users.length === 0) {
             return Response.json({ error: 'No account found with this phone number.' }, { status: 404 });
