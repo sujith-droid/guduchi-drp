@@ -43,7 +43,7 @@ export default function DoctorDashboard() {
     // the User entity instead of the possibly-stale patient_name on the
     // assignment record.
     const adminToken = localStorage.getItem("admin_session_token");
-    let assignments, recentLogs, namesMap = {}, phonesMap = {};
+    let assignments = [], recentLogs = [], namesMap = {}, phonesMap = {};
     try {
       const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getData" });
       const data = res.data || res;
@@ -53,9 +53,13 @@ export default function DoctorDashboard() {
       phonesMap = data.patientPhones || {};
     } catch {
       // Fallback to direct SDK calls if the function invoke fails
-      const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
-      assignments = await base44.entities.PatientDoctorAssignment.filter(query);
-      recentLogs = await base44.entities.DailyLog.list("-date", 200);
+      try {
+        const query = isAdmin ? { status: "active" } : { doctor_email: me.email, status: "active" };
+        assignments = await base44.entities.PatientDoctorAssignment.filter(query);
+        recentLogs = await base44.entities.DailyLog.list("-date", 200);
+      } catch (e) {
+        console.error("DoctorDashboard loadData error:", e);
+      }
     }
     setPatients(assignments);
     setPatientNames(namesMap);
