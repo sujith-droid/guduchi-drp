@@ -43,12 +43,16 @@ export default function Progress() {
   };
 
   const loadLogs = async () => {
-    const allLogs = await base44.entities.DailyLog.filter(
-      { patient_email: user.email },
-      "-date",
-      Number(period)
-    );
-    setLogs(allLogs);
+    try {
+      const allLogs = await base44.entities.DailyLog.filter(
+        { patient_email: user.email },
+        "-date",
+        Number(period)
+      );
+      setLogs(allLogs);
+    } catch (e) {
+      console.error("Failed to load logs:", e);
+    }
   };
 
 

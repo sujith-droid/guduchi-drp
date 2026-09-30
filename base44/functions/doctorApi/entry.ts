@@ -21,15 +21,17 @@ export default async function(req: Request): Promise<Response> {
           filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, query),
           listAll(base44.asServiceRole.entities.DailyLog, "-date"),
         ]);
-        // Fetch phone numbers for all assigned patients.
+        // Fetch phone numbers and names for all assigned patients in a single query.
         const patientEmails = [...new Set(assignments.map((a) => a.patient_email))];
         const patientPhones = {};
         const patientNames = {};
-        for (const email of patientEmails) {
+        if (patientEmails.length > 0) {
           try {
-            const users = await base44.asServiceRole.entities.User.filter({ email });
-            if (users[0]?.phone) patientPhones[email] = users[0].phone;
-            if (users[0]?.full_name) patientNames[email] = users[0].full_name;
+            const users = await base44.asServiceRole.entities.User.filter({ email: { $in: patientEmails } });
+            for (const u of users) {
+              if (u.phone) patientPhones[u.email] = u.phone;
+              if (u.full_name) patientNames[u.email] = u.full_name;
+            }
           } catch (e) {}
         }
         return Response.json({ assignments, recentLogs, patientPhones, patientNames });
@@ -172,8 +174,11 @@ export default async function(req: Request): Promise<Response> {
       case 'markRead': {
         const { messageIds } = payload;
         if (!messageIds || !Array.isArray(messageIds)) return Response.json({ error: 'messageIds is required' }, { status: 400 });
-        for (const id of messageIds) {
-          await base44.asServiceRole.entities.ChatMessage.update(id, { is_read: true });
+        if (messageIds.length > 0) {
+          await base44.asServiceRole.entities.ChatMessage.updateMany(
+            { id: { $in: messageIds } },
+            { $set: { is_read: true } }
+          );
         }
         return Response.json({ success: true });
       }

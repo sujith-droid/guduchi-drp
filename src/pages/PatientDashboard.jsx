@@ -79,8 +79,10 @@ export default function PatientDashboard() {
           let phone = null;
           try {
             const res = await base44.functions.invoke('getUserPhone', { target_email: a.doctor_email });
-            phone = res.data.phone || null;
-          } catch {}
+            phone = res.data?.phone || res.phone || null;
+          } catch (e) {
+            console.error(`Failed to load phone for ${a.doctor_email}:`, e);
+          }
           return { name: a.doctor_name || a.doctor_email, email: a.doctor_email, phone };
         })
       );
