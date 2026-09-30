@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import { useAuth } from "@/lib/AuthContext";
+import { isPatientRole } from "@/lib/roles";
 
 export default function Logbook() {
   const { user } = useAuth();
@@ -55,7 +56,11 @@ export default function Logbook() {
   };
 
   useEffect(() => {
-    if (user) loadUser();
+    if (user && isPatientRole(user.role)) {
+      loadUser();
+    } else if (user) {
+      setLoading(false);
+    }
   }, [user]);
 
   const handleRefresh = useCallback(async () => {
@@ -71,7 +76,7 @@ export default function Logbook() {
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   useEffect(() => {
-    if (user) loadLogForDate();
+    if (user && isPatientRole(user.role)) loadLogForDate();
   }, [user, selectedDate]);
 
   const loadUser = async () => {
@@ -82,7 +87,12 @@ export default function Logbook() {
       setHba1cDate(moment().format("YYYY-MM-DD"));
     } catch (e) {
       console.error("Failed to load logs:", e);
-      toast.error("Could not load your logs. Please try again.");
+      const status = e?.response?.status || e?.status;
+      if (status === 401) {
+        toast.error("This page is for patients only.");
+      } else {
+        toast.error("Could not load your logs. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -179,6 +189,18 @@ export default function Logbook() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isPatientRole(user?.role)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+        <FileText className="h-10 w-10 text-muted-foreground/30 mb-3" />
+        <p className="text-sm font-medium">Patient area only</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          The daily logbook is available to patients. Use the admin panel to manage users.
+        </p>
       </div>
     );
   }

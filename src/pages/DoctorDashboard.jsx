@@ -214,13 +214,17 @@ export default function DoctorDashboard() {
                            )}
                          </div>
                          {patientPhones[patient.patient_email] && (
-                           <a
-                             href={`tel:${patientPhones[patient.patient_email]}`}
-                             onClick={(e) => e.stopPropagation()}
+                           <button
+                             type="button"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               e.preventDefault();
+                               window.location.href = `tel:${patientPhones[patient.patient_email]}`;
+                             }}
                              className="text-xs text-primary hover:underline mt-0.5 inline-flex items-center gap-1"
                            >
                              <Phone className="h-3 w-3" /> {patientPhones[patient.patient_email]}
-                           </a>
+                           </button>
                          )}
                        </div>
                     </div>
