@@ -50,43 +50,63 @@ export const AuthProvider = ({ children }) => {
         // Authorization header — the Base44 platform rejects that as 401
         // before the function even runs. adminMe reads the token from the
         // request body and validates it server-side.
-        try {
-          const response = await fetch(`/api/apps/${appParams.appId}/functions/adminMe`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminToken }),
-          });
-          if (!response.ok) {
-            const err = new Error(response.statusText || 'Session validation failed');
-            err.status = response.status;
-            throw err;
+        // Retry once on transient errors (network, 5xx) so a brief hiccup
+        // doesn't bounce a valid session.
+        let lastError = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const response = await fetch(`/api/apps/${appParams.appId}/functions/adminMe`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ adminToken }),
+            });
+            if (response.status === 401) {
+              // Clear 401 = invalid/expired session → real logout
+              localStorage.removeItem("admin_session_token");
+              localStorage.removeItem("cached_user");
+              setUser(null);
+              setIsAuthenticated(false);
+              setAuthError({ type: 'auth_required', message: 'Session expired' });
+              setIsLoadingAuth(false);
+              setIsLoadingPublicSettings(false);
+              return;
+            }
+            if (response.ok) {
+              const responseData = await response.json();
+              if (responseData?.user) {
+                base44.auth.setToken(adminToken);
+                setUser(responseData.user);
+                localStorage.setItem("cached_user", JSON.stringify(responseData.user));
+                setIsLoadingAuth(false);
+                setIsLoadingPublicSettings(false);
+                return;
+              }
+            }
+            // Non-401, non-ok (e.g. 500, 502) — retry once, then fall through
+            lastError = new Error(response.statusText || 'Session validation failed');
+            lastError.status = response.status;
+          } catch (e) {
+            // Network error — retry once, then fall through
+            lastError = e;
           }
-          const responseData = await response.json();
-          if (responseData?.user) {
-            base44.auth.setToken(adminToken);
-            setUser(responseData.user);
-            localStorage.setItem("cached_user", JSON.stringify(responseData.user));
-            setIsLoadingAuth(false);
-            setIsLoadingPublicSettings(false);
-            return;
-          }
-        } catch (e) {
-          // Only a clear 401 (invalid/expired session) is a real logout. Transient
-          // network/server errors must not bounce a valid session on a hard
-          // refresh — protected endpoints still validate the token server-side
-          // on every call, so security is preserved either way.
-          const status = e?.status || e?.response?.status;
-          if (status === 401) {
-            localStorage.removeItem("admin_session_token");
-            localStorage.removeItem("cached_user");
-            setUser(null);
-            setIsAuthenticated(false);
-            setAuthError({ type: 'auth_required', message: 'Session expired' });
-          }
-          setIsLoadingAuth(false);
-          setIsLoadingPublicSettings(false);
-          return;
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
         }
+
+        // adminMe failed after retry with a non-401 error. If we have a cached
+        // user from the optimistic restore above, keep them logged in —
+        // protected endpoints still validate the token server-side on every
+        // call, so security is preserved. Only log out if there's no cached
+        // user to fall back on.
+        if (!cachedUser) {
+          localStorage.removeItem("admin_session_token");
+          localStorage.removeItem("cached_user");
+          setUser(null);
+          setIsAuthenticated(false);
+          setAuthError({ type: 'auth_required', message: 'Session expired' });
+        }
+        setIsLoadingAuth(false);
+        setIsLoadingPublicSettings(false);
+        return;
       }
 
       // First, check app public settings (with token if available)
