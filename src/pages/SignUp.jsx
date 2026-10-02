@@ -103,8 +103,9 @@ export default function SignUp() {
       // NOTE: platform register only persists built-in fields (email/password/full_name)
       // and sets role to the platform default "user" — it ignores custom fields like `phone`
       // and the entity's role default. We set phone + role=patient via a service-role call below.
+      const normalizedEmail = formData.email.trim().toLowerCase();
       await base44.auth.register({
-        email: formData.email,
+        email: normalizedEmail,
         password: formData.password,
         full_name: formData.name
       });
@@ -128,7 +129,7 @@ export default function SignUp() {
 
       try {
         await invokeWithRetry("completeSignup", {
-          email: formData.email,
+          email: normalizedEmail,
           phone: formattedPhone,
           role: "patient",
           full_name: formData.name

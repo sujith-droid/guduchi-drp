@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
     }
 
     const base44 = createClientFromRequest(req);
-    const { email, phone, role, full_name } = await req.json();
+    const body = await req.json();
+    const { phone, role, full_name } = body;
+    // The platform stores emails in lowercase, so normalize before lookup —
+    // otherwise mixed-case emails (e.g. "Name@Gmail.com") are never found.
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : body.email;
 
     if (!email || !phone) {
       return Response.json({ error: 'Email and phone are required' }, { status: 400 });
