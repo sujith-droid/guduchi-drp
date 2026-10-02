@@ -20,12 +20,13 @@ Deno.serve(async (req) => {
     // Find the just-registered user by email.
     // The platform's register() creates the auth user immediately, but the
     // User entity may not be queryable for a few seconds due to eventual
-    // consistency. Poll up to 10 times with 1.5s delays before giving up.
+    // consistency. Poll up to 20 times with 1s delays (20s total) — the
+    // extra headroom covers platform slowness under heavy load.
     let users = [];
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 20; attempt++) {
       users = await base44.asServiceRole.entities.User.filter({ email });
       if (users.length > 0) break;
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 1000));
     }
     if (users.length === 0) {
       return Response.json({ error: 'User not found. Please complete registration first.' }, { status: 404 });

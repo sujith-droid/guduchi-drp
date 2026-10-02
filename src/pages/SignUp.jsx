@@ -113,13 +113,18 @@ export default function SignUp() {
       // Profile enrichment (phone, role, patient_id) runs in a backend function
       // with service-role access. This step is critical — without it the user
       // has no phone number and cannot login via OTP. Retry up to 3 times.
-      const invokeWithRetry = async (fnName, payload, retries = 3) => {
+      // completeSignup saves phone, role, patient_id, and signup_date on the
+      // newly-registered user. It polls for up to 20s for the User entity to
+      // become queryable (eventual consistency after register()), and we
+      // retry the whole call up to 5 times with escalating delays so a
+      // slow platform doesn't leave the user without a phone number.
+      const completeSignupWithRetry = async (payload, retries = 5) => {
         for (let attempt = 0; attempt <= retries; attempt++) {
           try {
-            return await base44.functions.invoke(fnName, payload);
+            return await base44.functions.invoke("completeSignup", payload);
           } catch (err) {
             if (attempt < retries) {
-              await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
               continue;
             }
             throw err;
@@ -128,7 +133,7 @@ export default function SignUp() {
       };
 
       try {
-        await invokeWithRetry("completeSignup", {
+        await completeSignupWithRetry({
           email: normalizedEmail,
           phone: formattedPhone,
           role: "patient",
@@ -136,7 +141,10 @@ export default function SignUp() {
         });
       } catch (profileErr) {
         console.error("completeSignup failed:", profileErr);
-        setErrors({ form: "Your account was created but we couldn't save your phone number. Please contact support to complete registration." });
+        // Account was created — navigate to login so the user can try
+        // logging in. If OTP login fails (no phone saved), they can use
+        // email/password or contact support.
+        navigate("/login?signup=incomplete");
         return;
       }
 
