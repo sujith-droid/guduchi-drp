@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ const ErrorMsg = ({ msg }) => msg ? (
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginAdminSession } = useAuth();
 
   // step: 1 = Enter Mobile Number, 3 = Enter OTP
@@ -28,6 +29,7 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   const [errors, setErrors] = useState({});
   const [notRegistered, setNotRegistered] = useState(false);
+  const [signupIncomplete, setSignupIncomplete] = useState(false);
 
   // Force light color tokens on auth pages so typed text and OTP slots stay
   // readable on the white card (system dark mode would otherwise flip tokens
@@ -36,6 +38,13 @@ export default function Login() {
     document.documentElement.classList.add('light');
     return () => document.documentElement.classList.remove('light');
   }, []);
+
+  // Show a warning if the user was redirected from signup with an incomplete
+  // profile (completeSignup failed — phone not saved, OTP login won't work).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSignupIncomplete(params.get('signup') === 'incomplete');
+  }, [location.search]);
 
   useEffect(() => {
     let timer;
@@ -66,9 +75,12 @@ export default function Login() {
   };
 
   const handlePostLogin = (user) => {
-    if (!user.profile_complete) navigate("/setup");
+    // Use === false (not !user.profile_complete) to match App.jsx — existing
+    // users who never had profile_complete set (undefined/null) should go
+    // straight to their dashboard, not be forced through setup.
+    if (user.profile_complete === false) navigate("/setup");
     else if (user.role === "admin") navigate("/admin");
-    else if (user.role === "doctor") navigate("/doctor");
+    else if (user.role === "doctor" || user.role === "viewer") navigate("/doctor");
     else navigate("/");
   };
 
@@ -189,6 +201,13 @@ export default function Login() {
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-red-600 text-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {errors.form}
+              </div>
+            )}
+
+            {signupIncomplete && !errors.form && (
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-2 text-orange-700 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                Your account was created but we couldn't save your phone number. Please contact support to complete registration.
               </div>
             )}
 
