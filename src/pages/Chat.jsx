@@ -798,7 +798,7 @@ export default function Chat() {
       {/* Input — hidden for admin (read-only) */}
       {!isAdminRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
-        <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
+        <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
         <input type="file" ref={fileDocRef} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleFileUpload} />
         {showTemplates && templates.length > 0 && (
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
