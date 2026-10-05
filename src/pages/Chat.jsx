@@ -22,6 +22,9 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
+  // Desktop browsers ignore the camera hint and just open the file picker, which
+  // duplicates the gallery button — so only offer "Take photo" on touch devices.
+  const [hasCamera] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches);
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -838,7 +841,7 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            <ChatAttachButton label="Take photo" icon={Camera} accept="image/*" capture="environment" disabled={sending} onChange={handleImageUpload} />
+            {hasCamera && <ChatAttachButton label="Take photo" icon={Camera} accept="image/*" capture="environment" disabled={sending} onChange={handleImageUpload} />}
             <ChatAttachButton label="Choose from gallery" icon={ImagePlus} accept="image/*" disabled={sending} onChange={handleImageUpload} />
             <ChatAttachButton label="Attach file" icon={Paperclip} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={sending} onChange={handleFileUpload} />
             {(user?.role === 'doctor' || isViewerRole(user?.role)) && (
