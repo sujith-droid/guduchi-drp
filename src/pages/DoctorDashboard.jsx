@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, Phone } from "lucide-react";
+import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, Phone, AlertCircle } from "lucide-react";
 import BulkMessageModal from "../components/BulkMessageModal";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ export default function DoctorDashboard() {
 
   const handleRefresh = useCallback(async () => {
     await loadData();
-  }, []);
+  }, [user]);
 
   const scrollRef = useRef(null);
   useLayoutEffect(() => {
@@ -80,19 +80,38 @@ export default function DoctorDashboard() {
     setLoading(false);
   };
 
+  const getGlucoseReading = (log) => {
+    const readings = [
+      log.before_food_morning,
+      log.after_food_morning,
+      log.before_food_afternoon,
+      log.after_food_afternoon,
+      log.before_food_night,
+      log.after_food_night,
+      log.random_sugar,
+      log.fasting_sugar,
+      log.post_breakfast_sugar,
+      log.post_dinner_sugar,
+    ].filter((r) => r != null);
+    if (readings.length === 0) return null;
+    return readings.reduce((a, b) => a + b, 0) / readings.length;
+  };
+
   const getStatus = (email) => {
     const logs = patientLogs[email] || [];
     if (logs.length === 0) return { label: "No Data", color: "bg-gray-100 text-gray-600" };
-    
+
     const latest = logs[0];
     const daysSinceUpdate = moment().diff(moment(latest.date), "days");
     if (daysSinceUpdate > 2) return { label: "Inactive", color: "bg-red-100 text-red-700" };
 
     if (logs.length >= 2) {
-      const avg1 = (logs[0].fasting_sugar || 0) + (logs[0].post_breakfast_sugar || 0);
-      const avg2 = (logs[1].fasting_sugar || 0) + (logs[1].post_breakfast_sugar || 0);
-      if (avg1 < avg2 - 10) return { label: "Improving", color: "bg-emerald-100 text-emerald-700" };
-      if (avg1 > avg2 + 20) return { label: "Needs Attention", color: "bg-orange-100 text-orange-700" };
+      const avg1 = getGlucoseReading(logs[0]);
+      const avg2 = getGlucoseReading(logs[1]);
+      if (avg1 != null && avg2 != null) {
+        if (avg1 < avg2 - 10) return { label: "Improving", color: "bg-emerald-100 text-emerald-700" };
+        if (avg1 > avg2 + 20) return { label: "Needs Attention", color: "bg-orange-100 text-orange-700" };
+      }
     }
     return { label: "Stable", color: "bg-blue-100 text-blue-700" };
   };
@@ -100,6 +119,8 @@ export default function DoctorDashboard() {
   const getStatusIcon = (label) => {
     if (label === "Improving") return TrendingDown;
     if (label === "Needs Attention") return TrendingUp;
+    if (label === "Inactive") return AlertCircle;
+    if (label === "No Data") return Users;
     return Minus;
   };
 
@@ -157,8 +178,8 @@ export default function DoctorDashboard() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {["Improving", "Stable", "Needs Attention"].map((status) => {
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {["Improving", "Stable", "Needs Attention", "Inactive", "No Data"].map((status) => {
           const count = patients.filter((p) => getStatus(p.patient_email).label === status).length;
           const StatusIcon = getStatusIcon(status);
           return (
