@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil, Reply, Search } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil, Reply, Search, Camera } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -24,6 +24,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
   const fileInputRef = useRef(null);
+  const fileGalleryRef = useRef(null);
   const fileDocRef = useRef(null);
   const [templates, setTemplates] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -799,6 +800,7 @@ export default function Chat() {
       {!isAdminRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
         <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
+        <input type="file" ref={fileGalleryRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
         <input type="file" ref={fileDocRef} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleFileUpload} />
         {showTemplates && templates.length > 0 && (
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
@@ -817,7 +819,10 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            <Button variant="ghost" size="icon" aria-label="Upload image" onClick={() => fileInputRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
+            <Button variant="ghost" size="icon" aria-label="Take photo" onClick={() => fileInputRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
+              <Camera className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" aria-label="Choose from gallery" onClick={() => fileGalleryRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
               <ImagePlus className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] flex">
