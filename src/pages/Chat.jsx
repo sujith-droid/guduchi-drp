@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { isPatientRole, isAdminRole, isViewerRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import ChatAttachButton from "@/components/chat/ChatAttachButton";
+import { compressImage } from "@/lib/compressImage";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function Chat() {
@@ -271,6 +272,10 @@ export default function Chat() {
       setMessages(prev => {
         const pending = prev.filter(m => m.id?.startsWith?.("optimistic-"));
         if (msgs.length === 0 && prev.length > 0) return prev;
+        // Nothing changed since the last poll: keep the same list so the whole
+        // chat doesn't re-render (and lag the attach buttons) every 5 seconds.
+        const sig = (list) => list.map((m) => `${m.id}:${m.is_read ? 1 : 0}:${m.message || ""}`).join("|");
+        if (pending.length === 0 && sig(prev) === sig(msgs)) return prev;
         return [...msgs, ...pending];
       });
       // Mark incoming messages as read ONLY when the tab is actually visible.
@@ -387,13 +392,15 @@ export default function Chat() {
     if (!file) return;
     if (!chatPartner || !activeConvId) return;
     setSending(true);
+    const toastId = toast.loading("Sending photo...");
     try {
-      const { file_url } = await uploadChatFile(file);
+      const { file_url } = await uploadChatFile(await compressImage(file));
       await sendMessage(file_url, null);
     } catch (e) {
       console.error("Failed to upload image", e);
       toast.error("Could not upload the photo. Please try again.");
     } finally {
+      toast.dismiss(toastId);
       setSending(false);
     }
   };
@@ -403,6 +410,7 @@ export default function Chat() {
     if (!file) return;
     if (!chatPartner || !activeConvId) return;
     setSending(true);
+    const toastId = toast.loading("Sending file...");
     try {
       const { file_url } = await uploadChatFile(file);
       const partnerEmail = chatPartner.email;
@@ -418,6 +426,7 @@ export default function Chat() {
       console.error("Failed to upload file", e);
       toast.error("Could not upload the file. Please try again.");
     } finally {
+      toast.dismiss(toastId);
       setSending(false);
     }
   };
