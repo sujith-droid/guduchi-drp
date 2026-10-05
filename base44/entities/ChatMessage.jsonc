@@ -40,6 +40,10 @@
       "type": "boolean",
       "default": false,
       "description": "Whether the message has been read by the receiver"
+    },
+    "reply_to": {
+      "type": "string",
+      "description": "Quoted message text being replied to"
     }
   },
   "required": [

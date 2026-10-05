@@ -156,7 +156,7 @@ export default async function(req: Request): Promise<Response> {
       }
 
       case 'sendMessage': {
-        const { receiverEmail, conversationId, message, imageUrl, audioUrl, messageType } = payload;
+        const { receiverEmail, conversationId, message, imageUrl, audioUrl, messageType, replyTo } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
         const msgData = {
           sender_email: userEmail,
@@ -167,6 +167,7 @@ export default async function(req: Request): Promise<Response> {
         };
         if (imageUrl) msgData.image_url = imageUrl;
         if (audioUrl) msgData.audio_url = audioUrl;
+        if (replyTo) msgData.reply_to = replyTo;
         const created = await base44.asServiceRole.entities.ChatMessage.create(msgData);
         if (receiverEmail) {
           await base44.asServiceRole.entities.Notification.create({

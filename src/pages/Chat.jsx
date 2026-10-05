@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil } from "lucide-react";
+import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil, Reply, Search } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -38,6 +38,10 @@ export default function Chat() {
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [replyToMsg, setReplyToMsg] = useState(null);
+  const [convSearch, setConvSearch] = useState("");
+  const prevMsgCount = useRef(0);
+  const scrollContainerRef = useRef(null);
 
   // activeConvId comes from URL param
   const activeConvId = convIdParam ? decodeURIComponent(convIdParam) : null;
@@ -109,7 +113,16 @@ export default function Chat() {
   }, [activeConvId, user]);
 
   useEffect(() => {
-    messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    const hasNewMessages = messages.length > prevMsgCount.current;
+    // Only auto-scroll if new messages arrived AND the user is near the bottom
+    // (or the new message is from the current user — they just sent it).
+    if (hasNewMessages && (isNearBottom || messages[messages.length - 1]?.sender_email === user?.email)) {
+      messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevMsgCount.current = messages.length;
   }, [messages]);
 
   const handleRefresh = useCallback(async () => {
@@ -344,9 +357,11 @@ export default function Chat() {
         message: newMsg.trim() || undefined,
         imageUrl,
         messageType,
+        replyTo: replyToMsg?.message || undefined,
       });
       // Replace optimistic message with the real created record
       setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...res.message, _pending: false } : m));
+      setReplyToMsg(null);
     } catch (e) {
       console.error("Failed to send message", e);
       // Remove any optimistic message since the send failed
@@ -487,6 +502,17 @@ export default function Chat() {
       <div className="space-y-4 pb-20 md:pb-6">
         <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
         <h1 className="text-2xl font-heading font-bold">Messages</h1>
+        {conversations.length > 0 && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, patient ID, or phone..."
+              value={convSearch}
+              onChange={(e) => setConvSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        )}
         {conversations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-sm">No conversations yet.</p>
@@ -494,7 +520,14 @@ export default function Chat() {
           </div>
         ) : (
           <div className="space-y-2">
-            {conversations.map((a) => {
+            {conversations.filter((a) => {
+              if (!convSearch.trim()) return true;
+              const q = convSearch.toLowerCase();
+              const name = (isAdminRole(user.role) ? `${a.patient_name} ${a.doctor_name}` : !isPatientRole(user.role) ? a.patient_name : a.doctor_name || "").toLowerCase();
+              const pid = (a.patient_id || "").toLowerCase();
+              const email = (a.patient_email || "").toLowerCase();
+              return name.includes(q) || pid.includes(q) || email.includes(q);
+            }).map((a) => {
               const cId = [a.patient_email, a.doctor_email].sort().join("_");
               const unread = unreadMap[cId] || 0;
               const doctorSide = !isPatientRole(user.role);
@@ -571,7 +604,7 @@ export default function Chat() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-3 chat-messages-scroll">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-4 space-y-3 chat-messages-scroll">
         {messages.length === 0 && !messagesLoading && (
           <div className="text-center py-12 text-muted-foreground text-sm">
             Start the conversation by sending a message.
@@ -614,6 +647,11 @@ export default function Chat() {
                     ? "bg-primary text-primary-foreground rounded-br-sm"
                     : "bg-card border border-border rounded-bl-sm"
                 }`}>
+                  {msg.reply_to && (
+                    <div className={`mb-1.5 px-2.5 py-1 rounded-lg border-l-2 text-xs ${isMe ? "bg-white/20 border-white/60" : "bg-muted/60 border-primary"}`}>
+                      <p className="opacity-80 truncate">{msg.reply_to}</p>
+                    </div>
+                  )}
                   {msg.audio_url && (
                     <audio controls src={msg.audio_url} className="max-w-full h-8" />
                   )}
@@ -676,6 +714,13 @@ export default function Chat() {
                       {isMe && !msg._pending && msg.message_type === "text" && (
                         <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
                           <button
+                            onClick={() => setReplyToMsg(msg)}
+                            aria-label="Reply to message"
+                            className="h-6 w-6 rounded-full bg-card border border-border text-foreground flex items-center justify-center shadow-md hover:bg-accent"
+                          >
+                            <Reply className="h-3 w-3" />
+                          </button>
+                          <button
                             onClick={() => startEditMessage(msg)}
                             aria-label="Edit message"
                             className="h-6 w-6 rounded-full bg-card border border-border text-foreground flex items-center justify-center shadow-md hover:bg-accent"
@@ -692,12 +737,30 @@ export default function Chat() {
                         </div>
                       )}
                       {isMe && !msg._pending && msg.message_type !== "text" && (
+                        <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setReplyToMsg(msg)}
+                            aria-label="Reply to message"
+                            className="h-6 w-6 rounded-full bg-card border border-border text-foreground flex items-center justify-center shadow-md hover:bg-accent"
+                          >
+                            <Reply className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => deleteMessage(msg)}
+                            aria-label="Delete message"
+                            className="h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      {!isMe && !msg._pending && (
                         <button
-                          onClick={() => deleteMessage(msg)}
-                          aria-label="Delete message"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-md"
+                          onClick={() => setReplyToMsg(msg)}
+                          aria-label="Reply to message"
+                          className="absolute -top-2 -left-2 h-6 w-6 rounded-full bg-card border border-border text-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-md hover:bg-accent"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Reply className="h-3 w-3" />
                         </button>
                       )}
                     </>
@@ -719,6 +782,19 @@ export default function Chat() {
         <div ref={messagesEnd} />
       </div>
 
+      {/* Reply preview — shown when replying to a message */}
+      {replyToMsg && !isAdminRole(user.role) && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-t-lg border-l-2 border-primary">
+          <Reply className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">Replying to message</p>
+            <p className="text-xs truncate">{replyToMsg.message || (replyToMsg.image_url ? "📷 Photo" : replyToMsg.audio_url ? "🎤 Voice message" : "")}</p>
+          </div>
+          <button onClick={() => setReplyToMsg(null)} aria-label="Cancel reply" className="h-6 w-6 rounded-full hover:bg-accent flex items-center justify-center flex-shrink-0">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {/* Input — hidden for admin (read-only) */}
       {!isAdminRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
@@ -744,7 +820,7 @@ export default function Chat() {
             <Button variant="ghost" size="icon" aria-label="Upload image" onClick={() => fileInputRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
               <ImagePlus className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
+            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] flex">
               <Paperclip className="h-5 w-5" />
             </Button>
             {(user?.role === 'doctor' || isViewerRole(user?.role)) && (
