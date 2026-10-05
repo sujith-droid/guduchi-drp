@@ -13,6 +13,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import ChatAttachButton from "@/components/chat/ChatAttachButton";
 import ChatWebcamButton from "@/components/chat/ChatWebcamButton";
 import { compressImage } from "@/lib/compressImage";
+import { detectPlatform } from "@/lib/platform";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function Chat() {
@@ -25,7 +26,7 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   // Touch devices open the native camera through a file input; desktop browsers
   // ignore that hint and just show a file picker, so computers get a webcam dialog.
-  const [hasCamera] = useState(() => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches);
+  const [hasCamera] = useState(() => typeof window !== "undefined" && (detectPlatform() !== "web" || !!window.matchMedia?.("(pointer: coarse)").matches));
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
