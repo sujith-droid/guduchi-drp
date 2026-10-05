@@ -145,7 +145,7 @@ export default function Chat() {
   useLayoutEffect(() => {
     scrollRef.current = document.getElementById("main-scroll");
   }, []);
-  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef, enabled: !activeConvId });
 
   const initChat = async () => {
     try {

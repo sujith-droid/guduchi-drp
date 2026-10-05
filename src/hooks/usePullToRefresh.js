@@ -21,6 +21,9 @@ export function usePullToRefresh(onRefresh, { threshold = 72, enabled = true, sc
 
   const handleTouchStart = useCallback((e) => {
     if (!enabled) return;
+    // A tap on a button/link/file input can drift a few pixels; treating that as a
+    // pull would cancel the tap (e.g. the camera/file picker never opens).
+    if (e.target?.closest?.("button, a, input, label, textarea, select, [role='button']")) return;
     const el = getScrollEl();
     if (el && el.scrollTop === 0) {
       startYRef.current = e.touches[0].clientY;
