@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +66,16 @@ export default function AdminPanel() {
       setLoading(false);
     }
   };
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const doctors = users.filter((u) => u.role === "doctor" || isViewerRole(u.role)).map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
   const patients = users.filter((u) => isPatientRole(u.role));
@@ -224,6 +236,7 @@ export default function AdminPanel() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold flex items-center gap-2">

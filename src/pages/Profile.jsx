@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +39,16 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    if (isPatientRole(user.role)) {
+      try {
+        const docs = await base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" });
+        setAssignedDoctors(docs);
+      } catch (e) {}
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name || "");
@@ -45,13 +57,19 @@ export default function Profile() {
     setGender(user.gender || "");
     setAddress(user.address || "");
     setBranch(user.branch || "");
-    if (isPatientRole(user.role)) {
-      base44.entities.PatientDoctorAssignment.filter({ patient_email: user.email, status: "active" })
-        .then(setAssignedDoctors)
-        .catch(() => {});
-    }
+    loadData();
     setLoading(false);
-  }, [user]);
+  }, [user, loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const handleDeleteAccount = async () => {
     setDeletingAccount(true);
@@ -136,6 +154,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
           <User className="h-6 w-6" /> My Profile

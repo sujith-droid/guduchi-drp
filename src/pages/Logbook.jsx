@@ -216,11 +216,11 @@ export default function Logbook() {
           exit={{ opacity: 0, scale: 0.7 }}
           className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
         >
-          <div className="bg-white border border-emerald-200 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-3">
+          <div className="bg-card border border-emerald-200 dark:border-emerald-700 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-3">
             <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center">
               <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
-            <p className="text-lg font-heading font-bold text-emerald-700">Entry Saved!</p>
+            <p className="text-lg font-heading font-bold text-emerald-700 dark:text-emerald-300">Entry Saved!</p>
             <p className="text-sm text-muted-foreground">Your health data has been recorded.</p>
           </div>
         </motion.div>

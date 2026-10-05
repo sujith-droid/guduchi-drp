@@ -1,4 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import MobileSelect from "@/components/MobileSelect";
@@ -102,6 +104,16 @@ const loadLogs = async () => {
     setLoading(false);
   };
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([loadLogs(), loadPatientPhone(), loadAssignment()]);
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
+
   const latest = logs[0];
   const previous = logs[1];
 
@@ -113,6 +125,7 @@ const loadLogs = async () => {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

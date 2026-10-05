@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef, useLayoutEffect } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +22,7 @@ export default function CoachPatients() {
   const [selectedCoachFilter, setSelectedCoachFilter] = useState("");
   const [loadError, setLoadError] = useState(false);
 
-  useMemo(() => {
+  const loadData = useCallback(async () => {
     if (!currentUser) return;
     const isFullAdmin = isAdminRole(currentUser?.role);
     const isSubadmin = isSubadminRole(currentUser?.role);
@@ -28,22 +30,34 @@ export default function CoachPatients() {
       setLoading(false);
       return;
     }
-    (async () => {
-      try {
-        setLoadError(false);
-        const adminToken = localStorage.getItem("admin_session_token");
-        const res = await base44.functions.invoke("adminGetData", { adminToken });
-        const d = res.data || res || {};
-        setUsers(d.users || []);
-        setAssignments(d.assignments || []);
-      } catch (e) {
-        console.error("Failed to load admin data", e);
-        setLoadError(true);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    try {
+      setLoadError(false);
+      const adminToken = localStorage.getItem("admin_session_token");
+      const res = await base44.functions.invoke("adminGetData", { adminToken });
+      const d = res.data || res || {};
+      setUsers(d.users || []);
+      setAssignments(d.assignments || []);
+    } catch (e) {
+      console.error("Failed to load admin data", e);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [currentUser]);
+
+  useMemo(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const doctors = users
     .filter((u) => u.role === "doctor" || isViewerRole(u.role))
@@ -73,6 +87,7 @@ export default function CoachPatients() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} aria-label="Back to Admin Panel">
           <ArrowLeft className="h-5 w-5" />

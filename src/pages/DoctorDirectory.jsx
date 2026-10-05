@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Search, MapPin, Stethoscope, Loader2, UserCircle, AlertCircle } from "lucide-react";
@@ -11,19 +13,31 @@ export default function DoctorDirectory() {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await base44.functions.invoke("listDoctors", {});
-        setDoctors(res?.data?.doctors || res?.doctors || []);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const loadData = useCallback(async () => {
+    try {
+      setError(false);
+      const res = await base44.functions.invoke("listDoctors", {});
+      setDoctors(res?.data?.doctors || res?.doctors || []);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const filtered = doctors.filter((d) => {
     const q = query.trim().toLowerCase();
@@ -56,6 +70,7 @@ export default function DoctorDirectory() {
 
   return (
     <div className="space-y-4 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div>
         <h1 className="text-2xl font-heading font-bold">Find a Health Coach</h1>
         <p className="text-sm text-muted-foreground mt-1">

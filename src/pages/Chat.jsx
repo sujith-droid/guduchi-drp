@@ -593,7 +593,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] pb-16 md:pb-0">
+    <div className="flex flex-col h-[calc(100vh-8rem-var(--safe-bottom))] md:h-[calc(100vh-5rem-var(--safe-bottom))] pb-16 md:pb-0">
       {/* Chat Header */}
       <div className="flex items-center gap-3 pb-4 border-b border-border">
         {conversations.length > 1 && (

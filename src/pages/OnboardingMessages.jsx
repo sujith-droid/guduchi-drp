@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,16 @@ export default function OnboardingMessages() {
       setLoading(false);
     }
   };
+
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+  }, []);
+
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => {
+    scrollRef.current = document.getElementById("main-scroll");
+  }, []);
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
   const doctors = users
     .filter((u) => u.role === "doctor" || isViewerRole(u.role))
@@ -120,6 +132,7 @@ export default function OnboardingMessages() {
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" aria-label="Back to Admin" onClick={() => navigate("/admin")}>
           <ArrowLeft className="h-5 w-5" />
