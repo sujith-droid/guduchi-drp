@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil, Reply, Search, Camera } from "lucide-react";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/AuthContext";
 import { isPatientRole, isAdminRole, isViewerRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
@@ -54,6 +55,17 @@ export default function Chat() {
     const res = await base44.functions.invoke(fnName, { adminToken, action, ...payload });
     const data = res.data || res;
     if (data.error) throw new Error(data.error);
+    return data;
+  };
+
+  // Upload a chat attachment through a backend function. The browser's own
+  // integration upload is rejected for mobile-OTP sessions (the session token
+  // isn't a platform token), so the function validates the session server-side.
+  const uploadChatFile = async (file) => {
+    const adminToken = localStorage.getItem("admin_session_token");
+    const res = await base44.functions.invoke("uploadChatFile", { adminToken, file });
+    const data = res.data || res;
+    if (data.error || !data.file_url) throw new Error(data.error || "Upload failed");
     return data;
   };
 
@@ -376,10 +388,11 @@ export default function Chat() {
     if (!chatPartner || !activeConvId) return;
     setSending(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadChatFile(file);
       await sendMessage(file_url, null);
     } catch (e) {
       console.error("Failed to upload image", e);
+      toast.error("Could not upload the photo. Please try again.");
     } finally {
       setSending(false);
     }
@@ -391,7 +404,7 @@ export default function Chat() {
     if (!chatPartner || !activeConvId) return;
     setSending(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadChatFile(file);
       const partnerEmail = chatPartner.email;
       const res = await chatApi("sendMessage", {
         receiverEmail: partnerEmail,
@@ -403,6 +416,7 @@ export default function Chat() {
       setMessages((prev) => [...prev, res.message]);
     } catch (e) {
       console.error("Failed to upload file", e);
+      toast.error("Could not upload the file. Please try again.");
     } finally {
       setSending(false);
     }
@@ -459,7 +473,7 @@ export default function Chat() {
     const partnerEmail = chatPartner.email;
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await uploadChatFile(file);
 
       // Optimistic
       const optimisticId = `optimistic-${Date.now()}`;
@@ -478,6 +492,7 @@ export default function Chat() {
       setMessages((prev) => prev.map((m) => m.id === optimisticId ? { ...res.message, _pending: false } : m));
     } catch (e) {
       console.error("Failed to send voice message", e);
+      toast.error("Could not send the voice message. Please try again.");
       setMessages((prev) => prev.filter((m) => !m.id?.startsWith?.("optimistic-")));
     } finally {
       setSending(false);
