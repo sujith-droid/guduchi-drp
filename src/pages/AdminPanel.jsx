@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MobileSelect from "@/components/MobileSelect";
+import PagedList from "@/components/admin/PagedList";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -303,13 +304,12 @@ export default function AdminPanel() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {unassignedPatients.map((p, i) => (
+          <PagedList items={unassignedPatients} renderItem={(p, i) => (
               <motion.div
                 key={p.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: Math.min(i, 8) * 0.04 }}
                 className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
               >
                 <div>
@@ -334,8 +334,7 @@ export default function AdminPanel() {
                   <Link2 className="h-4 w-4" /> Assign
                 </Button>
               </motion.div>
-            ))}
-          </div>
+          )} />
         </CardContent>
       </Card>
       )}
@@ -349,13 +348,12 @@ export default function AdminPanel() {
           {assignments.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No assignments yet</p>
           ) : (
-            <div className="space-y-2">
-              {assignments.map((a, i) => (
+            <PagedList items={assignments} renderItem={(a, i) => (
                 <motion.div
                   key={a.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: Math.min(i, 8) * 0.04 }}
                   className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
@@ -401,8 +399,7 @@ export default function AdminPanel() {
                     )}
                   </div>
                 </motion.div>
-              ))}
-            </div>
+            )} />
           )}
         </CardContent>
       </Card>
@@ -497,8 +494,7 @@ export default function AdminPanel() {
           {filteredUsers.length === 0 && userSearch.trim() ? (
             <p className="text-sm text-muted-foreground text-center py-6">No users match "{userSearch}"</p>
           ) : (
-          <div className="space-y-2">
-            {filteredUsers.map((u) => (
+          <PagedList key={userSearch} items={filteredUsers} renderItem={(u) => (
               <div key={u.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-sm font-medium">{u.display_name || u.full_name || "Unnamed"}</p>
@@ -540,8 +536,7 @@ export default function AdminPanel() {
                   </Button>
                 </div>
               </div>
-            ))}
-            </div>
+          )} />
             )}
             </CardContent>
             </Card>
