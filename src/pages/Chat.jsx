@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { isPatientRole, isAdminRole, isViewerRole } from "@/lib/roles";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
+import ChatAttachButton from "@/components/chat/ChatAttachButton";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 
 export default function Chat() {
@@ -23,9 +24,6 @@ export default function Chat() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const messagesEnd = useRef(null);
-  const fileInputRef = useRef(null);
-  const fileGalleryRef = useRef(null);
-  const fileDocRef = useRef(null);
   const [templates, setTemplates] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const mediaRecorderRef = useRef(null);
@@ -799,9 +797,6 @@ export default function Chat() {
       {/* Input — hidden for admin (read-only) */}
       {!isAdminRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
-        <input type="file" ref={fileInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
-        <input type="file" ref={fileGalleryRef} accept="image/*" className="hidden" onChange={handleImageUpload} />
-        <input type="file" ref={fileDocRef} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={handleFileUpload} />
         {showTemplates && templates.length > 0 && (
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
             <div className="flex items-center justify-between mb-2">
@@ -819,15 +814,9 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            <Button variant="ghost" size="icon" aria-label="Take photo" onClick={() => fileInputRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
-              <Camera className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="Choose from gallery" onClick={() => fileGalleryRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px]">
-              <ImagePlus className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="Attach file" onClick={() => fileDocRef.current?.click()} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] flex">
-              <Paperclip className="h-5 w-5" />
-            </Button>
+            <ChatAttachButton label="Take photo" icon={Camera} accept="image/*" capture="environment" disabled={sending} onChange={handleImageUpload} />
+            <ChatAttachButton label="Choose from gallery" icon={ImagePlus} accept="image/*" disabled={sending} onChange={handleImageUpload} />
+            <ChatAttachButton label="Attach file" icon={Paperclip} accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" disabled={sending} onChange={handleFileUpload} />
             {(user?.role === 'doctor' || isViewerRole(user?.role)) && (
               <Button variant="ghost" size="icon" aria-label="Message templates" onClick={() => setShowTemplates((v) => !v)} disabled={sending} className="shrink-0 min-h-[44px] min-w-[44px] hidden sm:flex">
                 <LayoutTemplate className="h-5 w-5" />
