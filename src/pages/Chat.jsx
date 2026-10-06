@@ -58,10 +58,7 @@ export default function Chat() {
   const chatApi = async (action, payload = {}) => {
     const adminToken = localStorage.getItem("admin_session_token");
     const fnName = isPatientRole(user?.role) ? "patientApi" : "doctorApi";
-    const res = await base44.functions.invoke(fnName, { adminToken, action, ...payload });
-    const data = res.data || res;
-    if (data.error) throw new Error(data.error);
-    return data;
+    return invokeWithRetry(fnName, { adminToken, action, ...payload });
   };
 
   // Upload a chat attachment through a backend function. The browser's own
