@@ -57,7 +57,7 @@ export default function Chat() {
   // is not a valid Base44 platform token.
   const chatApi = async (action, payload = {}) => {
     const adminToken = localStorage.getItem("admin_session_token");
-    const fnName = isPatientRole(user?.role) ? "patientApi" : "doctorApi";
+    const fnName = isPatientRole(resolveRole()) ? "patientApi" : "doctorApi";
     return invokeWithRetry(fnName, { adminToken, action, ...payload });
   };
 
@@ -168,9 +168,19 @@ export default function Chat() {
     }
   };
 
+  // Resolve the user's role from React state, falling back to the cached
+  // user in localStorage. During the gap between the cached user being
+  // restored (which may have a null role if the record predates the role
+  // field) and adminMe returning the full user, user?.role can be undefined.
+  const resolveRole = () => {
+    if (user?.role) return user.role;
+    try { return JSON.parse(localStorage.getItem("cached_user") || "{}").role; } catch { return null; }
+  };
+
   const loadConversations = async (me) => {
-    const doctorSide = !isPatientRole(me.role);
-    const admin = isAdminRole(me.role);
+    const role = me?.role || resolveRole();
+    const doctorSide = !isPatientRole(role);
+    const admin = isAdminRole(role);
 
     if (admin) {
       // Admin: load ALL patient–health coach conversations via backend
