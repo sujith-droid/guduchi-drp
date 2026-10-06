@@ -27,9 +27,12 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ messages: msgs });
     }
 
-    // Load ALL messages by paginating — without this, older conversations
-    // whose only messages fall beyond the first 500 disappear from the list.
-    const allMessages = await listAll(base44.asServiceRole.entities.ChatMessage, '-created_date');
+    // Load the most recent 500 messages. Paginating through ALL messages
+    // triggers 429 rate limits (thousands of messages → many list calls),
+    // which fails the whole request and shows the admin nothing. The 500
+    // newest cover every active conversation; very old, inactive threads
+    // with no recent messages simply don't surface at the top.
+    const allMessages = await base44.asServiceRole.entities.ChatMessage.list('-created_date', 500);
 
     // Build conversation list from messages only (no empty conversations)
     const convMap = {};
