@@ -15,6 +15,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAppState();
+    // Global safety net: if checkAppState hangs on a network call that never
+    // resolves (and isn't covered by an AbortController or Promise.race
+    // timeout), force loading off after 15s so the user isn't stuck on a
+    // spinner forever — they'll see the login redirect instead.
+    const safety = setTimeout(() => {
+      setIsLoadingAuth(false);
+      setIsLoadingPublicSettings(false);
+    }, 15000);
+    return () => clearTimeout(safety);
   }, []);
 
   const checkAppState = async () => {
@@ -55,11 +64,15 @@ export const AuthProvider = ({ children }) => {
         let lastError = null;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
             const response = await fetch(`/api/apps/${appParams.appId}/functions/adminMe`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ adminToken }),
+              signal: controller.signal,
             });
+            clearTimeout(timeout);
             if (response.status === 401) {
               // Clear 401 = invalid/expired session → real logout
               localStorage.removeItem("admin_session_token");
@@ -178,7 +191,10 @@ export const AuthProvider = ({ children }) => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const currentUser = await Promise.race([
+        base44.auth.me(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth check timed out')), 10000)),
+      ]);
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
