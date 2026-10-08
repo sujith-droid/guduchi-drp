@@ -17,12 +17,49 @@ export default async function(req: Request): Promise<Response> {
       // ── DoctorDashboard ──────────────────────────────────────────
       case 'getData': {
         const query = isAdmin ? { status: "active" } : { doctor_email: doctorEmail, status: "active" };
-        const [assignments, recentLogs] = await Promise.all([
-          filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, query),
-          listAll(base44.asServiceRole.entities.DailyLog, "-date"),
-        ]);
+        // Only fetch logs from the last 7 days — the dashboard filters to this
+        // window anyway, and fetching ALL historical logs produced a 1.3 MB
+        // response that froze the app on load.
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const assignments = await filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, query);
+        // Only fetch logs for the assigned patients (last 7 days) — avoids
+        // pulling logs for patients this doctor doesn't manage.
+        const patientEmailsForLogs = [...new Set(assignments.map((a) => a.patient_email))];
+        const recentLogs = patientEmailsForLogs.length > 0
+          ? await base44.asServiceRole.entities.DailyLog.filter(
+              { patient_email: { $in: patientEmailsForLogs }, date: { $gte: sevenDaysAgo } },
+              "-date", 500
+            )
+          : [];
+        // Strip metadata fields the dashboard doesn't need — keeps the response
+        // small so it loads fast on mobile and doesn't trigger 429 rate limits.
+        const slimAssignments = assignments.map(a => ({
+          id: a.id,
+          patient_email: a.patient_email,
+          doctor_email: a.doctor_email,
+          patient_name: a.patient_name,
+          doctor_name: a.doctor_name,
+          patient_id: a.patient_id,
+          status: a.status,
+          program_duration: a.program_duration,
+        }));
+        const slimLogs = recentLogs.map(l => ({
+          id: l.id,
+          patient_email: l.patient_email,
+          date: l.date,
+          before_food_morning: l.before_food_morning,
+          before_food_afternoon: l.before_food_afternoon,
+          before_food_night: l.before_food_night,
+          after_food_morning: l.after_food_morning,
+          after_food_afternoon: l.after_food_afternoon,
+          after_food_night: l.after_food_night,
+          random_sugar: l.random_sugar,
+          weight: l.weight,
+          step_count: l.step_count,
+          notes: l.notes,
+        }));
         // Fetch phone numbers and names for all assigned patients in a single query.
-        const patientEmails = [...new Set(assignments.map((a) => a.patient_email))];
+        const patientEmails = [...new Set(slimAssignments.map((a) => a.patient_email))];
         const patientPhones = {};
         const patientNames = {};
         if (patientEmails.length > 0) {
@@ -34,7 +71,7 @@ export default async function(req: Request): Promise<Response> {
             }
           } catch (e) {}
         }
-        return Response.json({ assignments, recentLogs, patientPhones, patientNames });
+        return Response.json({ assignments: slimAssignments, recentLogs: slimLogs, patientPhones, patientNames });
       }
 
       // ── PatientDetail ─────────────────────────────────────────────
