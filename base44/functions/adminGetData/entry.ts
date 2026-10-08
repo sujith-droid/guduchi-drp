@@ -15,7 +15,21 @@ export default async function(req: Request): Promise<Response> {
       listAll(base44.asServiceRole.entities.OnboardingMessage, 'sequence'),
     ]);
 
-    return Response.json({ users, assignments, templates, onboardingMessages });
+    // Strip unnecessary fields from user records — the AdminPanel only needs
+    // id, email, name, phone, role, and created_date. Full user records can
+    // include large metadata fields that bloat the response (500+ users).
+    const slimUsers = users.map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      full_name: u.full_name,
+      display_name: u.display_name,
+      phone: u.phone,
+      role: u.role,
+      profile_complete: u.profile_complete,
+      created_date: u.created_date,
+    }));
+
+    return Response.json({ users: slimUsers, assignments, templates, onboardingMessages });
   } catch (error) {
     return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }

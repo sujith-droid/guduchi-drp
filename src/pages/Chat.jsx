@@ -105,14 +105,15 @@ export default function Chat() {
     setMessages([]);
     setChatPartner(null);
     loadMessages();
-    // Poll for new messages every 5 seconds. The SDK realtime subscription
+    // Poll for new messages every 10 seconds. The SDK realtime subscription
     // (base44.entities.ChatMessage.subscribe) does NOT work for OTP-authenticated
     // users — the AdminSession UUID is not a valid Base44 platform token, so
     // the WebSocket connection silently fails. Polling is the reliable
     // fallback so the receiver sees new messages without a manual reload.
+    // 10s (not 5s) to stay well under rate limits with concurrent users.
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") loadMessages(true);
-    }, 5000);
+    }, 10000);
     // When the receiver's tab becomes visible again, immediately reload and
     // mark messages as read — so double ticks (✓✓) only appear once they
     // actually see the chat, not while the tab was hidden in the background.
