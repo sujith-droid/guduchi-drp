@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
+import PagedList from "@/components/admin/PagedList";
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
@@ -200,7 +201,7 @@ export default function DoctorDashboard() {
             <p className="text-sm">{search ? "No patients match your search" : "No patients assigned yet"}</p>
           </div>
         ) : (
-          filteredPatients.map((patient, i) => {
+          <PagedList key={search} items={filteredPatients} renderItem={(patient, i) => {
             const status = getStatus(patient.patient_email);
             const logs = patientLogs[patient.patient_email] || [];
             const lastLog = logs[0];
@@ -210,7 +211,7 @@ export default function DoctorDashboard() {
                 key={patient.id}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: Math.min(i, 8) * 0.04 }}
               >
                 <Link
                   to={`/patient-detail?email=${encodeURIComponent(patient.patient_email)}&name=${encodeURIComponent(getPatientName(patient))}`}
@@ -259,7 +260,7 @@ export default function DoctorDashboard() {
                 </Link>
               </motion.div>
             );
-          })
+          }} />
         )}
       </div>
     </div>
