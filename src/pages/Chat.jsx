@@ -576,12 +576,12 @@ export default function Chat() {
                           onChange={(e) => setCoachFilter(e.target.value)}
                           className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         >
-                          <option value="">All Health Coaches ({conversations.length})</option>
+                          <option value="">All Health Coaches ({conversations.length}: {conversations.length - inactiveCount} active, {inactiveCount} inactive)</option>
                           {coaches.map(([email, name]) => {
                             const count = conversations.filter((c) => c.doctor_email === email).length;
                             const inactive = conversations.filter((c) => c.doctor_email === email && isInactive(c)).length;
                             return (
-                              <option key={email} value={email}>{name} ({count}{inactive > 0 ? `, ${inactive} inactive` : ""})</option>
+                              <option key={email} value={email}>{name} ({count}: {count - inactive} active, {inactive} inactive)</option>
                             );
                           })}
                         </select>
