@@ -47,6 +47,7 @@ export default function Chat() {
   const [replyToMsg, setReplyToMsg] = useState(null);
   const [convSearch, setConvSearch] = useState("");
   const [coachFilter, setCoachFilter] = useState("");
+  const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   const prevMsgCount = useRef(0);
   const scrollContainerRef = useRef(null);
 
@@ -555,20 +556,45 @@ export default function Chat() {
               const coaches = [...new Map(
                 conversations.map((c) => [c.doctor_email, c.doctor_name || c.doctor_email])
               )].sort((a, b) => a[1].localeCompare(b[1]));
-              if (coaches.length < 2) return null;
+              const isInactive = (a) => {
+                if (!a.latest_time) return true;
+                return moment().diff(moment.utc(a.latest_time), "days") >= 2;
+              };
+              const inactiveCount = conversations.filter(isInactive).length;
               return (
-                <div className="relative">
-                  <select
-                    value={coachFilter}
-                    onChange={(e) => setCoachFilter(e.target.value)}
-                    className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="">All Health Coaches ({conversations.length})</option>
-                    {coaches.map(([email, name]) => (
-                      <option key={email} value={email}>{name}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  {coaches.length >= 2 && (
+                    <div className="relative">
+                      <select
+                        value={coachFilter}
+                        onChange={(e) => setCoachFilter(e.target.value)}
+                        className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="">All Health Coaches ({conversations.length})</option>
+                        {coaches.map(([email, name]) => {
+                          const count = conversations.filter((c) => c.doctor_email === email).length;
+                          const inactive = conversations.filter((c) => c.doctor_email === email && isInactive(c)).length;
+                          return (
+                            <option key={email} value={email}>{name} ({count}{inactive > 0 ? `, ${inactive} inactive` : ""})</option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+                  {inactiveCount > 0 && (
+                    <button
+                      onClick={() => setShowInactiveOnly((v) => !v)}
+                      className={`w-full h-11 rounded-md border px-3 text-sm font-medium flex items-center justify-between transition-colors ${
+                        showInactiveOnly
+                          ? "bg-amber-50 border-amber-300 text-amber-700"
+                          : "bg-transparent border-input text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <span>{showInactiveOnly ? "Showing inactive only" : `${inactiveCount} inactive patient${inactiveCount > 1 ? "s" : ""} (2+ days)`}</span>
+                      <span className="text-xs">{showInactiveOnly ? "Show all" : "Filter"}</span>
+                    </button>
+                  )}
+                </>
               );
             })()}
           </>
@@ -582,6 +608,8 @@ export default function Chat() {
           <div className="space-y-2">
             {conversations.filter((a) => {
               if (coachFilter && a.doctor_email !== coachFilter) return false;
+              const inactive = !a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2;
+              if (showInactiveOnly && !inactive) return false;
               if (!convSearch.trim()) return true;
               const q = convSearch.toLowerCase();
               const name = (isAdminRole(user.role) ? `${a.patient_name} ${a.doctor_name}` : !isPatientRole(user.role) ? a.patient_name : a.doctor_name || "").toLowerCase();
@@ -613,6 +641,11 @@ export default function Chat() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
+                  {(!a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2) && isAdminRole(user.role) && (
+                    <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                      Inactive {a.latest_time ? moment.utc(a.latest_time).fromNow() : "never"}
+                    </span>
+                  )}
                   {unread > 0 ? (
                     <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center">
                       {unread}
