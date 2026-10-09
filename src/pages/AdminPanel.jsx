@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MobileSelect from "@/components/MobileSelect";
 import PagedList from "@/components/admin/PagedList";
+import PatientStatusCards from "@/components/admin/PatientStatusCards";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -282,6 +283,9 @@ export default function AdminPanel() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Patient Status Summary */}
+      <PatientStatusCards />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
