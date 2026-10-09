@@ -648,7 +648,7 @@ export default function Chat() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  {(!a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2) && !isPatientRole(user.role) && (
+                  {(!a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2) && (
                     <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                       Inactive {a.latest_time ? moment.utc(a.latest_time).fromNow() : "never"}
                     </span>
