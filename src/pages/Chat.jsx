@@ -46,6 +46,7 @@ export default function Chat() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [replyToMsg, setReplyToMsg] = useState(null);
   const [convSearch, setConvSearch] = useState("");
+  const [coachFilter, setCoachFilter] = useState("");
   const prevMsgCount = useRef(0);
   const scrollContainerRef = useRef(null);
 
@@ -540,15 +541,37 @@ export default function Chat() {
         <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
         <h1 className="text-2xl font-heading font-bold">Messages</h1>
         {conversations.length > 0 && (
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, patient ID, or phone..."
-              value={convSearch}
-              onChange={(e) => setConvSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, patient ID, or phone..."
+                value={convSearch}
+                onChange={(e) => setConvSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {isAdminRole(user.role) && (() => {
+              const coaches = [...new Map(
+                conversations.map((c) => [c.doctor_email, c.doctor_name || c.doctor_email])
+              )].sort((a, b) => a[1].localeCompare(b[1]));
+              if (coaches.length < 2) return null;
+              return (
+                <div className="relative">
+                  <select
+                    value={coachFilter}
+                    onChange={(e) => setCoachFilter(e.target.value)}
+                    className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">All Health Coaches ({conversations.length})</option>
+                    {coaches.map(([email, name]) => (
+                      <option key={email} value={email}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
+          </>
         )}
         {conversations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -558,6 +581,7 @@ export default function Chat() {
         ) : (
           <div className="space-y-2">
             {conversations.filter((a) => {
+              if (coachFilter && a.doctor_email !== coachFilter) return false;
               if (!convSearch.trim()) return true;
               const q = convSearch.toLowerCase();
               const name = (isAdminRole(user.role) ? `${a.patient_name} ${a.doctor_name}` : !isPatientRole(user.role) ? a.patient_name : a.doctor_name || "").toLowerCase();
