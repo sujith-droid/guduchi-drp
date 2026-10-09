@@ -552,35 +552,42 @@ export default function Chat() {
                 className="pl-10"
               />
             </div>
-            {isAdminRole(user.role) && (() => {
-              const coaches = [...new Map(
-                conversations.map((c) => [c.doctor_email, c.doctor_name || c.doctor_email])
-              )].sort((a, b) => a[1].localeCompare(b[1]));
+            {(() => {
               const isInactive = (a) => {
                 if (!a.latest_time) return true;
                 return moment().diff(moment.utc(a.latest_time), "days") >= 2;
               };
               const inactiveCount = conversations.filter(isInactive).length;
+              const isAdmin = isAdminRole(user.role);
+              const showCoachFilter = isAdmin && (() => {
+                const coaches = [...new Set(conversations.map((c) => c.doctor_email))].filter(Boolean);
+                return coaches.length >= 2;
+              })();
               return (
                 <>
-                  {coaches.length >= 2 && (
-                    <div className="relative">
-                      <select
-                        value={coachFilter}
-                        onChange={(e) => setCoachFilter(e.target.value)}
-                        className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="">All Health Coaches ({conversations.length})</option>
-                        {coaches.map(([email, name]) => {
-                          const count = conversations.filter((c) => c.doctor_email === email).length;
-                          const inactive = conversations.filter((c) => c.doctor_email === email && isInactive(c)).length;
-                          return (
-                            <option key={email} value={email}>{name} ({count}{inactive > 0 ? `, ${inactive} inactive` : ""})</option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                  )}
+                  {showCoachFilter && (() => {
+                    const coaches = [...new Map(
+                      conversations.map((c) => [c.doctor_email, c.doctor_name || c.doctor_email])
+                    )].sort((a, b) => a[1].localeCompare(b[1]));
+                    return (
+                      <div className="relative">
+                        <select
+                          value={coachFilter}
+                          onChange={(e) => setCoachFilter(e.target.value)}
+                          className="w-full h-11 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="">All Health Coaches ({conversations.length})</option>
+                          {coaches.map(([email, name]) => {
+                            const count = conversations.filter((c) => c.doctor_email === email).length;
+                            const inactive = conversations.filter((c) => c.doctor_email === email && isInactive(c)).length;
+                            return (
+                              <option key={email} value={email}>{name} ({count}{inactive > 0 ? `, ${inactive} inactive` : ""})</option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    );
+                  })()}
                   {inactiveCount > 0 && (
                     <button
                       onClick={() => setShowInactiveOnly((v) => !v)}
@@ -641,7 +648,7 @@ export default function Chat() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  {(!a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2) && isAdminRole(user.role) && (
+                  {(!a.latest_time || moment().diff(moment.utc(a.latest_time), "days") >= 2) && !isPatientRole(user.role) && (
                     <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                       Inactive {a.latest_time ? moment.utc(a.latest_time).fromNow() : "never"}
                     </span>
