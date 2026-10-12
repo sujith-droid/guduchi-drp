@@ -193,7 +193,18 @@ export default function Chat() {
       const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
       const data = res.data || res;
       if (data.error) throw new Error(data.error);
-      setConversations(data.conversations || []);
+      // Deduplicate by conversation ID — a patient with multiple assignments
+      // (e.g. an old inactive one) to the same coach produces duplicate
+      // entries with the same key, which React warns about.
+      const seen = new Map();
+      for (const c of (data.conversations || [])) {
+        const cid = [c.patient_email, c.doctor_email].sort().join("_");
+        const prev = seen.get(cid);
+        if (!prev || (c.latest_time && (!prev.latest_time || new Date(c.latest_time) > new Date(prev.latest_time)))) {
+          seen.set(cid, { ...c, id: cid });
+        }
+      }
+      setConversations([...seen.values()]);
       return;
     }
 
