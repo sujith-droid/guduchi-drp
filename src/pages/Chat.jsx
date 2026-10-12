@@ -98,8 +98,16 @@ export default function Chat() {
   // isn't a platform token), so the function validates the session server-side.
   const uploadChatFile = async (file) => {
     const adminToken = localStorage.getItem("admin_session_token");
-    const res = await invokeFunction("uploadChatFile", { adminToken, file });
-    if (res.error || !res.file_url) throw new Error(res.error || "Upload failed");
+    const form = new FormData();
+    form.append("adminToken", adminToken || "");
+    form.append("file", file);
+    const response = await fetch(`/api/apps/${appParams.appId}/functions/uploadChatFile`, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(60000),
+    });
+    const res = await response.json();
+    if (!response.ok || res.error || !res.file_url) throw new Error(res.error || "Upload failed");
     return res;
   };
 
