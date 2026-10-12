@@ -15,6 +15,36 @@ import ChatWebcamButton from "@/components/chat/ChatWebcamButton";
 import { compressImage } from "@/lib/compressImage";
 import { detectPlatform } from "@/lib/platform";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
+import { appParams } from "@/lib/app-params";
+
+// Call a backend function via fetch (not base44.functions.invoke) so the
+// AdminSession UUID is NOT sent as a Bearer token in the Authorization
+// header — the Base44 platform rejects that as 401 before the function
+// runs. The adminToken is sent in the request body and validated
+// server-side, exactly like the adminMe call in AuthContext.
+const invokeFunction = async (fnName, payload) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(`/api/apps/${appParams.appId}/functions/${fnName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const data = await response.json();
+    if (!response.ok || data.error) {
+      const err = new Error(data.error || `Request failed with status ${response.status}`);
+      err.status = response.status;
+      throw err;
+    }
+    return data;
+  } catch (e) {
+    clearTimeout(timeout);
+    throw e;
+  }
+};
 
 export default function Chat() {
   const { convId: convIdParam } = useParams();
@@ -60,7 +90,7 @@ export default function Chat() {
   const chatApi = async (action, payload = {}) => {
     const adminToken = localStorage.getItem("admin_session_token");
     const fnName = isPatientRole(resolveRole()) ? "patientApi" : "doctorApi";
-    return invokeWithRetry(fnName, { adminToken, action, ...payload });
+    return invokeFunction(fnName, { adminToken, action, ...payload });
   };
 
   // Upload a chat attachment through a backend function. The browser's own
@@ -68,31 +98,9 @@ export default function Chat() {
   // isn't a platform token), so the function validates the session server-side.
   const uploadChatFile = async (file) => {
     const adminToken = localStorage.getItem("admin_session_token");
-    const res = await base44.functions.invoke("uploadChatFile", { adminToken, file });
-    const data = res.data || res;
-    if (data.error || !data.file_url) throw new Error(data.error || "Upload failed");
-    return data;
-  };
-
-  // Retry wrapper for 429 rate-limit errors — the admin opens a conversation
-  // and several API calls fire at once (conversations, messages, phone),
-  // some get 429'd. Retry with a short backoff so messages still load.
-  const invokeWithRetry = async (fnName, payload, retries = 2) => {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const res = await base44.functions.invoke(fnName, payload);
-        const data = res.data || res;
-        if (data.error) throw new Error(data.error);
-        return data;
-      } catch (e) {
-        const is429 = e?.status === 429 || e?.response?.status === 429 || String(e.message || "").includes("429");
-        if (is429 && attempt < retries) {
-          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
-          continue;
-        }
-        throw e;
-      }
-    }
+    const res = await invokeFunction("uploadChatFile", { adminToken, file });
+    if (res.error || !res.file_url) throw new Error(res.error || "Upload failed");
+    return res;
   };
 
   useEffect(() => {
@@ -271,7 +279,7 @@ export default function Chat() {
     setPartnerPhone(null);
     if (!chatPartner?.email) return;
     const adminToken = localStorage.getItem("admin_session_token");
-    invokeWithRetry("getUserPhone", { target_email: chatPartner.email, adminToken })
+    invokeFunction("getUserPhone", { target_email: chatPartner.email, adminToken })
       .then((data) => {
         if (data?.phone) setPartnerPhone(data.phone);
         if (data?.full_name || data?.display_name) setChatPartner((prev) => prev ? { ...prev, name: data.display_name || data.full_name } : prev);
@@ -286,7 +294,7 @@ export default function Chat() {
       let msgs;
       if (user && isAdminRole(user.role)) {
         const adminToken = localStorage.getItem("admin_session_token");
-        const data = await invokeWithRetry("adminGetChatConversations", { adminToken, conversationId: activeConvId });
+        const data = await invokeFunction("adminGetChatConversations", { adminToken, conversationId: activeConvId });
         msgs = data.messages || [];
       } else {
         const data = await chatApi("getMessages", { conversationId: activeConvId });
