@@ -17,6 +17,8 @@ import { detectPlatform } from "@/lib/platform";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { appParams } from "@/lib/app-params";
+import ChatLoadError from "@/components/chat/ChatLoadError";
+import AdminChatHistoryButton from "@/components/chat/AdminChatHistoryButton";
 
 export default function Chat() {
   const { convId: convIdParam } = useParams();
@@ -46,6 +48,11 @@ export default function Chat() {
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [conversationError, setConversationError] = useState("");
+  const [messageError, setMessageError] = useState("");
+  const [messageCursor, setMessageCursor] = useState(null);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [replyToMsg, setReplyToMsg] = useState(null);
   const [convSearch, setConvSearch] = useState("");
   const [coachFilter, setCoachFilter] = useState("");
@@ -94,6 +101,9 @@ export default function Chat() {
     // if the new fetch fails).
     setMessages([]);
     setChatPartner(null);
+    setMessageError("");
+    setMessageCursor(null);
+    setHasOlderMessages(false);
     loadMessages();
     // Poll for new messages every 10 seconds. The SDK realtime subscription
     // (base44.entities.ChatMessage.subscribe) does NOT work for OTP-authenticated
@@ -141,6 +151,8 @@ export default function Chat() {
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef, enabled: !activeConvId });
 
   const initChat = async () => {
+    setLoading(true);
+    setConversationError("");
     try {
       await loadConversations(user);
       if (user.role === 'doctor' || isViewerRole(user.role)) {
@@ -154,6 +166,7 @@ export default function Chat() {
       }
     } catch (e) {
       console.error("Failed to load chat", e);
+      if (isAdminRole(user?.role)) setConversationError("Conversations could not be loaded. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -274,8 +287,13 @@ export default function Chat() {
       let msgs;
       if (user && isAdminRole(user.role)) {
         const adminToken = localStorage.getItem("admin_session_token");
-        const data = await invokeFunction("adminGetChatConversations", { adminToken, conversationId: activeConvId });
+        const { data } = await base44.functions.invoke("adminGetChatConversations", { adminToken, conversationId: activeConvId });
         msgs = data.messages || [];
+        if (!silent) {
+          setMessageCursor(data.next_cursor || null);
+          setHasOlderMessages(!!data.has_more);
+        }
+        setMessageError("");
       } else {
         const data = await chatApi("getMessages", { conversationId: activeConvId });
         msgs = data.messages || [];
@@ -284,6 +302,10 @@ export default function Chat() {
       // haven't been confirmed by the server yet (prevents race condition
       // where a just-sent message isn't indexed yet and gets wiped)
       setMessages(prev => {
+        if (isAdminRole(user?.role)) {
+          const merged = new Map([...prev, ...msgs].map((m) => [m.id, m]));
+          return [...merged.values()].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+        }
         const pending = prev.filter(m => m.id?.startsWith?.("optimistic-"));
         if (msgs.length === 0 && prev.length > 0) return prev;
         // Nothing changed since the last poll: keep the same list so the whole
@@ -303,8 +325,32 @@ export default function Chat() {
       }
     } catch (e) {
       console.error("Failed to load messages:", e);
+      if (isAdminRole(user?.role)) setMessageError("Messages could not be loaded. Please try again.");
     } finally {
       setMessagesLoading(false);
+    }
+  };
+
+  const loadEarlierAdminMessages = async () => {
+    if (!messageCursor || loadingOlderMessages) return;
+    setLoadingOlderMessages(true);
+    setMessageError("");
+    const container = scrollContainerRef.current;
+    const previousHeight = container?.scrollHeight || 0;
+    try {
+      const { data } = await base44.functions.invoke("adminGetChatConversations", {
+        conversationId: activeConvId, cursor: messageCursor,
+      });
+      setMessages((prev) => [...data.messages, ...prev]);
+      setMessageCursor(data.next_cursor || null);
+      setHasOlderMessages(!!data.has_more);
+      requestAnimationFrame(() => {
+        if (container) container.scrollTop += container.scrollHeight - previousHeight;
+      });
+    } catch (e) {
+      setMessageError("Earlier messages could not be loaded. Please try again.");
+    } finally {
+      setLoadingOlderMessages(false);
     }
   };
 
@@ -540,6 +586,7 @@ export default function Chat() {
       <div className="space-y-4 pb-20 md:pb-6">
         <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
         <h1 className="text-2xl font-heading font-bold">Messages</h1>
+        <ChatLoadError message={conversationError} onRetry={initChat} />
         {conversations.length > 0 && (
           <>
             <div className="relative">
@@ -605,12 +652,12 @@ export default function Chat() {
             })()}
           </>
         )}
-        {conversations.length === 0 ? (
+        {conversations.length === 0 ? (!conversationError && (
           <div className="text-center py-12 text-muted-foreground">
             <p className="text-sm">No conversations yet.</p>
-            <p className="text-xs mt-1">You'll be able to chat once assigned to a {(user?.role === "doctor" || isViewerRole(user?.role)) ? "patient" : "Health Coach"}.</p>
+            <p className="text-xs mt-1">{isAdminRole(user?.role) ? "Patient and Health Coach conversations will appear here." : <>You'll be able to chat once assigned to a {(user?.role === "doctor" || isViewerRole(user?.role)) ? "patient" : "Health Coach"}.</>}</p>
           </div>
-        ) : (
+        )) : (
           <div className="space-y-2">
             {conversations.filter((a) => {
               if (coachFilter && a.doctor_email !== coachFilter) return false;
@@ -705,9 +752,11 @@ export default function Chat() {
 
       {/* Messages */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-4 space-y-3 chat-messages-scroll">
-        {messages.length === 0 && !messagesLoading && (
+        <ChatLoadError message={messageError} onRetry={() => hasOlderMessages ? loadEarlierAdminMessages() : loadMessages()} />
+        {isAdminRole(user?.role) && <AdminChatHistoryButton hasMore={hasOlderMessages} loading={loadingOlderMessages} onLoad={loadEarlierAdminMessages} />}
+        {messages.length === 0 && !messagesLoading && !messageError && (
           <div className="text-center py-12 text-muted-foreground text-sm">
-            Start the conversation by sending a message.
+            {isAdminRole(user?.role) ? "No messages in this conversation yet." : "Start the conversation by sending a message."}
           </div>
         )}
         {messages.length === 0 && messagesLoading && (
