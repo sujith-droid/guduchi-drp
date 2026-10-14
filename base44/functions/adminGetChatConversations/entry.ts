@@ -18,6 +18,7 @@ export default async function(req: Request): Promise<Response> {
 
     // Opening a chat needs only that chat, not the entire admin directory.
     if (conversationId) {
+      stage = 'conversation history';
       const page = await entities.ChatMessage.filter(
         { conversation_id: conversationId },
         { sort: '-created_date', limit: 100, ...(cursor ? { cursor } : {}) }
@@ -38,7 +39,10 @@ export default async function(req: Request): Promise<Response> {
     ]);
     const allAssignments = [...firstAssignments.items];
     let assignmentCursor = firstAssignments.has_more ? firstAssignments.next_cursor : null;
+    const seenAssignmentCursors = new Set();
     while (assignmentCursor) {
+      if (seenAssignmentCursors.has(assignmentCursor)) throw new Error('Assignment pagination did not advance');
+      seenAssignmentCursors.add(assignmentCursor);
       const page = await entities.PatientDoctorAssignment.filter({ status: 'active' }, { ...assignmentOptions, cursor: assignmentCursor });
       allAssignments.push(...page.items);
       assignmentCursor = page.has_more ? page.next_cursor : null;
@@ -47,11 +51,14 @@ export default async function(req: Request): Promise<Response> {
     const latestMessages = [];
     // Keep each date query small and bounded; never scan the full chat history.
     stage = 'latest messages';
-    for (let i = 0; i < dates.length; i += 150) {
+    for (let i = 0; i < dates.length; i += 400) {
       let nextCursor;
+      const seenMessageCursors = new Set();
       do {
+        if (nextCursor && seenMessageCursors.has(nextCursor)) throw new Error('Message pagination did not advance');
+        if (nextCursor) seenMessageCursors.add(nextCursor);
         const page = await entities.ChatMessage.filter(
-          { created_date: { $in: dates.slice(i, i + 150) } },
+          { created_date: { $in: dates.slice(i, i + 400) } },
           { sort: '-created_date', limit: 500, fields: ['conversation_id', 'sender_email', 'receiver_email', 'message', 'image_url', 'audio_url', 'created_date'], ...(nextCursor ? { cursor: nextCursor } : {}) }
         );
         latestMessages.push(...page.items);
@@ -128,6 +135,6 @@ export default async function(req: Request): Promise<Response> {
     return Response.json({ conversations: convList });
   } catch (error) {
     console.error('Admin chat load failed', { stage: error.chatStage || stage, status: error.status, message: error.message });
-    return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
+    return Response.json({ error: error.message || 'Internal Server Error', stage: error.chatStage || stage }, { status: error.status || 500 });
   }
 }

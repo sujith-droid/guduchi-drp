@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { queryClientInstance } from "@/lib/query-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, ImagePlus, ArrowLeft, Mic, Square, Paperclip, FileText, LayoutTemplate, X, Check, CheckCheck, Phone, Download, Trash2, Pencil, Reply, Search, Camera } from "lucide-react";
@@ -92,7 +93,7 @@ export default function Chat() {
 
   useEffect(() => {
     if (user) initChat();
-  }, [user]);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!activeConvId || !user) return;
@@ -191,9 +192,16 @@ export default function Chat() {
       // (admin session token is a UUID, not a platform token — SDK calls
       // from the frontend get 401, so we go through a service-role function)
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
-      const data = res.data || res;
-      if (data.error) throw new Error(data.error);
+      const data = await queryClientInstance.fetchQuery({
+        queryKey: ["adminChatConversations", me.id],
+        staleTime: 30000,
+        retry: false,
+        queryFn: async () => {
+          const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
+          if (res.data.error) throw new Error(res.data.error);
+          return res.data;
+        },
+      });
       // Deduplicate by conversation ID — a patient with multiple assignments
       // (e.g. an old inactive one) to the same coach produces duplicate
       // entries with the same key, which React warns about.
@@ -339,6 +347,7 @@ export default function Chat() {
     const previousHeight = container?.scrollHeight || 0;
     try {
       const { data } = await base44.functions.invoke("adminGetChatConversations", {
+        adminToken: localStorage.getItem("admin_session_token"),
         conversationId: activeConvId, cursor: messageCursor,
       });
       setMessages((prev) => [...data.messages, ...prev]);
