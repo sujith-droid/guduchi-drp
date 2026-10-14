@@ -3,6 +3,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Search, MapPin, Stethoscope, Loader2, UserCircle, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -16,8 +17,8 @@ export default function DoctorDirectory() {
   const loadData = useCallback(async () => {
     try {
       setError(false);
-      const res = await base44.functions.invoke("listDoctors", {});
-      setDoctors(res?.data?.doctors || res?.doctors || []);
+      const res = await invokeFunction("listDoctors", {});
+      setDoctors(res?.doctors || []);
     } catch {
       setError(true);
     } finally {

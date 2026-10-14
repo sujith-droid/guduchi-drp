@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspen
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import MobileSelect from "@/components/MobileSelect";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,8 +85,8 @@ export default function PatientDetail() {
 
   const loadPatientPhone = async () => {
     try {
-      const res = await base44.functions.invoke('getUserPhone', { target_email: patientEmail });
-      const data = res.data || res;
+      const adminToken = localStorage.getItem("admin_session_token");
+      const data = await invokeFunction('getUserPhone', { target_email: patientEmail, adminToken });
       setPatientPhone(data.phone || null);
       if (data.full_name) setPatientFullName(data.full_name);
     } catch (e) {

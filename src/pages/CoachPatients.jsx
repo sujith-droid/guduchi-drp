@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Phone, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { motion } from "framer-motion";
 import MobileSelect from "@/components/MobileSelect";
 import { useAuth } from "@/lib/AuthContext";
@@ -33,8 +34,7 @@ export default function CoachPatients() {
     try {
       setLoadError(false);
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("adminGetData", { adminToken });
-      const d = res.data || res || {};
+      const d = await invokeFunction("adminGetData", { adminToken }) || {};
       setUsers(d.users || []);
       setAssignments(d.assignments || []);
     } catch (e) {

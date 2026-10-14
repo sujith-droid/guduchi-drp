@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +48,7 @@ export default function OnboardingMessages() {
   const loadData = async () => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("adminGetData", { adminToken });
-      const d = res.data || res || {};
+      const d = await invokeFunction("adminGetData", { adminToken }) || {};
       setUsers(d.users || []);
       setAssignments(d.assignments || []);
       setOnboardingMessages(d.onboardingMessages || []);
@@ -81,7 +81,7 @@ export default function OnboardingMessages() {
       const adminToken = localStorage.getItem("admin_session_token");
       for (const email of onboardingDoctors) {
         const doctor = doctors.find((d) => d.email === email);
-        await base44.functions.invoke("adminAction", {
+        await invokeFunction("adminAction", {
           adminToken,
           action: "addOnboardingMessage",
           doctorEmail: email,
@@ -105,7 +105,7 @@ export default function OnboardingMessages() {
   const deleteOnboardingMessage = async (id) => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "deleteOnboardingMessage", id });
+      await invokeFunction("adminAction", { adminToken, action: "deleteOnboardingMessage", id });
       setOnboardingMessages((prev) => prev.filter((m) => m.id !== id));
       toast.success("Onboarding message deleted");
     } catch (e) {
@@ -231,7 +231,7 @@ export default function OnboardingMessages() {
                     const doc = doctors.find((d) => d.email === c.email);
                     if (!doc) continue;
                     try {
-                      await base44.functions.invoke("adminAction", {
+                      await invokeFunction("adminAction", {
                         adminToken, action: "updateUserName",
                         userId: doc.id, fullName: c.fullName, city: c.city, doctorEmail: c.email,
                       });

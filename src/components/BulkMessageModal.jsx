@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,8 +17,8 @@ export default function BulkMessageModal({ open, onClose, patients, patientNames
   useEffect(() => {
     if (open) {
       const adminToken = localStorage.getItem("admin_session_token");
-      base44.functions.invoke("doctorApi", { adminToken, action: "getTemplates" })
-        .then((res) => setTemplates((res.data || res).templates || []))
+      invokeFunction("doctorApi", { adminToken, action: "getTemplates" })
+        .then((data) => setTemplates(data.templates || []))
         .catch(() => setTemplates([]));
       setSelectedPatients([]);
       setSelectedTemplate(null);

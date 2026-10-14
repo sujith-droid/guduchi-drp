@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { CheckCircle2, AlertCircle, Loader2, Stethoscope, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +33,12 @@ export default function JoinDoctor() {
         setStatus("form");
         return;
       }
-      const res = await base44.functions.invoke("patientApi", {
+      const data = await invokeFunction("patientApi", {
         action: "assignDoctor",
+        adminToken: localStorage.getItem("admin_session_token"),
         patientEmail: user.email,
         doctorEmail,
       });
-      const data = res.data || res;
       setDoctorName(data.doctorName || doctorEmail);
       setStatus(data.status || "error");
     } catch (e) {

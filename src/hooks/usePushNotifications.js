@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
 import { detectPlatform, isMobileApp } from "@/lib/platform";
 import { useAuth } from "@/lib/AuthContext";
@@ -75,13 +76,13 @@ export function usePushNotifications() {
         const adminToken = localStorage.getItem("admin_session_token");
         const platform = detectPlatform();
         try {
-          const res = await base44.functions.invoke("pushNotification", {
+          const res = await invokeFunction("pushNotification", {
             adminToken,
             action: "registerToken",
             token,
             platform,
           });
-          console.log("Push token registered:", platform, res?.data || res);
+          console.log("Push token registered:", platform, res);
         } catch (e) {
           console.error("Push token storage failed:", e);
         }

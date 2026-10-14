@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Link } from "react-router-dom";
 import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,8 +79,8 @@ export default function PatientDashboard() {
         assignments.map(async (a) => {
           let phone = null;
           try {
-            const res = await base44.functions.invoke('getUserPhone', { target_email: a.doctor_email });
-            phone = res.data?.phone || res.phone || null;
+            const res = await invokeFunction('getUserPhone', { target_email: a.doctor_email, adminToken: localStorage.getItem("admin_session_token") });
+            phone = res?.phone || null;
           } catch (e) {
             console.error(`Failed to load phone for ${a.doctor_email}:`, e);
           }

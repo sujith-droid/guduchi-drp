@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +50,7 @@ export default function Logbook() {
   // and write their logs. Direct SDK calls fail with 401 for these users.
   const logApi = async (action, payload = {}) => {
     const adminToken = localStorage.getItem("admin_session_token");
-    const res = await base44.functions.invoke("patientApi", { adminToken, action, ...payload });
-    const data = res.data || res;
+    const data = await invokeFunction("patientApi", { adminToken, action, ...payload });
     if (data.error) throw new Error(data.error);
     return data;
   };

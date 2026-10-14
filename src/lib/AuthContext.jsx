@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeFunction } from '@/lib/invokeFunction';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
@@ -226,7 +227,7 @@ export const AuthProvider = ({ children }) => {
     //    reload). Do NOT clear React user state first — doing so re-renders the
     //    app and flashes our /login page before the reload below.
     if (adminToken) {
-      try { await base44.functions.invoke("adminAction", { adminToken, action: "logout" }); } catch (e) {}
+      try { await invokeFunction("adminAction", { adminToken, action: "logout" }); } catch (e) {}
     }
     // 3. Hard-reload straight to our custom /login. We intentionally do NOT call
     //    the platform /auth/logout endpoint — mobile-OTP users have no platform

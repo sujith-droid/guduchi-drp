@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Users } from "lucide-react";
 import moment from "moment";
 
@@ -16,8 +17,7 @@ export default function PatientStatusCards() {
     (async () => {
       try {
         const adminToken = localStorage.getItem("admin_session_token");
-        const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getData" });
-        const data = res.data || res;
+        const data = await invokeFunction("doctorApi", { adminToken, action: "getData" });
         const assignments = data.assignments || [];
         const recentLogs = data.recentLogs || [];
 

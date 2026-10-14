@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,7 +63,7 @@ export default function AdminPanel() {
       let res;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          res = await base44.functions.invoke("adminGetData", { adminToken });
+          res = await invokeFunction("adminGetData", { adminToken });
           break;
         } catch (e) {
           lastError = e;
@@ -132,11 +133,10 @@ export default function AdminPanel() {
     }
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("adminAction", {
+      const data = await invokeFunction("adminAction", {
         adminToken, action: "assign",
         patientEmail: selectedPatient, doctorEmail: selectedDoctor,
       });
-      const data = res.data || res;
       if (data?.warning) {
         toast.warning(data.warning);
       } else {
@@ -157,7 +157,7 @@ export default function AdminPanel() {
     setSavingTpl(true);
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", {
+      await invokeFunction("adminAction", {
         adminToken, action: "addTemplate",
         name: newTplName.trim(), content: newTplContent.trim(),
       });
@@ -175,7 +175,7 @@ export default function AdminPanel() {
   const deleteTemplate = async (id) => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "deleteTemplate", id });
+      await invokeFunction("adminAction", { adminToken, action: "deleteTemplate", id });
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       toast.success("Template deleted");
     } catch (e) {
@@ -186,7 +186,7 @@ export default function AdminPanel() {
   const changeUserRole = async (userId, newRole) => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "updateRole", userId, newRole });
+      await invokeFunction("adminAction", { adminToken, action: "updateRole", userId, newRole });
       toast.success(`Role updated to ${newRole}`);
       loadData();
     } catch (e) {
@@ -198,7 +198,7 @@ export default function AdminPanel() {
     if (!deleteUserId) return;
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "deleteUser", userId: deleteUserId });
+      await invokeFunction("adminAction", { adminToken, action: "deleteUser", userId: deleteUserId });
       toast.success("User deleted successfully");
       setDeleteUserId(null);
       setDeleteUserName("");
@@ -211,7 +211,7 @@ export default function AdminPanel() {
   const removeAssignment = async (id) => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "removeAssignment", id });
+      await invokeFunction("adminAction", { adminToken, action: "removeAssignment", id });
       toast.success("Assignment removed");
       loadData();
     } catch (e) {
@@ -222,7 +222,7 @@ export default function AdminPanel() {
   const updateProgram = async (id, program_duration) => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      await base44.functions.invoke("adminAction", { adminToken, action: "updateProgram", id, program_duration });
+      await invokeFunction("adminAction", { adminToken, action: "updateProgram", id, program_duration });
       toast.success("Program updated");
       loadData();
     } catch (e) {

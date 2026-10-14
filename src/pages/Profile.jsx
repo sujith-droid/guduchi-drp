@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,7 +126,8 @@ export default function Profile() {
     }
     setSaving(true);
     try {
-      await base44.functions.invoke("updateProfile", {
+      await invokeFunction("updateProfile", {
+        adminToken: localStorage.getItem("admin_session_token"),
         email: user.email,
         full_name: fullName.trim(),
         phone: phone.trim(),
