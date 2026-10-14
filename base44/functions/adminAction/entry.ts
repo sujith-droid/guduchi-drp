@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { sendOnboardingMessages } from '../../shared/onboarding-messages.ts';
+import { validateAdminToken } from '../../shared/admin-session.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -7,16 +8,10 @@ export default async function(req: Request): Promise<Response> {
     const body = await req.json();
     const { adminToken, action, ...payload } = body;
 
-    // Validate via base44.auth.me() — asServiceRole does NOT work without a
-    // real platform token, so we use the Bearer token from the incoming request.
-    let me;
-    try {
-      me = await base44.auth.me();
-    } catch (e) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const role = me?.role || (me?.email?.includes('sujith@guduchiayurveda') ? 'admin' : 'user');
-    const isAdmin = role === 'admin' || role === 'subadmin' || me?.email?.includes('sujith@guduchiayurveda');
+    const session = await validateAdminToken(base44, adminToken);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const role = session.role;
+    const isAdmin = role === 'admin' || role === 'subadmin';
     if (!isAdmin) {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -26,13 +21,17 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: "Subadmins can only assign patients to Health Coaches." }, { status: 403 });
     }
 
+    // OTP-authenticated admins have an AdminSession UUID, not a platform token,
+    // so all entity operations must go through the service role.
+    const entities = base44.asServiceRole.entities;
+
     switch (action) {
       case 'assign': {
         const { patientEmail, doctorEmail } = payload;
         if (!patientEmail || !doctorEmail) {
           return Response.json({ error: 'patientEmail and doctorEmail are required' }, { status: 400 });
         }
-        const existing = await base44.entities.PatientDoctorAssignment.filter({
+        const existing = await entities.PatientDoctorAssignment.filter({
           patient_email: patientEmail,
           status: 'active',
         });
@@ -43,11 +42,11 @@ export default async function(req: Request): Promise<Response> {
         if (existingItems.some((a) => a.doctor_email === doctorEmail)) {
           return Response.json({ error: 'This patient is already assigned to this Health Coach.' }, { status: 400 });
         }
-        const patientUsers = await base44.asServiceRole.entities.User.filter({ email: patientEmail });
-        const doctorUsers = await base44.asServiceRole.entities.User.filter({ email: doctorEmail });
+        const patientUsers = await entities.User.filter({ email: patientEmail });
+        const doctorUsers = await entities.User.filter({ email: doctorEmail });
         const patient = (patientUsers.items || patientUsers)[0];
         const doctor = (doctorUsers.items || doctorUsers)[0];
-        await base44.entities.PatientDoctorAssignment.create({
+        await entities.PatientDoctorAssignment.create({
           patient_email: patientEmail,
           doctor_email: doctorEmail,
           patient_name: patient?.display_name || patient?.full_name || patientEmail,
@@ -56,14 +55,14 @@ export default async function(req: Request): Promise<Response> {
         });
         const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
         const doctorDisplayName = doctor?.display_name || doctor?.full_name || doctorEmail;
-        await base44.entities.Notification.create({
+        await entities.Notification.create({
           user_email: doctorEmail,
           title: 'New Patient Assigned',
           message: `${patientDisplayName} has been assigned to you by the admin.`,
           type: 'info',
           related_patient_email: patientEmail,
         });
-        await base44.entities.Notification.create({
+        await entities.Notification.create({
           user_email: patientEmail,
           title: 'Health Coach Assigned',
           message: `${doctorDisplayName} has been assigned as your Health Coach.`,
@@ -90,12 +89,12 @@ export default async function(req: Request): Promise<Response> {
         if (!name || !content) {
           return Response.json({ error: 'Template name and content are required' }, { status: 400 });
         }
-        await base44.entities.MessageTemplate.create({ name, content });
+        await entities.MessageTemplate.create({ name, content });
         return Response.json({ success: true });
       }
       case 'deleteTemplate': {
         if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
-        await base44.entities.MessageTemplate.delete(payload.id);
+        await entities.MessageTemplate.delete(payload.id);
         return Response.json({ success: true });
       }
       case 'addOnboardingMessage': {
@@ -103,7 +102,7 @@ export default async function(req: Request): Promise<Response> {
         if (!doctorEmail || !content) {
           return Response.json({ error: 'doctorEmail and content are required' }, { status: 400 });
         }
-        await base44.entities.OnboardingMessage.create({
+        await entities.OnboardingMessage.create({
           doctor_email: doctorEmail,
           doctor_name: doctorName || doctorEmail,
           content,
@@ -113,24 +112,24 @@ export default async function(req: Request): Promise<Response> {
       }
       case 'deleteOnboardingMessage': {
         if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
-        await base44.entities.OnboardingMessage.delete(payload.id);
+        await entities.OnboardingMessage.delete(payload.id);
         return Response.json({ success: true });
       }
       case 'removeAssignment': {
         if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
-        await base44.entities.PatientDoctorAssignment.update(payload.id, { status: 'inactive' });
+        await entities.PatientDoctorAssignment.update(payload.id, { status: 'inactive' });
         return Response.json({ success: true });
       }
       case 'updateProgram': {
         if (!payload.id) return Response.json({ error: 'id is required' }, { status: 400 });
-        await base44.entities.PatientDoctorAssignment.update(payload.id, { program_duration: payload.program_duration });
+        await entities.PatientDoctorAssignment.update(payload.id, { program_duration: payload.program_duration });
         return Response.json({ success: true });
       }
       case 'updateRole': {
         if (!payload.userId || !payload.newRole) {
           return Response.json({ error: 'userId and newRole are required' }, { status: 400 });
         }
-        await base44.entities.User.update(payload.userId, { role: payload.newRole });
+        await entities.User.update(payload.userId, { role: payload.newRole });
         return Response.json({ success: true });
       }
       case 'updateUserName': {
@@ -139,13 +138,13 @@ export default async function(req: Request): Promise<Response> {
         }
         const updateData = { display_name: payload.fullName };
         if (payload.city) updateData.city = payload.city;
-        await base44.entities.User.update(payload.userId, updateData);
+        await entities.User.update(payload.userId, updateData);
         try {
-          const assignments = await base44.entities.PatientDoctorAssignment.filter({ doctor_email: payload.doctorEmail });
+          const assignments = await entities.PatientDoctorAssignment.filter({ doctor_email: payload.doctorEmail });
           const assignItems = (assignments.items || assignments);
           for (const a of assignItems) {
             if (a.doctor_name !== payload.fullName) {
-              await base44.entities.PatientDoctorAssignment.update(a.id, { doctor_name: payload.fullName });
+              await entities.PatientDoctorAssignment.update(a.id, { doctor_name: payload.fullName });
             }
           }
         } catch (e) {
@@ -155,7 +154,7 @@ export default async function(req: Request): Promise<Response> {
       }
       case 'deleteUser': {
         if (!payload.userId) return Response.json({ error: 'userId is required' }, { status: 400 });
-        await base44.entities.User.delete(payload.userId);
+        await entities.User.delete(payload.userId);
         return Response.json({ success: true });
       }
       case 'logout': {

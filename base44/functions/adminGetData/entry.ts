@@ -1,32 +1,26 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { listAll } from '../../shared/pagination.ts';
+import { validateAdminToken } from '../../shared/admin-session.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
     const { adminToken } = await req.json();
 
-    // Validate the caller via base44.auth.me() — the AdminSession UUID in the
-    // Bearer header is accepted by the platform for auth endpoints.
-    let me;
-    try {
-      me = await base44.auth.me();
-    } catch (e) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (!me || (me.role !== 'admin' && me.role !== 'subadmin' && !me.email?.includes('sujith@guduchiayurveda'))) {
+    const session = await validateAdminToken(base44, adminToken);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const role = session.role;
+    if (role !== 'admin' && role !== 'subadmin') {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // User entity requires service role to list all users (regular users can
-    // only read their own record). asServiceRole uses the app's service token,
-    // which is available in backend function context.
-    // Other entities use the regular client (Bearer token accepted by platform).
+    // OTP-authenticated admins have an AdminSession UUID, not a platform token,
+    // so all entity reads must go through the service role.
     const [allUsers, assignments, templates, onboardingMessages] = await Promise.all([
       listAll(base44.asServiceRole.entities.User, '-created_date'),
-      base44.entities.PatientDoctorAssignment.filter({ status: 'active' }, { sort: '-created_date', limit: 500 }),
-      base44.entities.MessageTemplate.filter({}, { sort: '-created_date', limit: 500 }),
-      base44.entities.OnboardingMessage.filter({}, { sort: 'sequence', limit: 500 }),
+      base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }, { sort: '-created_date', limit: 500 }),
+      base44.asServiceRole.entities.MessageTemplate.filter({}, { sort: '-created_date', limit: 500 }),
+      base44.asServiceRole.entities.OnboardingMessage.filter({}, { sort: 'sequence', limit: 500 }),
     ]);
 
     const slimUsers = allUsers.map((u: any) => ({
