@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
-import { listAll } from '../../shared/pagination.ts';
+import { listAll, filterAll } from '../../shared/pagination.ts';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 
 export default async function(req: Request): Promise<Response> {
@@ -18,7 +18,7 @@ export default async function(req: Request): Promise<Response> {
     // so all entity reads must go through the service role.
     const [allUsers, assignments, templates, onboardingMessages] = await Promise.all([
       listAll(base44.asServiceRole.entities.User, '-created_date'),
-      base44.asServiceRole.entities.PatientDoctorAssignment.filter({ status: 'active' }, { sort: '-created_date', limit: 500 }),
+      filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }, '-created_date'),
       base44.asServiceRole.entities.MessageTemplate.filter({}, { sort: '-created_date', limit: 500 }),
       base44.asServiceRole.entities.OnboardingMessage.filter({}, { sort: 'sequence', limit: 500 }),
     ]);
