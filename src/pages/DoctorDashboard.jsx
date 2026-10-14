@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import PagedList from "@/components/admin/PagedList";
+import { invokeFunction } from "@/lib/invokeFunction";
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
@@ -46,8 +47,7 @@ export default function DoctorDashboard() {
     const adminToken = localStorage.getItem("admin_session_token");
     let assignments = [], recentLogs = [], namesMap = {}, phonesMap = {};
     try {
-      const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getData" });
-      const data = res.data || res;
+      const data = await invokeFunction("doctorApi", { adminToken, action: "getData" });
       assignments = data.assignments || [];
       recentLogs = data.recentLogs || [];
       namesMap = data.patientNames || {};

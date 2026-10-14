@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import PageTransition from "@/components/PageTransition";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 import {
   LayoutDashboard,
@@ -101,8 +102,7 @@ export default function Layout() {
   const loadNotifications = async () => {
     try {
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("notificationsApi", { adminToken, action: "list" });
-      const data = res.data || res;
+      const data = await invokeFunction("notificationsApi", { adminToken, action: "list" });
       const notifs = (data.notifications || []).filter((n) => !n.is_read);
       setUnreadCount(notifs.length);
     } catch {setUnreadCount(0);}

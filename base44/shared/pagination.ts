@@ -1,7 +1,5 @@
 // Shared pagination helpers — the Base44 SDK caps list() and filter() at 500
-// records per call. list() supports a skip offset; filter() does not, so we
-// use cursor-based pagination (sorting by a unique field and excluding
-// already-seen values via $lt / $gt) to page through all matches.
+// records per call. We use cursor-based pagination to page through all matches.
 
 // Retry a call on 429 (rate limit) with exponential backoff.
 async function withRetry(fn, retries = 2) {
@@ -18,7 +16,10 @@ async function withRetry(fn, retries = 2) {
   }
 }
 
-// Paginate through ALL records using list() with skip.
+// Paginate through ALL records using list() with positional args.
+// The options-object form of list() is not available for the User entity,
+// so we use the legacy positional form (sort, limit, skip) which works
+// for all entities including User.
 // Usage: const all = await listAll(base44.asServiceRole.entities.User, '-created_date');
 export async function listAll(entityClient, sort = '-created_date', batchSize = 500) {
   const all = [];
@@ -33,24 +34,16 @@ export async function listAll(entityClient, sort = '-created_date', batchSize = 
 }
 
 // Paginate through ALL records matching a filter query using cursor-based
-// pagination on the sort field (default: created_date).
+// pagination with the options object form.
 // Usage: const all = await filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' });
 export async function filterAll(entityClient, query, sort = '-created_date', batchSize = 500) {
   const all = [];
-  const isDesc = sort.startsWith('-');
-  const sortField = isDesc ? sort.slice(1) : sort;
-  let cursor = null;
-  let batch;
-
+  let cursor = undefined;
+  let page;
   do {
-    const pageQuery = { ...query };
-    if (cursor) {
-      pageQuery[sortField] = isDesc ? { $lt: cursor } : { $gt: cursor };
-    }
-    batch = await withRetry(() => entityClient.filter(pageQuery, sort, batchSize));
-    all.push(...batch);
-    cursor = batch.length > 0 ? batch[batch.length - 1][sortField] : null;
-  } while (batch.length === batchSize);
-
+    page = await withRetry(() => entityClient.filter(query, { sort, limit: batchSize, ...(cursor ? { cursor } : {}) }));
+    all.push(...page.items);
+    cursor = page.has_more ? page.next_cursor : null;
+  } while (cursor);
   return all;
 }

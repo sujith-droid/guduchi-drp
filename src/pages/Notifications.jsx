@@ -7,6 +7,7 @@ import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import moment from "moment-timezone";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import { invokeFunction } from "@/lib/invokeFunction";
 
 const typeIcons = {
   reminder: Bell,
@@ -41,8 +42,7 @@ export default function Notifications() {
 
   const loadData = async () => {
     try {
-      const res = await base44.functions.invoke("notificationsApi", { adminToken, action: "list" });
-      const data = res.data || res;
+      const data = await invokeFunction("notificationsApi", { adminToken, action: "list" });
       setNotifications(data.notifications || []);
     } catch (e) {
       console.error("Failed to load notifications", e);
@@ -53,7 +53,7 @@ export default function Notifications() {
 
   const markAsRead = async (notif) => {
     if (notif.is_read) return;
-    try { await base44.functions.invoke("notificationsApi", { adminToken, action: "markRead", id: notif.id }); } catch {}
+    try { await invokeFunction("notificationsApi", { adminToken, action: "markRead", id: notif.id }); } catch {}
     setNotifications((prev) =>
       prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
     );
@@ -62,7 +62,7 @@ export default function Notifications() {
   const markAllRead = async () => {
     const unread = notifications.filter((n) => !n.is_read);
     try {
-      await base44.functions.invoke("notificationsApi", { adminToken, action: "markAllRead", ids: unread.map((n) => n.id) });
+      await invokeFunction("notificationsApi", { adminToken, action: "markAllRead", ids: unread.map((n) => n.id) });
     } catch {}
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
   };

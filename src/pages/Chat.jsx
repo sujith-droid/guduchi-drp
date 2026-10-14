@@ -70,7 +70,23 @@ export default function Chat() {
   const chatApi = async (action, payload = {}) => {
     const adminToken = localStorage.getItem("admin_session_token");
     const fnName = isPatientRole(resolveRole()) ? "patientApi" : "doctorApi";
-    return invokeFunction(fnName, { adminToken, action, ...payload });
+    // Retry on 429 (rate limit) with exponential backoff — concurrent calls
+    // (dashboard, notifications, chat) can cause rate-limit rejections.
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await invokeFunction(fnName, { adminToken, action, ...payload });
+      } catch (e) {
+        lastError = e;
+        if (e?.status === 401) throw e;
+        if (e?.status === 429 && attempt < 2) {
+          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw lastError;
   };
 
   // Upload a chat attachment through a backend function. The browser's own
@@ -159,15 +175,22 @@ export default function Chat() {
       if (user.role === 'doctor' || isViewerRole(user.role)) {
         try {
           const adminToken = localStorage.getItem("admin_session_token");
-          const res = await base44.functions.invoke("doctorApi", { adminToken, action: "getTemplates" });
-          setTemplates((res.data || res).templates || []);
+          const res = await invokeFunction("doctorApi", { adminToken, action: "getTemplates" });
+          setTemplates(res.templates || []);
         } catch (e) {
           console.error("Failed to load templates", e);
         }
       }
     } catch (e) {
       console.error("Failed to load chat", e);
-      if (isAdminRole(user?.role)) setConversationError("Conversations could not be loaded. Please try again.");
+      const status = e?.status;
+      if (status === 401) {
+        localStorage.removeItem("admin_session_token");
+        localStorage.removeItem("cached_user");
+        navigate("/login", { replace: true });
+        return;
+      }
+      setConversationError("Conversations could not be loaded. Please try again.");
     } finally {
       setLoading(false);
     }
