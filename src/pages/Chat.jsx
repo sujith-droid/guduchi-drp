@@ -220,9 +220,9 @@ export default function Chat() {
         staleTime: 30000,
         retry: false,
         queryFn: async () => {
-          const res = await base44.functions.invoke("adminGetChatConversations", { adminToken });
-          if (res.data.error) throw new Error(res.data.error);
-          return res.data;
+          const res = await invokeFunction("adminGetChatConversations", { adminToken });
+          if (res.error) throw new Error(res.error);
+          return res;
         },
       });
       // Deduplicate by conversation ID — a patient with multiple assignments
@@ -318,7 +318,7 @@ export default function Chat() {
       let msgs;
       if (user && isAdminRole(user.role)) {
         const adminToken = localStorage.getItem("admin_session_token");
-        const { data } = await base44.functions.invoke("adminGetChatConversations", { adminToken, conversationId: activeConvId });
+        const data = await invokeFunction("adminGetChatConversations", { adminToken, conversationId: activeConvId });
         msgs = data.messages || [];
         if (!silent) {
           setMessageCursor(data.next_cursor || null);
@@ -369,7 +369,7 @@ export default function Chat() {
     const container = scrollContainerRef.current;
     const previousHeight = container?.scrollHeight || 0;
     try {
-      const { data } = await base44.functions.invoke("adminGetChatConversations", {
+      const data = await invokeFunction("adminGetChatConversations", {
         adminToken: localStorage.getItem("admin_session_token"),
         conversationId: activeConvId, cursor: messageCursor,
       });
