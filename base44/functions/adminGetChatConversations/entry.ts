@@ -1,18 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { validateAdminToken } from '../../shared/admin-session.ts';
 
 export default async function(req: Request): Promise<Response> {
   let stage = 'authentication';
   try {
     const base44 = createClientFromRequest(req);
-    const { conversationId, cursor } = await req.json();
-    const me = await base44.auth.me();
-    if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (me.role !== 'admin') {
+    const { adminToken, conversationId, cursor } = await req.json();
+    const session = await validateAdminToken(base44, adminToken);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const role = session.role;
+    if (role !== 'admin' && role !== 'subadmin') {
       return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
-    // The authenticated admin already has read access to assignments and chats.
-    // Keep these reads user-scoped rather than elevating every history lookup.
-    const entities = base44.entities;
+    // OTP-authenticated admins have an AdminSession UUID, not a platform token,
+    // so entity reads must go through the service role.
+    const entities = base44.asServiceRole.entities;
 
     // Opening a chat needs only that chat, not the entire admin directory.
     if (conversationId) {
