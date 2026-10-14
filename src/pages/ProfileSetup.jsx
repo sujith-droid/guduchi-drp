@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { invokeFunction } from "@/lib/invokeFunction";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,14 +39,14 @@ export default function ProfileSetup() {
 
       // Save via a service-role backend function so it works regardless of the
       // client session token (phone-OTP login only has a dummy token).
-      const res = await base44.functions.invoke("completeProfile", {
+      const responseData = await invokeFunction("completeProfile", {
+        adminToken: localStorage.getItem("admin_session_token"),
         email: user.email,
         full_name: fullName.trim(),
         age: Number(age),
         gender,
         patient_id: patientId
       });
-      const responseData = res?.data || res;
 
       const newUser = { ...user, ...(responseData?.user || {}), profile_complete: true };
       loginWithToken(null, newUser);
