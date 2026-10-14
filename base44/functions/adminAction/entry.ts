@@ -43,8 +43,8 @@ export default async function(req: Request): Promise<Response> {
         if (existingItems.some((a) => a.doctor_email === doctorEmail)) {
           return Response.json({ error: 'This patient is already assigned to this Health Coach.' }, { status: 400 });
         }
-        const patientUsers = await base44.entities.User.filter({ email: patientEmail });
-        const doctorUsers = await base44.entities.User.filter({ email: doctorEmail });
+        const patientUsers = await base44.asServiceRole.entities.User.filter({ email: patientEmail });
+        const doctorUsers = await base44.asServiceRole.entities.User.filter({ email: doctorEmail });
         const patient = (patientUsers.items || patientUsers)[0];
         const doctor = (doctorUsers.items || doctorUsers)[0];
         await base44.entities.PatientDoctorAssignment.create({
