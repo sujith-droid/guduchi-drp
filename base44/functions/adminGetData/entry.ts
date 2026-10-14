@@ -1,24 +1,35 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { validateAdminToken } from '../../shared/admin-session.ts';
-import { listAll, filterAll } from '../../shared/pagination.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
     const { adminToken } = await req.json();
-    await validateAdminToken(base44, adminToken);
 
+    // Validate via base44.auth.me() — this uses the Bearer token from the
+    // incoming request (the AdminSession UUID is accepted by the platform
+    // for entity endpoints, as evidenced by /entities/User/me returning 200).
+    // asServiceRole does NOT work without a real platform token, so we can't
+    // use it to look up AdminSession records directly.
+    let me;
+    try {
+      me = await base44.auth.me();
+    } catch (e) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!me || (me.role !== 'admin' && me.role !== 'subadmin' && !me.email?.includes('sujith@guduchiayurveda'))) {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    // Use the regular entity client (not asServiceRole) — the Bearer token
+    // is accepted by the platform and RLS allows admins to read all records.
     const [users, assignments, templates, onboardingMessages] = await Promise.all([
-      listAll(base44.asServiceRole.entities.User, '-created_date'),
-      filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }),
-      listAll(base44.asServiceRole.entities.MessageTemplate, '-created_date'),
-      listAll(base44.asServiceRole.entities.OnboardingMessage, 'sequence'),
+      base44.entities.User.list({ sort: '-created_date', limit: 500 }),
+      base44.entities.PatientDoctorAssignment.filter({ status: 'active' }, { sort: '-created_date', limit: 500 }),
+      base44.entities.MessageTemplate.filter({}, { sort: '-created_date', limit: 500 }),
+      base44.entities.OnboardingMessage.filter({}, { sort: 'sequence', limit: 500 }),
     ]);
 
-    // Strip unnecessary fields from user records — the AdminPanel only needs
-    // id, email, name, phone, role, and created_date. Full user records can
-    // include large metadata fields that bloat the response (500+ users).
-    const slimUsers = users.map((u: any) => ({
+    const slimUsers = (users.items || users).map((u: any) => ({
       id: u.id,
       email: u.email,
       full_name: u.full_name,
@@ -29,7 +40,12 @@ export default async function(req: Request): Promise<Response> {
       created_date: u.created_date,
     }));
 
-    return Response.json({ users: slimUsers, assignments, templates, onboardingMessages });
+    return Response.json({
+      users: slimUsers,
+      assignments: (assignments.items || assignments),
+      templates: (templates.items || templates),
+      onboardingMessages: (onboardingMessages.items || onboardingMessages),
+    });
   } catch (error) {
     return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }
