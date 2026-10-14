@@ -16,6 +16,7 @@ export default async function(req: Request): Promise<Response> {
 
     // OTP-authenticated admins have an AdminSession UUID, not a platform token,
     // so all entity reads must go through the service role.
+    // Use fields to reduce payload size (652+ users = 600KB+ without fields).
     const [allUsers, assignments, templates, onboardingMessages] = await Promise.all([
       listAll(base44.asServiceRole.entities.User, '-created_date'),
       filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }, '-created_date'),
@@ -34,11 +35,16 @@ export default async function(req: Request): Promise<Response> {
       created_date: u.created_date,
     }));
 
+    // Normalize page objects to arrays for the frontend.
+    const assignmentList = Array.isArray(assignments) ? assignments : (assignments.items || []);
+    const templateList = Array.isArray(templates) ? templates : (templates.items || []);
+    const onboardingList = Array.isArray(onboardingMessages) ? onboardingMessages : (onboardingMessages.items || []);
+
     return Response.json({
       users: slimUsers,
-      assignments: (assignments.items || assignments),
-      templates: (templates.items || templates),
-      onboardingMessages: (onboardingMessages.items || onboardingMessages),
+      assignments: assignmentList,
+      templates: templateList,
+      onboardingMessages: onboardingList,
     });
   } catch (error) {
     return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });

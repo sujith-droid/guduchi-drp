@@ -55,7 +55,31 @@ export default function AdminPanel() {
     try {
       setLoadError(false);
       const adminToken = localStorage.getItem("admin_session_token");
-      const res = await base44.functions.invoke("adminGetData", { adminToken });
+      // Retry on 429 (rate limit) — the platform limits function invocations
+      // per minute, and concurrent calls (notifications, chat, etc.) can
+      // cause the admin data load to be rejected before it even runs.
+      let lastError = null;
+      let res;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          res = await base44.functions.invoke("adminGetData", { adminToken });
+          break;
+        } catch (e) {
+          lastError = e;
+          const status = e?.status || e?.response?.status;
+          if (status === 401) {
+            localStorage.removeItem("admin_session_token");
+            localStorage.removeItem("cached_user");
+            window.location.replace("/login");
+            return;
+          }
+          if (status === 429 && attempt < 2) {
+            await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+            continue;
+          }
+          throw e;
+        }
+      }
       const d = res.data || res || {};
       setUsers(d.users || []);
       setAssignments(d.assignments || []);
@@ -229,8 +253,11 @@ export default function AdminPanel() {
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
         <Shield className="h-12 w-12 text-muted-foreground opacity-30" />
         <p className="font-semibold">Couldn't load admin data</p>
-        <p className="text-sm text-muted-foreground">Your session may have expired. Please refresh or log in again.</p>
-        <Button variant="outline" onClick={loadData}>Retry</Button>
+        <p className="text-sm text-muted-foreground">Your session may have expired. Please log in again.</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadData}>Retry</Button>
+          <Button onClick={() => window.location.replace("/login")}>Log in</Button>
+        </div>
       </div>
     );
   }

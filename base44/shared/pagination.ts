@@ -3,6 +3,21 @@
 // use cursor-based pagination (sorting by a unique field and excluding
 // already-seen values via $lt / $gt) to page through all matches.
 
+// Retry a call on 429 (rate limit) with exponential backoff.
+async function withRetry(fn, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if ((e?.status === 429 || e?.statusCode === 429) && i < retries) {
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 // Paginate through ALL records using list() with skip.
 // Usage: const all = await listAll(base44.asServiceRole.entities.User, '-created_date');
 export async function listAll(entityClient, sort = '-created_date', batchSize = 500) {
@@ -10,7 +25,7 @@ export async function listAll(entityClient, sort = '-created_date', batchSize = 
   let skip = 0;
   let batch;
   do {
-    batch = await entityClient.list(sort, batchSize, skip);
+    batch = await withRetry(() => entityClient.list(sort, batchSize, skip));
     all.push(...batch);
     skip += batch.length;
   } while (batch.length === batchSize);
@@ -32,7 +47,7 @@ export async function filterAll(entityClient, query, sort = '-created_date', bat
     if (cursor) {
       pageQuery[sortField] = isDesc ? { $lt: cursor } : { $gt: cursor };
     }
-    batch = await entityClient.filter(pageQuery, sort, batchSize);
+    batch = await withRetry(() => entityClient.filter(pageQuery, sort, batchSize));
     all.push(...batch);
     cursor = batch.length > 0 ? batch[batch.length - 1][sortField] : null;
   } while (batch.length === batchSize);
