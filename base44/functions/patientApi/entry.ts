@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { validatePatientToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
-import { filterAll } from '../../shared/pagination.ts';
+import { filterAll, normalizeFilterResult } from '../../shared/pagination.ts';
 
 // Patients log in via mobile OTP and receive an opaque AdminSession token
 // that the Base44 platform doesn't recognize for direct entity SDK calls.
@@ -24,7 +24,7 @@ export default async function(req: Request): Promise<Response> {
     if (!userEmail) {
       return Response.json({ error: 'patientEmail or adminToken is required' }, { status: 400 });
     }
-    const users = await base44.asServiceRole.entities.User.filter({ email: userEmail });
+    const users = normalizeFilterResult(await base44.asServiceRole.entities.User.filter({ email: userEmail }));
     if (users.length === 0) {
       return Response.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -109,14 +109,14 @@ export default async function(req: Request): Promise<Response> {
           patient_email: userEmail,
           status: 'active',
         });
-        const assignments = Array.isArray(assignResult) ? assignResult : (assignResult?.items || []);
+        const assignments = normalizeFilterResult(assignResult);
 
         const [sentResult, receivedResult] = await Promise.all([
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: userEmail }, "-created_date", 500),
           base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: userEmail }, "-created_date", 500),
         ]);
-        const sentMsgs = Array.isArray(sentResult) ? sentResult : (sentResult?.items || []);
-        const receivedMsgs = Array.isArray(receivedResult) ? receivedResult : (receivedResult?.items || []);
+        const sentMsgs = normalizeFilterResult(sentResult);
+        const receivedMsgs = normalizeFilterResult(receivedResult);
         const allMsgs = [...sentMsgs, ...receivedMsgs];
 
         const convLatest = {};
@@ -209,7 +209,7 @@ export default async function(req: Request): Promise<Response> {
       case 'deleteMessage': {
         const { messageId } = payload;
         if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        const msgs = normalizeFilterResult(await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId }));
         if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
         if (msgs[0].sender_email !== userEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
         await base44.asServiceRole.entities.ChatMessage.delete(messageId);
@@ -219,7 +219,7 @@ export default async function(req: Request): Promise<Response> {
       case 'editMessage': {
         const { messageId, message: newMessage } = payload;
         if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        const msgs = normalizeFilterResult(await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId }));
         if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
         if (msgs[0].sender_email !== userEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
         await base44.asServiceRole.entities.ChatMessage.update(messageId, { message: newMessage });

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
-import { listAll, filterAll } from '../../shared/pagination.ts';
+import { filterAll, normalizeFilterResult } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -26,10 +26,10 @@ export default async function(req: Request): Promise<Response> {
         // pulling logs for patients this doctor doesn't manage.
         const patientEmailsForLogs = [...new Set(assignments.map((a) => a.patient_email))];
         const recentLogs = patientEmailsForLogs.length > 0
-          ? await base44.asServiceRole.entities.DailyLog.filter(
+          ? normalizeFilterResult(await base44.asServiceRole.entities.DailyLog.filter(
               { patient_email: { $in: patientEmailsForLogs }, date: { $gte: sevenDaysAgo } },
               "-date", 500
-            )
+            ))
           : [];
         // Strip metadata fields the dashboard doesn't need — keeps the response
         // small so it loads fast on mobile and doesn't trigger 429 rate limits.
@@ -64,7 +64,7 @@ export default async function(req: Request): Promise<Response> {
         const patientNames = {};
         if (patientEmails.length > 0) {
           try {
-            const users = await base44.asServiceRole.entities.User.filter({ email: { $in: patientEmails } });
+            const users = normalizeFilterResult(await base44.asServiceRole.entities.User.filter({ email: { $in: patientEmails } }));
             for (const u of users) {
               if (u.phone) patientPhones[u.email] = u.phone;
               if (u.full_name) patientNames[u.email] = u.full_name;
@@ -81,13 +81,15 @@ export default async function(req: Request): Promise<Response> {
         const assignQuery = isAdmin
           ? { patient_email: patientEmail, status: "active" }
           : { patient_email: patientEmail, doctor_email: doctorEmail, status: "active" };
-        const [assignments, logs] = await Promise.all([
+        const [assignmentResult, logResult] = await Promise.all([
           base44.asServiceRole.entities.PatientDoctorAssignment.filter(assignQuery),
           base44.asServiceRole.entities.DailyLog.filter({ patient_email: patientEmail }, "-date", Number(period) || 30),
         ]);
+        const assignments = normalizeFilterResult(assignmentResult);
+        const logs = normalizeFilterResult(logResult);
         let patientPhone = null;
         try {
-          const phoneUsers = await base44.asServiceRole.entities.User.filter({ email: patientEmail });
+          const phoneUsers = normalizeFilterResult(await base44.asServiceRole.entities.User.filter({ email: patientEmail }));
           if (phoneUsers[0]?.phone) patientPhone = phoneUsers[0].phone;
         } catch (e) {}
         return Response.json({ assignment: assignments[0] || null, logs, patientPhone });
@@ -99,7 +101,7 @@ export default async function(req: Request): Promise<Response> {
         await base44.asServiceRole.entities.PatientDoctorAssignment.update(assignmentId, { patient_id: (patientId || "").trim() });
         if ((patientId || "").trim()) {
           // Find the patient email to notify
-          const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ id: assignmentId });
+          const assignments = normalizeFilterResult(await base44.asServiceRole.entities.PatientDoctorAssignment.filter({ id: assignmentId }));
           const patientEmail = assignments[0]?.patient_email;
           if (patientEmail) {
             await base44.asServiceRole.entities.Notification.create({
@@ -119,9 +121,7 @@ export default async function(req: Request): Promise<Response> {
           ? { status: "active" }
           : { doctor_email: doctorEmail, status: "active" };
         const assignmentResult = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
-        // SDK 0.8.51 may return a page object {items,...} or a plain array
-        // depending on how filter() is called — normalize to array.
-        const assignments = Array.isArray(assignmentResult) ? assignmentResult : (assignmentResult?.items || []);
+        const assignments = normalizeFilterResult(assignmentResult);
 
         // Get all messages involving this doctor (500 per direction is ample
         // for any single doctor's history).
@@ -129,8 +129,8 @@ export default async function(req: Request): Promise<Response> {
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: doctorEmail }, "-created_date", 500),
           base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: doctorEmail }, "-created_date", 500),
         ]);
-        const sentMsgs = Array.isArray(sentResult) ? sentResult : (sentResult?.items || []);
-        const receivedMsgs = Array.isArray(receivedResult) ? receivedResult : (receivedResult?.items || []);
+        const sentMsgs = normalizeFilterResult(sentResult);
+        const receivedMsgs = normalizeFilterResult(receivedResult);
         const allMsgs = [...sentMsgs, ...receivedMsgs];
 
         // Build conversation -> latest message map
@@ -234,7 +234,7 @@ export default async function(req: Request): Promise<Response> {
       case 'deleteMessage': {
         const { messageId } = payload;
         if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        const msgs = normalizeFilterResult(await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId }));
         if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
         if (msgs[0].sender_email !== doctorEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
         await base44.asServiceRole.entities.ChatMessage.delete(messageId);
@@ -244,7 +244,7 @@ export default async function(req: Request): Promise<Response> {
       case 'editMessage': {
         const { messageId, message: newMessage } = payload;
         if (!messageId) return Response.json({ error: 'messageId is required' }, { status: 400 });
-        const msgs = await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId });
+        const msgs = normalizeFilterResult(await base44.asServiceRole.entities.ChatMessage.filter({ id: messageId }));
         if (msgs.length === 0) return Response.json({ error: 'Message not found' }, { status: 404 });
         if (msgs[0].sender_email !== doctorEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
         await base44.asServiceRole.entities.ChatMessage.update(messageId, { message: newMessage });
@@ -252,7 +252,7 @@ export default async function(req: Request): Promise<Response> {
       }
 
       case 'logout': {
-        const sessions = await base44.asServiceRole.entities.AdminSession.filter({ token: adminToken });
+        const sessions = normalizeFilterResult(await base44.asServiceRole.entities.AdminSession.filter({ token: adminToken }));
         if (sessions[0]) {
           await base44.asServiceRole.entities.AdminSession.update(sessions[0].id, { is_active: false });
         }

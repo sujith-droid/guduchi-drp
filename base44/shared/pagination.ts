@@ -1,6 +1,12 @@
 // Shared pagination helpers — the Base44 SDK caps list() and filter() at 500
 // records per call. We use cursor-based pagination to page through all matches.
 
+// Support both legacy array results and the SDK's options-form pages.
+export function normalizeFilterResult(result) {
+  if (Array.isArray(result)) return result;
+  return result?.items || [];
+}
+
 // Retry a call on 429 (rate limit) with exponential backoff.
 async function withRetry(fn, retries = 2) {
   for (let i = 0; i <= retries; i++) {
