@@ -9,12 +9,16 @@ export const invokeFunction = async (fnName, payload) => {
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const headers = { 'Content-Type': 'application/json' };
-    // Send the platform Bearer token when available so platform-authenticated
-    // users (builder, invited admins/doctors) pass the server-side auth.me()
-    // fallback in validateAdminToken. OTP users don't have this token — they
-    // authenticate via adminToken in the request body instead.
-    const platformToken = localStorage.getItem("base44_access_token");
-    if (platformToken) headers['Authorization'] = `Bearer ${platformToken}`;
+    // Send the platform Bearer token so platform-authenticated users (builder,
+    // invited admins/doctors) pass the server-side auth.me() fallback in
+    // validateAdminToken. Skip it for OTP users — their admin_session_token
+    // UUID is stored as base44_access_token by setToken() and the platform
+    // rejects it with 401; OTP users authenticate via adminToken in the body.
+    const adminSessionToken = localStorage.getItem("admin_session_token");
+    if (!adminSessionToken) {
+      const platformToken = localStorage.getItem("base44_access_token");
+      if (platformToken) headers['Authorization'] = `Bearer ${platformToken}`;
+    }
     const response = await fetch(`/api/apps/${appParams.appId}/functions/${fnName}`, {
       method: 'POST',
       headers,
