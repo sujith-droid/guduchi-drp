@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
 import { listAll, filterAll } from '../../shared/pagination.ts';
@@ -118,14 +118,19 @@ export default async function(req: Request): Promise<Response> {
         const query = isAdmin
           ? { status: "active" }
           : { doctor_email: doctorEmail, status: "active" };
-        const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
+        const assignmentResult = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
+        // SDK 0.8.51 may return a page object {items,...} or a plain array
+        // depending on how filter() is called — normalize to array.
+        const assignments = Array.isArray(assignmentResult) ? assignmentResult : (assignmentResult?.items || []);
 
         // Get all messages involving this doctor (500 per direction is ample
         // for any single doctor's history).
-        const [sentMsgs, receivedMsgs] = await Promise.all([
+        const [sentResult, receivedResult] = await Promise.all([
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: doctorEmail }, "-created_date", 500),
           base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: doctorEmail }, "-created_date", 500),
         ]);
+        const sentMsgs = Array.isArray(sentResult) ? sentResult : (sentResult?.items || []);
+        const receivedMsgs = Array.isArray(receivedResult) ? receivedResult : (receivedResult?.items || []);
         const allMsgs = [...sentMsgs, ...receivedMsgs];
 
         // Build conversation -> latest message map

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { validatePatientToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
 import { filterAll } from '../../shared/pagination.ts';
@@ -105,15 +105,18 @@ export default async function(req: Request): Promise<Response> {
 
       // ── Chat ──────────────────────────────────────────────────────
       case 'getConversations': {
-        const assignments = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({
+        const assignResult = await base44.asServiceRole.entities.PatientDoctorAssignment.filter({
           patient_email: userEmail,
           status: 'active',
         });
+        const assignments = Array.isArray(assignResult) ? assignResult : (assignResult?.items || []);
 
-        const [sentMsgs, receivedMsgs] = await Promise.all([
+        const [sentResult, receivedResult] = await Promise.all([
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: userEmail }, "-created_date", 500),
           base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: userEmail }, "-created_date", 500),
         ]);
+        const sentMsgs = Array.isArray(sentResult) ? sentResult : (sentResult?.items || []);
+        const receivedMsgs = Array.isArray(receivedResult) ? receivedResult : (receivedResult?.items || []);
         const allMsgs = [...sentMsgs, ...receivedMsgs];
 
         const convLatest = {};
