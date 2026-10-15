@@ -8,9 +8,16 @@ export const invokeFunction = async (fnName, payload) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    // Send the platform Bearer token when available so platform-authenticated
+    // users (builder, invited admins/doctors) pass the server-side auth.me()
+    // fallback in validateAdminToken. OTP users don't have this token — they
+    // authenticate via adminToken in the request body instead.
+    const platformToken = localStorage.getItem("base44_access_token");
+    if (platformToken) headers['Authorization'] = `Bearer ${platformToken}`;
     const response = await fetch(`/api/apps/${appParams.appId}/functions/${fnName}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
