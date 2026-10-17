@@ -1,5 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { filterAll } from '../../shared/pagination.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { normalizeFilterResult } from '../../shared/pagination.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -8,9 +8,20 @@ export default async function(req: Request): Promise<Response> {
     }
     const base44 = createClientFromRequest(req);
 
-    const users = await filterAll(base44.asServiceRole.entities.User, { role: "doctor" });
+    const { search = '', skip = 0 } = await req.json();
+    const offset = Number.isSafeInteger(skip) && skip >= 0 ? skip : 0;
+    const query = { role: 'doctor' };
+    const term = typeof search === 'string' ? search.trim() : '';
+    if (term) {
+      const pattern = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = ['full_name', 'specialty', 'city', 'email'].map((field) => ({
+        [field]: { $regex: pattern, $options: 'i' },
+      }));
+    }
+    // User only supports positional pagination, not options-form cursor pages.
+    const users = normalizeFilterResult(await base44.asServiceRole.entities.User.filter(query, '-created_date', 51, offset));
 
-    const doctors = users
+    const doctors = users.slice(0, 50)
       .filter((u) => u.email)
       .map((u) => ({
         email: u.email,
@@ -19,7 +30,7 @@ export default async function(req: Request): Promise<Response> {
         city: u.city || null,
       }));
 
-    return Response.json({ doctors });
+    return Response.json({ doctors, has_more: users.length > 50, next_skip: offset + 50 });
   } catch (error) {
     return Response.json({ error: error.message || 'Internal Server Error' }, { status: error.status || 500 });
   }

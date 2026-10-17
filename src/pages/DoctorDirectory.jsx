@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { Search, MapPin, Stethoscope, Loader2, UserCircle, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -13,40 +13,43 @@ export default function DoctorDirectory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [nextSkip, setNextSkip] = useState(0);
+  const [fetching, setFetching] = useState(false);
+  const requestRef = useRef(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (skip = 0) => {
+    const requestId = ++requestRef.current;
+    setFetching(true);
     try {
       setError(false);
-      const res = await invokeFunction("listDoctors", {});
-      setDoctors(res?.doctors || []);
+      const res = await invokeFunction("listDoctors", { search: query.trim(), skip });
+      if (requestId !== requestRef.current) return;
+      setDoctors((previous) => skip ? [...previous, ...(res?.doctors || [])] : (res?.doctors || []));
+      setHasMore(Boolean(res?.has_more));
+      setNextSkip(res?.next_skip || 0);
     } catch {
-      setError(true);
+      if (requestId === requestRef.current) setError(true);
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) {
+        setLoading(false);
+        setFetching(false);
+      }
     }
-  }, []);
+  }, [query]);
 
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => loadData(), 250);
+    return () => { clearTimeout(timer); requestRef.current += 1; };
   }, [loadData]);
 
-  const handleRefresh = useCallback(async () => {
-    await loadData();
-  }, []);
+  const handleRefresh = useCallback(() => loadData(), [loadData]);
 
   const scrollRef = useRef(null);
   useLayoutEffect(() => {
     scrollRef.current = document.getElementById("main-scroll");
   }, []);
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
-
-  const filtered = doctors.filter((d) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [d.full_name, d.specialty, d.city, d.email]
-      .filter(Boolean)
-      .some((v) => v.toLowerCase().includes(q));
-  });
 
   const connect = (email) => {
     navigate(`/join?doctor=${encodeURIComponent(email)}`);
@@ -65,6 +68,7 @@ export default function DoctorDirectory() {
       <div className="flex flex-col items-center justify-center h-64 text-center px-6">
         <AlertCircle className="h-10 w-10 text-destructive mb-2" />
         <p className="text-sm text-muted-foreground">Couldn't load Health Coaches. Please try again.</p>
+        <Button variant="outline" className="mt-3" onClick={() => loadData()}>Try Again</Button>
       </div>
     );
   }
@@ -90,16 +94,17 @@ export default function DoctorDirectory() {
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {fetching && <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading Health Coaches…</div>}
+      {doctors.length === 0 && !fetching ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <UserCircle className="h-12 w-12 text-muted-foreground/40 mb-2" />
           <p className="text-sm text-muted-foreground">
-            {doctors.length === 0 ? "No Health Coaches available yet." : "No Health Coaches match your search."}
+            {query.trim() ? "No Health Coaches match your search." : "No Health Coaches available yet."}
           </p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map((doc) => (
+          {doctors.map((doc) => (
             <div
               key={doc.email}
               className="bg-card border border-border rounded-xl p-4 flex flex-col gap-3"
@@ -133,6 +138,7 @@ export default function DoctorDirectory() {
           ))}
         </div>
       )}
+      {hasMore && <Button variant="outline" className="w-full" disabled={fetching} onClick={() => loadData(nextSkip)}>Load More Health Coaches</Button>}
     </div>
   );
 }
