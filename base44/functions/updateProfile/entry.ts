@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 
 // Saves profile fields (phone, address, age, gender, branch) via service role,
 // so it works even for OTP-authenticated patients whose client session token

@@ -48,8 +48,10 @@ export async function filterAll(entityClient, query, sort = '-created_date', bat
   let page;
   do {
     page = await withRetry(() => entityClient.filter(query, { sort, limit: batchSize, ...(cursor ? { cursor } : {}) }));
-    all.push(...page.items);
-    cursor = page.has_more ? page.next_cursor : null;
+    const records = normalizeFilterResult(page);
+    all.push(...records);
+    if (Array.isArray(page)) break;
+    cursor = page?.has_more ? page.next_cursor : null;
   } while (cursor);
   return all;
 }

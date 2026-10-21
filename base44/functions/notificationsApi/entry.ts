@@ -1,5 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { filterAll } from '../../shared/pagination.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { filterAll, normalizeFilterResult } from '../../shared/pagination.ts';
 
 // Notifications have row-level security (user_email == logged-in user). Mobile-OTP
 // users carry a dummy token the platform doesn't recognize, so direct entity
@@ -9,7 +9,7 @@ import { filterAll } from '../../shared/pagination.ts';
 
 async function resolveEmail(base44, adminToken) {
   if (adminToken) {
-    const sessions = await base44.asServiceRole.entities.AdminSession.filter({ token: adminToken, is_active: true });
+    const sessions = normalizeFilterResult(await base44.asServiceRole.entities.AdminSession.filter({ token: adminToken, is_active: true }));
     if (sessions[0] && new Date(sessions[0].expires_at) >= new Date()) return sessions[0].user_email;
   }
   try {

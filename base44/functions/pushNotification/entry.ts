@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.49';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validatePatientToken, validateAdminToken } from '../../shared/admin-session.ts';
 
 // Registers/unregisters FCM device tokens for push notifications.

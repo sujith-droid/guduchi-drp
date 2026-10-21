@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
 import { filterAll, listAll } from '../../shared/pagination.ts';
 
