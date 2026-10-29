@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // picture back as a File. (Phones use the native camera via ChatAttachButton.)
 export default function ChatWebcamButton({ disabled, onCapture }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState(null);
   const streamRef = useRef(null);
   const videoRef = useRef(null);
 
@@ -19,11 +20,27 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
   useEffect(() => stopStream, []);
 
   const openCamera = async () => {
+    setError(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const msg = "Camera is not available in this browser. Please use a file upload instead.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
     try {
-      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
       setOpen(true);
-    } catch {
-      toast.error("Could not access the camera. Please allow camera permission in your browser.");
+    } catch (e) {
+      let msg = "Could not access the camera. Please allow camera permission in your browser.";
+      if (e?.name === "NotAllowedError") {
+        msg = "Camera permission was denied. Please allow camera access in your browser settings.";
+      } else if (e?.name === "NotFoundError") {
+        msg = "No camera found on this device.";
+      }
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -32,9 +49,16 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
     setOpen(false);
   };
 
-  const attachStream = (el) => {
+  const attachStream = async (el) => {
     videoRef.current = el;
-    if (el && el.srcObject !== streamRef.current) el.srcObject = streamRef.current;
+    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+      el.srcObject = streamRef.current;
+      try {
+        await el.play();
+      } catch {
+        // Autoplay might be blocked; the muted attribute should prevent this.
+      }
+    }
   };
 
   const capture = () => {
@@ -61,10 +85,19 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
           <DialogHeader>
             <DialogTitle>Take a photo</DialogTitle>
           </DialogHeader>
-          <video ref={attachStream} autoPlay playsInline muted className="w-full rounded-lg bg-black" />
+          <video
+            ref={attachStream}
+            autoPlay
+            playsInline
+            muted
+            className="w-full rounded-lg bg-black"
+          />
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={close}>Cancel</Button>
-            <Button onClick={capture}>
+            <Button onClick={capture} disabled={!!error}>
               <Camera className="h-4 w-4" /> Capture
             </Button>
           </div>
