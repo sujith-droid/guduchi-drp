@@ -14,7 +14,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import ChatAttachButton from "@/components/chat/ChatAttachButton";
 import ChatWebcamButton from "@/components/chat/ChatWebcamButton";
 import { compressImage } from "@/lib/compressImage";
-import { detectPlatform } from "@/lib/platform";
+import { detectPlatform, isMobileApp } from "@/lib/platform";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { appParams } from "@/lib/app-params";
@@ -31,7 +31,10 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   // Touch devices open the native camera through a file input; desktop browsers
   // ignore that hint and just show a file picker, so computers get a webcam dialog.
+  // Inside the native app WebView, the `capture` attribute on <input> is ignored,
+  // so we fall back to a getUserMedia webcam dialog there.
   const [hasCamera] = useState(() => typeof window !== "undefined" && (detectPlatform() !== "web" || !!window.matchMedia?.("(pointer: coarse)").matches));
+  const [useWebcam] = useState(() => typeof window !== "undefined" && isMobileApp());
   const [chatPartner, setChatPartner] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -996,7 +999,7 @@ export default function Chat() {
         )}
         {!isRecording ? (
           <>
-            {hasCamera
+            {hasCamera && !useWebcam
               ? <ChatAttachButton label="Take photo" icon={Camera} accept="image/*" capture="environment" disabled={sending} onChange={handleImageUpload} />
               : <ChatWebcamButton disabled={sending} onCapture={sendPhoto} />}
             <ChatAttachButton label="Choose from gallery" icon={ImagePlus} accept="image/*" disabled={sending} onChange={handleImageUpload} />

@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera } from "lucide-react";
+import { Camera, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { isMobileApp } from "@/lib/platform";
 
-// "Take photo" for computers: opens the webcam in a dialog and hands the captured
-// picture back as a File. (Phones use the native camera via ChatAttachButton.)
+// Opens the webcam in a dialog and hands the captured picture back as a File.
+// Used on desktop browsers and inside the native mobile app WebView, where the
+// <input capture> attribute is ignored.
 export default function ChatWebcamButton({ disabled, onCapture }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState(null);
+  const [facingFront, setFacingFront] = useState(false);
   const streamRef = useRef(null);
   const videoRef = useRef(null);
 
@@ -28,8 +31,10 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
       return;
     }
     try {
+      // Prefer the back camera on mobile, front camera on desktop.
+      const facingMode = isMobileApp() ? { ideal: "environment" } : "user";
       streamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+        video: { facingMode },
       });
       setOpen(true);
     } catch (e) {
@@ -47,6 +52,28 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
   const close = () => {
     stopStream();
     setOpen(false);
+    setError(null);
+  };
+
+  const flipCamera = async () => {
+    setFacingFront((prev) => {
+      const next = !prev;
+      // Restart the stream with the new facing mode.
+      stopStream();
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: next ? "user" : { ideal: "environment" } } })
+        .then((stream) => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+        })
+        .catch(() => {
+          // If the other camera isn't available, ignore silently.
+        });
+      return next;
+    });
   };
 
   const attachStream = async (el) => {
@@ -97,6 +124,11 @@ export default function ChatWebcamButton({ disabled, onCapture }) {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={close}>Cancel</Button>
+            {isMobileApp() && (
+              <Button variant="outline" onClick={flipCamera} disabled={!!error}>
+                <RefreshCw className="h-4 w-4" /> Flip
+              </Button>
+            )}
             <Button onClick={capture} disabled={!!error}>
               <Camera className="h-4 w-4" /> Capture
             </Button>
