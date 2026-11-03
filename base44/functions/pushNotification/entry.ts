@@ -29,11 +29,11 @@ export default async function(req: Request): Promise<Response> {
     if (action === 'registerToken') {
       if (!token) return Response.json({ error: 'token is required' }, { status: 400 });
       const resolvedPlatform = platform || 'web';
-      // Keep only one token per user: delete all previously registered tokens
-      // for this user (old devices/browsers) before inserting the new one.
-      // This prevents duplicate DeviceToken rows accumulating across logins.
+      // Keep one row per device: remove any earlier row holding this same token
+      // (re-registration on reload) but keep the user's other devices, so a
+      // phone and a laptop both keep receiving push.
       const oldTokens = await base44.asServiceRole.entities.DeviceToken.filter(
-        { user_email: userEmail },
+        { user_email: userEmail, token },
         undefined,
         100
       );

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { base44 } from "@/api/base44Client";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
 import { detectPlatform, isMobileApp } from "@/lib/platform";
@@ -9,14 +8,81 @@ import { useAuth } from "@/lib/AuthContext";
 
 let messagingInstance = null;
 
+function getMessagingApp() {
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  messagingInstance = getMessaging(app);
+  return messagingInstance;
+}
+
+/**
+ * Registers this browser for push notifications and stores the FCM token.
+ * The service worker and permission request are done here so the same flow
+ * works from the automatic hook and from the "Turn on notifications" button.
+ */
+export async function registerPushDevice() {
+  if (!isFirebaseConfigured() || isMobileApp()) return false;
+  if (!("serviceWorker" in navigator) || !("Notification" in window)) return false;
+  if (Notification.permission !== "granted") return false;
+
+  const messaging = getMessagingApp();
+  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+  await navigator.serviceWorker.ready;
+
+  const token = await getToken(messaging, {
+    vapidKey: firebaseVapidKey,
+    serviceWorkerRegistration: registration,
+  }).catch((e) => {
+    console.error("FCM getToken failed", e);
+    return null;
+  });
+  if (!token) return false;
+
+  try {
+    await invokeFunction("pushNotification", {
+      adminToken: localStorage.getItem("admin_session_token"),
+      action: "registerToken",
+      token,
+      platform: detectPlatform(),
+    });
+    return true;
+  } catch (e) {
+    console.error("Push token storage failed:", e);
+    return false;
+  }
+}
+
+/**
+ * Shows an OS notification for a push that arrives while the app tab is
+ * focused. FCM only displays notifications automatically when the page is
+ * in the background, so without this a user watching the app sees nothing.
+ */
+async function showForegroundNotification(payload) {
+  const title = payload.notification?.title || payload.data?.title || "Guduchi DRP";
+  const body = payload.notification?.body || payload.data?.body || "";
+  if (!title) return;
+  const options = {
+    body,
+    icon: "/logo.png",
+    badge: "/logo.png",
+    tag: payload.data?.tag || "guduchi-message",
+    data: { url: payload.data?.url || "/" },
+  };
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/") ||
+      await navigator.serviceWorker.getRegistration();
+    if (registration?.showNotification) {
+      await registration.showNotification(title, options);
+    } else if (Notification.permission === "granted") {
+      new Notification(title, options);
+    }
+  } catch (e) {
+    console.error("Foreground notification display failed", e);
+  }
+}
+
 /**
  * Registers the current user's device for Firebase Cloud Messaging push
- * notifications. Uses the standard Firebase pattern:
- *   1. Register the service worker
- *   2. Request notification permission (required by some browsers before a
- *      push subscription/token can be created)
- *   3. Get the FCM token
- *   4. Store it via the pushNotification backend function
+ * notifications, and displays pushes that arrive while the app is focused.
  */
 export function usePushNotifications() {
   const { user } = useAuth();
@@ -31,23 +97,11 @@ export function usePushNotifications() {
 
     let cancelled = false;
 
-    const registerToken = async () => {
+    const init = async () => {
       try {
-        const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-        messagingInstance = getMessaging(app);
-
-        // 1. Register the service worker.
-        const registration = await navigator.serviceWorker.register(
-          "/firebase-messaging-sw.js",
-          { scope: "/" }
-        );
-        // Wait for the SW to be fully active.
-        await navigator.serviceWorker.ready;
-
-        // 2. Request notification permission. Some browsers (Edge, Safari,
-        // Chrome-on-iOS) will NOT issue an FCM token until the user has
-        // granted display permission. If already granted or denied, this
-        // resolves immediately without a prompt.
+        // Ask for permission if the browser hasn't decided yet. Browsers only
+        // honour this reliably after a user gesture, so the Alerts page also
+        // offers an explicit "Turn on notifications" button.
         if ("Notification" in window && Notification.permission === "default") {
           try {
             await Notification.requestPermission();
@@ -55,56 +109,24 @@ export function usePushNotifications() {
             console.error("Notification permission request failed", e);
           }
         }
-
-        // 3. Get the FCM token.
-        let token = null;
-        try {
-          token = await getToken(messagingInstance, {
-            vapidKey: firebaseVapidKey,
-            serviceWorkerRegistration: registration,
-          });
-        } catch (e) {
-          console.error("FCM getToken failed", e);
-        }
-
-        if (cancelled || !token) {
-          console.warn("Push: no FCM token obtained");
-          return;
-        }
-
-        // 4. Store the token server-side.
-        const adminToken = localStorage.getItem("admin_session_token");
-        const platform = detectPlatform();
-        try {
-          const res = await invokeFunction("pushNotification", {
-            adminToken,
-            action: "registerToken",
-            token,
-            platform,
-          });
-          console.log("Push token registered:", platform, res);
-        } catch (e) {
-          console.error("Push token storage failed:", e);
-        }
+        if (!cancelled) await registerPushDevice();
       } catch (e) {
         console.error("Push registration failed", e);
       }
     };
 
-    registerToken();
+    init();
 
-    // Foreground message handler
+    let unsub = null;
     try {
-      const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-      messagingInstance = getMessaging(app);
-      const unsub = onMessage(messagingInstance, (payload) => {
-        console.log("FCM foreground message:", payload);
-      });
-      return () => { cancelled = true; unsub(); };
+      unsub = onMessage(getMessagingApp(), showForegroundNotification);
     } catch (e) {
       console.error("Push onMessage setup failed", e);
     }
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, [user]);
 }
