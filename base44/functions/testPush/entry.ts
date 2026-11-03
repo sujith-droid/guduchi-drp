@@ -5,11 +5,11 @@ import { sendPushToUser } from '../../shared/firebase-push.ts';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { email } = await req.json();
+    const { email, message } = await req.json();
     if (!email) return Response.json({ error: 'email is required' }, { status: 400 });
 
-    const title = 'Test notification';
-    const body = 'Guduchi DRP test push — ' + new Date().toISOString();
+    const title = message || 'Test notification';
+    const body = message || ('Guduchi DRP test push — ' + new Date().toISOString());
 
     await base44.asServiceRole.entities.Notification.create({
       user_email: email,
