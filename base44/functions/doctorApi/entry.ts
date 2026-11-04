@@ -65,16 +65,21 @@ export default async function(req: Request): Promise<Response> {
         const patientEmails = [...new Set(slimAssignments.map((a) => a.patient_email))];
         const patientPhones = {};
         const patientNames = {};
+        const staffEmails = new Set();
         if (patientEmails.length > 0) {
           try {
             const users = normalizeFilterResult(await base44.asServiceRole.entities.User.filter({ email: { $in: patientEmails } }));
             for (const u of users) {
               if (u.phone) patientPhones[u.email] = u.phone;
               if (u.full_name) patientNames[u.email] = u.full_name;
+              if (['doctor', 'viewer', 'admin', 'subadmin'].includes(u.role)) staffEmails.add(u.email);
             }
           } catch (e) {}
         }
-        return Response.json({ assignments: slimAssignments, recentLogs: slimLogs, patientPhones, patientNames });
+        // Doctors, Health Coaches and admins are staff — they are never shown
+        // as patients, even if an old assignment row still exists for them.
+        const visibleAssignments = slimAssignments.filter((a) => !staffEmails.has(a.patient_email));
+        return Response.json({ assignments: visibleAssignments, recentLogs: slimLogs, patientPhones, patientNames });
       }
 
       // ── PatientDetail ─────────────────────────────────────────────

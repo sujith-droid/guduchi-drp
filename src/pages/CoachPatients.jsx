@@ -63,9 +63,17 @@ export default function CoachPatients() {
     .filter((u) => u.role === "doctor" || isViewerRole(u.role))
     .map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
 
+  // Staff accounts (Doctors, Health Coaches, admins) are never patients.
+  const staffEmails = new Set(
+    users
+      .filter((u) => u.role === "doctor" || isViewerRole(u.role) || isAdminRole(u.role) || isSubadminRole(u.role))
+      .map((u) => u.email)
+  );
+  const patientAssignments = assignments.filter((a) => !staffEmails.has(a.patient_email));
+
   const coachPatients = selectedCoachFilter
-    ? assignments.filter((a) => a.doctor_email === selectedCoachFilter)
-    : assignments;
+    ? patientAssignments.filter((a) => a.doctor_email === selectedCoachFilter)
+    : patientAssignments;
 
   if (loading) {
     return (

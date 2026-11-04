@@ -83,6 +83,23 @@ export default async function(req: Request): Promise<Response> {
           return Response.json({ error: 'userId and newRole are required' }, { status: 400 });
         }
         await entities.User.update(payload.userId, { role: payload.newRole });
+        // Anyone made Doctor / Health Coach / admin becomes staff — deactivate
+        // any patient assignment they still have so they stay separate from
+        // the patient lists.
+        if (['doctor', 'viewer', 'admin', 'subadmin'].includes(payload.newRole)) {
+          try {
+            const found = await entities.User.filter({ id: payload.userId });
+            const updated = (found?.items || found || [])[0];
+            if (updated?.email) {
+              await entities.PatientDoctorAssignment.updateMany(
+                { patient_email: updated.email, status: 'active' },
+                { $set: { status: 'inactive' } }
+              );
+            }
+          } catch (e) {
+            console.error('Could not clear patient assignments for promoted user:', e);
+          }
+        }
         return Response.json({ success: true });
       }
       case 'updateUserName': {

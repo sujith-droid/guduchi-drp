@@ -30,6 +30,11 @@ export async function assignPatientToCoach(base44, {
   const patient = (patientUsers?.items || patientUsers || [])[0];
   const doctor = (doctorUsers?.items || doctorUsers || [])[0];
 
+  // Staff accounts (Doctors, Health Coaches, admins) are never patients.
+  if (patient && ['doctor', 'viewer', 'admin', 'subadmin'].includes(patient.role)) {
+    return { error: 'Doctors and Health Coaches cannot be assigned as patients.' };
+  }
+
   await entities.PatientDoctorAssignment.create({
     patient_email: patientEmail,
     doctor_email: doctorEmail,
