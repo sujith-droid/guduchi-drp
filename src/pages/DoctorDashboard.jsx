@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, Phone, AlertCircle } from "lucide-react";
+import { Users, Search, Clock, TrendingUp, TrendingDown, Minus, Send, Phone, AlertCircle, UserPlus } from "lucide-react";
 import BulkMessageModal from "../components/BulkMessageModal";
+import AssignPatientDialog from "../components/AssignPatientDialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import moment from "moment";
@@ -22,6 +23,7 @@ export default function DoctorDashboard() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   useEffect(() => {
     if (user) loadData();
@@ -152,13 +154,28 @@ export default function DoctorDashboard() {
             {patients.length} patient{patients.length !== 1 ? "s" : ""} assigned
           </p>
         </div>
-        <button
-          onClick={() => setBulkModalOpen(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <Send className="h-4 w-4" /> Bulk Message
-        </button>
+        <div className="flex items-center gap-2">
+          {user?.role === "doctor" && (
+            <button
+              onClick={() => setAssignOpen(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <UserPlus className="h-4 w-4" /> Assign Patient
+            </button>
+          )}
+          <button
+            onClick={() => setBulkModalOpen(true)}
+            className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Send className="h-4 w-4" /> Bulk Message
+          </button>
+        </div>
       </div>
+      <AssignPatientDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        onAssigned={loadData}
+      />
       <BulkMessageModal
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}

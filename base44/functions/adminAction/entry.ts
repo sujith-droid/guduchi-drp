@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
-import { sendOnboardingMessages } from '../../shared/onboarding-messages.ts';
+import { assignPatientToCoach } from '../../shared/assign-patient.ts';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 
 export default async function(req: Request): Promise<Response> {
@@ -31,58 +31,11 @@ export default async function(req: Request): Promise<Response> {
         if (!patientEmail || !doctorEmail) {
           return Response.json({ error: 'patientEmail and doctorEmail are required' }, { status: 400 });
         }
-        const existing = await entities.PatientDoctorAssignment.filter({
-          patient_email: patientEmail,
-          status: 'active',
-        });
-        const existingItems = (existing.items || existing);
-        if (existingItems.length >= 3) {
-          return Response.json({ error: 'A patient can only be assigned to a maximum of 3 Health Coaches.' }, { status: 400 });
+        const result = await assignPatientToCoach(base44, { patientEmail, doctorEmail });
+        if (result.error) {
+          return Response.json({ error: result.error }, { status: 400 });
         }
-        if (existingItems.some((a) => a.doctor_email === doctorEmail)) {
-          return Response.json({ error: 'This patient is already assigned to this Health Coach.' }, { status: 400 });
-        }
-        const patientUsers = await entities.User.filter({ email: patientEmail });
-        const doctorUsers = await entities.User.filter({ email: doctorEmail });
-        const patient = (patientUsers.items || patientUsers)[0];
-        const doctor = (doctorUsers.items || doctorUsers)[0];
-        await entities.PatientDoctorAssignment.create({
-          patient_email: patientEmail,
-          doctor_email: doctorEmail,
-          patient_name: patient?.display_name || patient?.full_name || patientEmail,
-          doctor_name: doctor?.display_name || doctor?.full_name || doctorEmail,
-          status: 'active',
-        });
-        const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
-        const doctorDisplayName = doctor?.display_name || doctor?.full_name || doctorEmail;
-        await entities.Notification.create({
-          user_email: doctorEmail,
-          title: 'New Patient Assigned',
-          message: `${patientDisplayName} has been assigned to you by the admin.`,
-          type: 'info',
-          related_patient_email: patientEmail,
-        });
-        await entities.Notification.create({
-          user_email: patientEmail,
-          title: 'Health Coach Assigned',
-          message: `${doctorDisplayName} has been assigned as your Health Coach.`,
-          type: 'info',
-        });
-        try {
-          await sendOnboardingMessages(
-            base44,
-            patientEmail,
-            doctorEmail,
-            patientDisplayName,
-            doctorDisplayName
-          );
-        } catch (e) {
-          return Response.json({
-            success: true,
-            warning: `Patient assigned, but onboarding messages could not be sent. Please send them manually from the chat.`,
-          });
-        }
-        return Response.json({ success: true });
+        return Response.json(result);
       }
       case 'addTemplate': {
         const { name, content } = payload;

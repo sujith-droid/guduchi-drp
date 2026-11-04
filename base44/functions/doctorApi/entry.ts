@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.51';
 import { validateAdminToken } from '../../shared/admin-session.ts';
 import { sendPushToUser } from '../../shared/firebase-push.ts';
-import { filterAll, normalizeFilterResult } from '../../shared/pagination.ts';
+import { filterAll, listAll, normalizeFilterResult } from '../../shared/pagination.ts';
+import { assignPatientToCoach } from '../../shared/assign-patient.ts';
 
 export default async function(req: Request): Promise<Response> {
   try {
@@ -12,6 +13,8 @@ export default async function(req: Request): Promise<Response> {
 
     const doctorEmail = session.user_email;
     const isAdmin = session.role === "admin" || doctorEmail?.includes("sujith@guduchiayurveda");
+    // Health Coaches ("doctor") and admins may assign patients; viewers are read-only.
+    const canAssignPatients = session.role === "doctor" || session.role === "admin";
 
     switch (action) {
       // ── DoctorDashboard ──────────────────────────────────────────
@@ -249,6 +252,52 @@ export default async function(req: Request): Promise<Response> {
         if (msgs[0].sender_email !== doctorEmail) return Response.json({ error: 'Not authorized' }, { status: 403 });
         await base44.asServiceRole.entities.ChatMessage.update(messageId, { message: newMessage });
         return Response.json({ success: true });
+      }
+
+      // ── Health Coach: assign patients to doctors ──────────────────
+      case 'getAssignOptions': {
+        if (!canAssignPatients) {
+          return Response.json({ error: 'Only Health Coaches can assign patients.' }, { status: 403 });
+        }
+        const [allUsers, activeAssignments] = await Promise.all([
+          listAll(base44.asServiceRole.entities.User, '-created_date'),
+          filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }),
+        ]);
+        const doctors = allUsers
+          .filter((u) => u.role === 'doctor' || u.role === 'viewer')
+          .map((u) => ({ email: u.email, name: u.display_name || u.full_name || u.email }));
+        const patients = allUsers
+          .filter((u) => u.role === 'patient' || u.role === 'user' || !u.role)
+          .map((u) => ({
+            email: u.email,
+            name: u.display_name || u.full_name || u.email,
+            phone: u.phone || '',
+          }));
+        const assignments = activeAssignments.map((a) => ({
+          patient_email: a.patient_email,
+          doctor_email: a.doctor_email,
+        }));
+        return Response.json({ doctors, patients, assignments });
+      }
+
+      case 'assignPatient': {
+        if (!canAssignPatients) {
+          return Response.json({ error: 'Only Health Coaches can assign patients.' }, { status: 403 });
+        }
+        const { patientEmail, doctorEmail } = payload;
+        if (!patientEmail || !doctorEmail) {
+          return Response.json({ error: 'patientEmail and doctorEmail are required' }, { status: 400 });
+        }
+        const result = await assignPatientToCoach(base44, {
+          patientEmail,
+          doctorEmail,
+          assignedByLabel: 'your Health Coach',
+          skipDoctorNotification: doctorEmail === session.user_email,
+        });
+        if (result.error) {
+          return Response.json({ error: result.error }, { status: 400 });
+        }
+        return Response.json(result);
       }
 
       case 'logout': {
