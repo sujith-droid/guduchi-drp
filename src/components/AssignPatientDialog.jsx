@@ -10,18 +10,20 @@ import { invokeFunction } from "@/lib/invokeFunction";
 import { toast } from "sonner";
 
 /**
- * Lets a Health Coach assign a patient to a doctor (Health Coach).
- * Loads patients/doctors on open and posts through doctorApi "assignPatient",
+ * Lets a Health Coach assign a patient to a Health Coach and/or a read-only Doctor.
+ * Loads patients/staff on open and posts through doctorApi "assignPatient",
  * which applies the same rules as the admin panel assignment.
  */
 export default function AssignPatientDialog({ open, onClose, onAssigned }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coaches, setCoaches] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedPatient, setSelectedPatient] = useState("");
+  const [selectedCoach, setSelectedCoach] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
         const adminToken = localStorage.getItem("admin_session_token");
         const data = await invokeFunction("doctorApi", { adminToken, action: "getAssignOptions" });
         if (cancelled) return;
+        setCoaches(data.coaches || []);
         setDoctors(data.doctors || []);
         setPatients(data.patients || []);
         setAssignments(data.assignments || []);
@@ -47,6 +50,11 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
 
   const coachesFor = (email) => assignments.filter((a) => a.patient_email === email);
 
+  const staffName = (email) =>
+    coaches.find((c) => c.email === email)?.name ||
+    doctors.find((d) => d.email === email)?.name ||
+    email;
+
   const query = search.trim().toLowerCase();
   const matches = !query
     ? []
@@ -60,29 +68,40 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
 
   const selectedPatientObj = patients.find((p) => p.email === selectedPatient);
 
+  const targets = [selectedCoach, selectedDoctor].filter(Boolean);
+
   const handleAssign = async () => {
-    if (!selectedPatient || !selectedDoctor) return;
+    if (!selectedPatient || targets.length === 0) return;
     setSaving(true);
-    try {
-      const adminToken = localStorage.getItem("admin_session_token");
-      const data = await invokeFunction("doctorApi", {
-        adminToken,
-        action: "assignPatient",
-        patientEmail: selectedPatient,
-        doctorEmail: selectedDoctor,
-      });
-      if (data?.warning) toast.warning(data.warning);
-      else toast.success("Patient assigned to doctor.");
-      setSelectedPatient("");
-      setSelectedDoctor("");
-      setSearch("");
-      onAssigned?.();
-      onClose?.();
-    } catch (e) {
-      toast.error(e?.message || "Failed to assign patient.");
-    } finally {
-      setSaving(false);
+    const adminToken = localStorage.getItem("admin_session_token");
+    const failures = [];
+    let warning = "";
+    for (const email of targets) {
+      try {
+        const data = await invokeFunction("doctorApi", {
+          adminToken,
+          action: "assignPatient",
+          patientEmail: selectedPatient,
+          doctorEmail: email,
+        });
+        if (data?.warning) warning = data.warning;
+      } catch (e) {
+        failures.push(`${staffName(email)}: ${e?.message || "failed"}`);
+      }
     }
+    setSaving(false);
+    if (failures.length > 0) {
+      toast.error(failures.join(" · "));
+      return;
+    }
+    if (warning) toast.warning(warning);
+    else toast.success(targets.length > 1 ? "Patient assigned to Health Coach and Doctor." : "Patient assigned.");
+    setSelectedPatient("");
+    setSelectedCoach("");
+    setSelectedDoctor("");
+    setSearch("");
+    onAssigned?.();
+    onClose?.();
   };
 
   return (
@@ -137,7 +156,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {coaches.map((c) => (
                                   <Badge key={c.doctor_email} variant="outline" className="text-xs">
-                                    {doctors.find((d) => d.email === c.doctor_email)?.name || c.doctor_email}
+                                    {staffName(c.doctor_email)}
                                   </Badge>
                                 ))}
                               </div>
@@ -153,7 +172,18 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
           </div>
 
           <div>
-            <Label>Assign to doctor</Label>
+            <Label>Health Coach</Label>
+            <MobileSelect
+              value={selectedCoach}
+              onValueChange={setSelectedCoach}
+              options={coaches.map((c) => ({ value: c.email, label: c.name }))}
+              placeholder="Select Health Coach..."
+              triggerClassName="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label>Doctor (read-only)</Label>
             <MobileSelect
               value={selectedDoctor}
               onValueChange={setSelectedDoctor}
@@ -163,7 +193,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
             />
           </div>
 
-          <Button onClick={handleAssign} className="w-full gap-2" disabled={!selectedPatient || !selectedDoctor || saving}>
+          <Button onClick={handleAssign} className="w-full gap-2" disabled={!selectedPatient || targets.length === 0 || saving}>
             <Check className="h-4 w-4" /> {saving ? "Assigning..." : "Assign"}
           </Button>
         </div>

@@ -45,6 +45,8 @@ export async function assignPatientToCoach(base44, {
 
   const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
   const doctorDisplayName = doctor?.display_name || doctor?.full_name || doctorEmail;
+  // Read-only Doctors (viewer role) are notified as Doctors, everyone else as Health Coaches.
+  const doctorLabel = doctor?.role === 'viewer' ? 'Doctor' : 'Health Coach';
 
   if (!skipDoctorNotification) {
     await entities.Notification.create({
@@ -57,8 +59,8 @@ export async function assignPatientToCoach(base44, {
   }
   await entities.Notification.create({
     user_email: patientEmail,
-    title: 'Health Coach Assigned',
-    message: `${doctorDisplayName} has been assigned as your Health Coach.`,
+    title: `${doctorLabel} Assigned`,
+    message: `${doctorDisplayName} has been assigned as your ${doctorLabel}.`,
     type: 'info',
   });
 

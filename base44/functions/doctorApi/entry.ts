@@ -278,10 +278,11 @@ export default async function(req: Request): Promise<Response> {
           listAll(base44.asServiceRole.entities.User, '-created_date'),
           filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }),
         ]);
-        // Only Doctors (viewer role) are assignable — Health Coaches (doctor role) are the ones assigning.
-        const doctors = allUsers
-          .filter((u) => u.role === 'viewer')
-          .map((u) => ({ email: u.email, name: u.display_name || u.full_name || u.email }));
+        // A patient can be assigned to Health Coaches (doctor role) and to
+        // read-only Doctors (viewer role), so both lists are returned.
+        const toOption = (u) => ({ email: u.email, name: u.display_name || u.full_name || u.email });
+        const coaches = allUsers.filter((u) => u.role === 'doctor').map(toOption);
+        const doctors = allUsers.filter((u) => u.role === 'viewer').map(toOption);
         const patients = allUsers
           .filter((u) => u.role === 'patient' || u.role === 'user' || !u.role)
           .map((u) => ({
@@ -293,7 +294,7 @@ export default async function(req: Request): Promise<Response> {
           patient_email: a.patient_email,
           doctor_email: a.doctor_email,
         }));
-        return Response.json({ doctors, patients, assignments });
+        return Response.json({ coaches, doctors, patients, assignments });
       }
 
       case 'assignPatient': {
