@@ -10,6 +10,21 @@
 // role is "admin" or "doctor". This lets the builder manage the admin panel
 // without a separate OTP session.
 
+// The role is taken from the live User record, not the value stored on the
+// session when it was created: a user promoted to Health Coach / Doctor after
+// logging in would otherwise be rejected as "Unauthorized" until they logged
+// out and back in.
+async function resolveLiveRole(base44, session) {
+  try {
+    const users = await base44.asServiceRole.entities.User.filter({ email: session.user_email });
+    const user = (users?.items || users || [])[0];
+    if (user?.role) return user.role;
+  } catch (e) {
+    // Fall through to the role captured on the session
+  }
+  return session.role;
+}
+
 export async function validateAdminToken(base44, adminToken) {
   // 1. Try the opaque AdminSession token (phone-OTP admin/doctor login)
   if (adminToken) {
@@ -17,12 +32,13 @@ export async function validateAdminToken(base44, adminToken) {
       token: adminToken,
       is_active: true,
     });
-    if (sessions && sessions.length > 0) {
-      const session = sessions[0];
+    const session = (sessions?.items || sessions || [])[0];
+    if (session) {
       const notExpired = new Date(session.expires_at) >= new Date();
-      const validRole = session.role === "admin" || session.role === "doctor" || session.role === "subadmin" || session.role === "viewer";
+      const role = await resolveLiveRole(base44, session);
+      const validRole = role === "admin" || role === "doctor" || role === "subadmin" || role === "viewer";
       if (notExpired && validRole) {
-        return session;
+        return { ...session, role };
       }
     }
   }
@@ -51,12 +67,13 @@ export async function validatePatientToken(base44, adminToken) {
       token: adminToken,
       is_active: true,
     });
-    if (sessions && sessions.length > 0) {
-      const session = sessions[0];
+    const session = (sessions?.items || sessions || [])[0];
+    if (session) {
       const notExpired = new Date(session.expires_at) >= new Date();
-      const validRole = session.role === "patient" || session.role === "user";
+      const role = await resolveLiveRole(base44, session);
+      const validRole = role === "patient" || role === "user";
       if (notExpired && validRole) {
-        return session;
+        return { ...session, role };
       }
     }
   }

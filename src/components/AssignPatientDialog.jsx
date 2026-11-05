@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Check } from "lucide-react";
 import MobileSelect from "@/components/MobileSelect";
 import { invokeFunction } from "@/lib/invokeFunction";
+import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 
 /**
@@ -15,6 +16,10 @@ import { toast } from "sonner";
  * which applies the same rules as the admin panel assignment.
  */
 export default function AssignPatientDialog({ open, onClose, onAssigned }) {
+  const { user } = useAuth();
+  // A Health Coach always assigns to themselves, so the coach picker is only
+  // shown to admins. Doctors (viewers) are read-only and never see this dialog.
+  const isCoach = user?.role === "doctor";
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [coaches, setCoaches] = useState([]);
@@ -28,6 +33,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
 
   useEffect(() => {
     if (!open) return;
+    if (isCoach && user?.email) setSelectedCoach(user.email);
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -40,13 +46,17 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
         setPatients(data.patients || []);
         setAssignments(data.assignments || []);
       } catch (e) {
-        toast.error(e?.message || "Couldn't load patients. Please try again.");
+        toast.error(
+          e?.status === 401
+            ? "Your session has expired. Please log in again."
+            : e?.message || "Couldn't load patients. Please try again."
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, isCoach, user?.email]);
 
   const coachesFor = (email) => assignments.filter((a) => a.patient_email === email);
 
@@ -171,16 +181,18 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
             )}
           </div>
 
-          <div>
-            <Label>Health Coach</Label>
-            <MobileSelect
-              value={selectedCoach}
-              onValueChange={setSelectedCoach}
-              options={coaches.map((c) => ({ value: c.email, label: c.name }))}
-              placeholder="Select Health Coach..."
-              triggerClassName="mt-1"
-            />
-          </div>
+          {!isCoach && (
+            <div>
+              <Label>Health Coach</Label>
+              <MobileSelect
+                value={selectedCoach}
+                onValueChange={setSelectedCoach}
+                options={coaches.map((c) => ({ value: c.email, label: c.name }))}
+                placeholder="Select Health Coach..."
+                triggerClassName="mt-1"
+              />
+            </div>
+          )}
 
           <div>
             <Label>Doctor (read-only)</Label>
@@ -192,6 +204,12 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
               triggerClassName="mt-1"
             />
           </div>
+
+          {isCoach && (
+            <p className="text-xs text-muted-foreground">
+              The patient is added to your own list. You can also share them with a doctor.
+            </p>
+          )}
 
           <Button onClick={handleAssign} className="w-full gap-2" disabled={!selectedPatient || targets.length === 0 || saving}>
             <Check className="h-4 w-4" /> {saving ? "Assigning..." : "Assign"}
