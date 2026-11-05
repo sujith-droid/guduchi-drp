@@ -18,6 +18,7 @@ const PatientDetail = lazy(() => import('./pages/PatientDetail'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 const OnboardingMessages = lazy(() => import('./pages/OnboardingMessages'));
 const CoachPatients = lazy(() => import('./pages/CoachPatients'));
+const AdminDoctors = lazy(() => import('./pages/AdminDoctors'));
 const ProfileSetup = lazy(() => import('./pages/ProfileSetup'));
 const Profile = lazy(() => import('./pages/Profile'));
 const DoctorDirectory = lazy(() => import('./pages/DoctorDirectory'));
@@ -98,6 +99,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/onboarding-messages" element={<OnboardingMessages />} />
         <Route path="/coach-patients" element={<CoachPatients />} />
+        <Route path="/admin-doctors" element={<AdminDoctors />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/find-doctor" element={<DoctorDirectory />} />
         <Route path="*" element={<PageNotFound />} />
