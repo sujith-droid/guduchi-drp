@@ -107,6 +107,9 @@ export default async function(req: Request): Promise<Response> {
       }
 
       case 'savePatientId': {
+        if (session.role === "viewer") {
+          return Response.json({ error: 'Doctors have read-only access.' }, { status: 403 });
+        }
         const { assignmentId, patientId } = payload;
         if (!assignmentId) return Response.json({ error: 'assignmentId is required' }, { status: 400 });
         await base44.asServiceRole.entities.PatientDoctorAssignment.update(assignmentId, { patient_id: (patientId || "").trim() });
@@ -192,6 +195,10 @@ export default async function(req: Request): Promise<Response> {
       }
 
       case 'sendMessage': {
+        // Doctors (viewer role) may read conversations but never send.
+        if (session.role === "viewer") {
+          return Response.json({ error: 'Doctors have read-only access.' }, { status: 403 });
+        }
         const { receiverEmail, conversationId, message, imageUrl, audioUrl, messageType, replyTo } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
         const msgData = {

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import moment from "moment-timezone";
 import { useAuth } from "@/lib/AuthContext";
 import { appParams } from "@/lib/app-params";
+import { isViewerRole } from "@/lib/roles";
 
 export default function PatientDetail() {
   const [searchParams] = useSearchParams();
@@ -172,26 +173,28 @@ const loadLogs = async () => {
         </div>
       </div>
 
-      {/* Patient ID Card for Doctor */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <IdCard className="h-4 w-4 text-primary" /> Patient ID
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g., GUD-2024-001"
-              value={patientIdInput}
-              onChange={(e) => setPatientIdInput(e.target.value)}
-            />
-            <Button onClick={savePatientId} disabled={savingId} className="shrink-0">
-              {savingId ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Patient ID Card — editing is for Health Coaches only. Doctors are read-only. */}
+      {!isViewerRole(user?.role) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <IdCard className="h-4 w-4 text-primary" /> Patient ID
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g., GUD-2024-001"
+                value={patientIdInput}
+                onChange={(e) => setPatientIdInput(e.target.value)}
+              />
+              <Button onClick={savePatientId} disabled={savingId} className="shrink-0">
+                {savingId ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-40">

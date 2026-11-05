@@ -13,6 +13,7 @@ import { usePullToRefresh } from "../hooks/usePullToRefresh";
 import PullToRefreshIndicator from "../components/PullToRefreshIndicator";
 import PagedList from "@/components/admin/PagedList";
 import { invokeFunction } from "@/lib/invokeFunction";
+import { isViewerRole } from "@/lib/roles";
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
@@ -171,14 +172,17 @@ export default function DoctorDashboard() {
               <UserPlus className="h-4 w-4" /> Assign Patient
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setBulkModalOpen(true)}
-            aria-label="Send a bulk message to patients"
-            className="flex flex-1 items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors min-h-[44px] sm:flex-none sm:min-h-0"
-          >
-            <Send className="h-4 w-4" /> Bulk Message
-          </button>
+          {/* Doctors are read-only — no bulk messaging */}
+          {!isViewerRole(user?.role) && (
+            <button
+              type="button"
+              onClick={() => setBulkModalOpen(true)}
+              aria-label="Send a bulk message to patients"
+              className="flex flex-1 items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors min-h-[44px] sm:flex-none sm:min-h-0"
+            >
+              <Send className="h-4 w-4" /> Bulk Message
+            </button>
+          )}
         </div>
       </div>
       <AssignPatientDialog

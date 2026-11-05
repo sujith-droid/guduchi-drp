@@ -979,8 +979,13 @@ export default function Chat() {
           </button>
         </div>
       )}
-      {/* Input — hidden for admin (read-only) */}
-      {!isAdminRole(user.role) && (
+      {/* Input — hidden for admin and doctors (read-only) */}
+      {isViewerRole(user.role) && (
+        <p className="text-xs text-muted-foreground text-center pt-3 border-t border-border">
+          Read-only view — only the Health Coach can reply.
+        </p>
+      )}
+      {!isAdminRole(user.role) && !isViewerRole(user.role) && (
       <div className="relative flex flex-wrap items-center gap-2 pt-3 border-t border-border">
         {showTemplates && templates.length > 0 && (
           <div className="absolute bottom-16 left-0 right-0 bg-card border border-border rounded-xl shadow-lg p-3 max-h-52 overflow-y-auto z-10">
