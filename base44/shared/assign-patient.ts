@@ -10,6 +10,7 @@ export async function assignPatientToCoach(base44, {
   doctorEmail,
   assignedByLabel = 'the admin',
   skipDoctorNotification = false,
+  patientId = '',
 }) {
   const entities = base44.asServiceRole.entities;
 
@@ -41,6 +42,7 @@ export async function assignPatientToCoach(base44, {
     patient_name: patient?.display_name || patient?.full_name || patientEmail,
     doctor_name: doctor?.display_name || doctor?.full_name || doctorEmail,
     status: 'active',
+    ...(patientId ? { patient_id: patientId } : {}),
   });
 
   const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
