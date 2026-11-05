@@ -278,8 +278,9 @@ export default async function(req: Request): Promise<Response> {
           listAll(base44.asServiceRole.entities.User, '-created_date'),
           filterAll(base44.asServiceRole.entities.PatientDoctorAssignment, { status: 'active' }),
         ]);
+        // Only Doctors (viewer role) are assignable — Health Coaches (doctor role) are the ones assigning.
         const doctors = allUsers
-          .filter((u) => u.role === 'doctor' || u.role === 'viewer')
+          .filter((u) => u.role === 'viewer')
           .map((u) => ({ email: u.email, name: u.display_name || u.full_name || u.email }));
         const patients = allUsers
           .filter((u) => u.role === 'patient' || u.role === 'user' || !u.role)
