@@ -79,7 +79,10 @@ export default async function(req: Request): Promise<Response> {
         // Doctors, Health Coaches and admins are staff — they are never shown
         // as patients, even if an old assignment row still exists for them.
         const visibleAssignments = slimAssignments.filter((a) => !staffEmails.has(a.patient_email));
-        return Response.json({ assignments: visibleAssignments, recentLogs: slimLogs, patientPhones, patientNames });
+        // `canAssign` is resolved from the validated server session, so the
+        // Assign Patient option shows for Health Coaches even when the role
+        // cached in the browser session is out of date.
+        return Response.json({ assignments: visibleAssignments, recentLogs: slimLogs, patientPhones, patientNames, canAssign: canAssignPatients });
       }
 
       // ── PatientDetail ─────────────────────────────────────────────

@@ -24,6 +24,9 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  // Whether this user may assign patients (Health Coach / admin), resolved by
+  // the server so a session created before a role change still gets the option.
+  const [canAssign, setCanAssign] = useState(false);
 
   useEffect(() => {
     if (user) loadData();
@@ -48,12 +51,14 @@ export default function DoctorDashboard() {
     // assignment record.
     const adminToken = localStorage.getItem("admin_session_token");
     let assignments = [], recentLogs = [], namesMap = {}, phonesMap = {};
+    let assignAllowed = me.role === "doctor" || me.role === "admin";
     try {
       const data = await invokeFunction("doctorApi", { adminToken, action: "getData" });
       assignments = data.assignments || [];
       recentLogs = data.recentLogs || [];
       namesMap = data.patientNames || {};
       phonesMap = data.patientPhones || {};
+      if (typeof data.canAssign === "boolean") assignAllowed = data.canAssign;
     } catch {
       // Fallback to direct SDK calls if the function invoke fails
       try {
@@ -67,6 +72,7 @@ export default function DoctorDashboard() {
     setPatients(assignments);
     setPatientNames(namesMap);
     setPatientPhones(phonesMap);
+    setCanAssign(assignAllowed);
 
     // Load all recent logs in one batch query, then group by patient
     const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
@@ -147,25 +153,29 @@ export default function DoctorDashboard() {
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold">Patient Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {patients.length} patient{patients.length !== 1 ? "s" : ""} assigned
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {user?.role === "doctor" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {canAssign && (
             <button
+              type="button"
               onClick={() => setAssignOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              aria-label="Assign a patient to a doctor"
+              className="flex flex-1 items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors min-h-[44px] sm:flex-none sm:min-h-0"
             >
               <UserPlus className="h-4 w-4" /> Assign Patient
             </button>
           )}
           <button
+            type="button"
             onClick={() => setBulkModalOpen(true)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            aria-label="Send a bulk message to patients"
+            className="flex flex-1 items-center justify-center gap-2 bg-primary text-primary-foreground text-sm font-medium px-3 py-2 rounded-lg hover:bg-primary/90 transition-colors min-h-[44px] sm:flex-none sm:min-h-0"
           >
             <Send className="h-4 w-4" /> Bulk Message
           </button>
