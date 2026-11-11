@@ -20,22 +20,28 @@ function getMessagingApp() {
  * works from the automatic hook and from the "Turn on notifications" button.
  */
 export async function registerPushDevice() {
-  if (!isFirebaseConfigured() || isMobileApp()) return false;
-  if (!("serviceWorker" in navigator) || !("Notification" in window)) return false;
-  if (Notification.permission !== "granted") return false;
+  if (!isFirebaseConfigured()) return { ok: false, reason: "not_configured" };
+  if (isMobileApp()) return { ok: false, reason: "native_app" };
+  if (!("serviceWorker" in navigator) || !("Notification" in window)) return { ok: false, reason: "unsupported" };
+  if (Notification.permission !== "granted") return { ok: false, reason: "permission_" + Notification.permission };
 
-  const messaging = getMessagingApp();
-  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
-  await navigator.serviceWorker.ready;
+  let registration = null;
+  try {
+    registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+  } catch (e) {
+    console.error("Service worker registration failed", e);
+    return { ok: false, reason: "service_worker" };
+  }
 
-  const token = await getToken(messaging, {
+  const token = await getToken(getMessagingApp(), {
     vapidKey: firebaseVapidKey,
     serviceWorkerRegistration: registration,
   }).catch((e) => {
     console.error("FCM getToken failed", e);
     return null;
   });
-  if (!token) return false;
+  if (!token) return { ok: false, reason: "token" };
 
   try {
     await invokeFunction("pushNotification", {
@@ -44,10 +50,10 @@ export async function registerPushDevice() {
       token,
       platform: detectPlatform(),
     });
-    return true;
+    return { ok: true, reason: null };
   } catch (e) {
     console.error("Push token storage failed:", e);
-    return false;
+    return { ok: false, reason: "store" };
   }
 }
 

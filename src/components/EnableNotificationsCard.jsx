@@ -22,7 +22,7 @@ export default function EnableNotificationsCard() {
       setPermission(result);
       if (result === "granted") {
         const registered = await registerPushDevice();
-        if (registered) toast.success("Notifications are on for this device.");
+        if (registered.ok) toast.success("Notifications are on for this device.");
         else toast.error("Permission granted, but this device could not be registered. Please try again.");
       } else {
         toast.error("Notifications are blocked. Allow them for this site in your browser settings.");
