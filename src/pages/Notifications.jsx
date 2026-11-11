@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { invokeFunction } from "@/lib/invokeFunction";
 import EnableNotificationsCard from "@/components/EnableNotificationsCard";
+import TestPushCard from "@/components/TestPushCard";
 
 const typeIcons = {
   reminder: Bell,
@@ -82,6 +83,7 @@ export default function Notifications() {
     <div className="space-y-4 pb-20 md:pb-6">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <EnableNotificationsCard />
+      <TestPushCard />
       <div className="flex items-center justify-between">
         <div className="md:text-left">
           <h1 className="text-2xl font-heading font-bold">Notifications</h1>
