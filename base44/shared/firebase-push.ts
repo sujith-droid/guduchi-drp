@@ -65,7 +65,11 @@ export async function sendPushToUser(base44, userEmail, title, body, data = {}) 
                     tag: stringData.tag || "guduchi-message",
                     requireInteraction: false,
                   },
-                  fcm_options: { link: stringData.url || "/chat" },
+                  fcm_options: {
+                    link: stringData.url
+                      ? "https://guduchi-drp-hub.base44.app" + stringData.url
+                      : "https://guduchi-drp-hub.base44.app/chat",
+                  },
                 },
               })
               .catch((err) => ({ error: err }))
@@ -102,8 +106,8 @@ export async function sendPushToUser(base44, userEmail, title, body, data = {}) 
         user_id: users[0].id,
         title,
         content: body,
-        action_label: stringData.url ? "View" : undefined,
-        action_url: stringData.url || undefined,
+        action_label: "View",
+        action_url: "https://guduchi-drp-hub.base44.app" + (stringData.url || "/notifications"),
       });
       result.native = true;
     }
