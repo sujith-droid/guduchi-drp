@@ -3,8 +3,10 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { firebaseConfig, firebaseVapidKey, isFirebaseConfigured } from "@/lib/firebase-config";
-import { detectPlatform, isMobileApp } from "@/lib/platform";
+import { detectPlatform } from "@/lib/platform";
 import { useAuth } from "@/lib/AuthContext";
+import { getBrowserPushState, requestBrowserPushPermission } from "@/lib/push-permission";
+import useBrowserPushState from "@/hooks/useBrowserPushState";
 
 let messagingInstance = null;
 
@@ -19,11 +21,13 @@ function getMessagingApp() {
  * The service worker and permission request are done here so the same flow
  * works from the automatic hook and from the "Turn on notifications" button.
  */
-export async function registerPushDevice() {
+export async function registerPushDevice({ requestPermission = false } = {}) {
+  const state = requestPermission ? await requestBrowserPushPermission() : getBrowserPushState();
+  if (state !== "granted") {
+    const reason = ["default", "denied"].includes(state) ? `permission_${state}` : state;
+    return { ok: false, reason };
+  }
   if (!isFirebaseConfigured()) return { ok: false, reason: "not_configured" };
-  if (isMobileApp()) return { ok: false, reason: "native_app" };
-  if (!("serviceWorker" in navigator) || !("Notification" in window)) return { ok: false, reason: "unsupported" };
-  if (Notification.permission !== "granted") return { ok: false, reason: "permission_" + Notification.permission };
 
   let registration = null;
   try {
@@ -92,36 +96,12 @@ async function showForegroundNotification(payload) {
  */
 export function usePushNotifications() {
   const { user } = useAuth();
+  const { state } = useBrowserPushState();
 
   useEffect(() => {
-    if (!user || !isFirebaseConfigured()) return;
-    // Inside the native mobile app WebView, web FCM cannot run (no service
-    // worker, no permission popup). The native Base44 mobile build registers
-    // the device token itself via the platform's native push integration.
-    if (isMobileApp()) return;
-    if (!("serviceWorker" in navigator)) return;
-
-    let cancelled = false;
-
-    const init = async () => {
-      try {
-        // Ask for permission if the browser hasn't decided yet. Browsers only
-        // honour this reliably after a user gesture, so the Alerts page also
-        // offers an explicit "Turn on notifications" button.
-        if ("Notification" in window && Notification.permission === "default") {
-          try {
-            await Notification.requestPermission();
-          } catch (e) {
-            console.error("Notification permission request failed", e);
-          }
-        }
-        if (!cancelled) await registerPushDevice();
-      } catch (e) {
-        console.error("Push registration failed", e);
-      }
-    };
-
-    init();
+    if (!user || !isFirebaseConfigured() || state !== "granted") return;
+    // Register an existing grant silently; only buttons request permission.
+    registerPushDevice().catch((e) => console.error("Push registration failed", e));
 
     let unsub = null;
     try {
@@ -131,8 +111,7 @@ export function usePushNotifications() {
     }
 
     return () => {
-      cancelled = true;
       if (unsub) unsub();
     };
-  }, [user]);
+  }, [user, state]);
 }

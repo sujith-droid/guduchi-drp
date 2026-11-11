@@ -5,27 +5,8 @@ import { invokeFunction } from "@/lib/invokeFunction";
 import { registerPushDevice } from "@/hooks/usePushNotifications";
 import { isMobileApp, detectPlatform } from "@/lib/platform";
 
-// Explains, in plain words, why this device could not be registered for push.
-function reasonText(reg) {
-  switch (reg.reason) {
-    case "permission_default":
-      return "Notifications are not turned on for this site yet. Tap “Turn on” above, then test again.";
-    case "permission_denied":
-      return "Notifications are blocked for this site. In Chrome, tap the lock icon in the address bar, open Site settings and allow Notifications.";
-    case "token":
-      return "Chrome did not give this device a push token. Check that notifications are allowed for this site and that you are online, then try again.";
-    case "store":
-      return "This device could not be saved for notifications. Check your connection and try again.";
-    case "service_worker":
-      return "This browser blocked the notification service. Close other tabs of the app and try again.";
-    case "unsupported":
-      return "This browser cannot show push notifications for the app.";
-    case "native_app":
-      return "This check is only for browsers. Open the app in Chrome to test browser alerts.";
-    default:
-      return "Notifications are not set up for this device yet.";
-  }
-}
+import useBrowserPushState from "@/hooks/useBrowserPushState";
+import { browserPushUrl, getBrowserPushState, pushRegistrationMessage } from "@/lib/push-permission";
 
 // Lets a user check from this exact device whether notifications arrive.
 // It registers this device first, reports exactly what blocked it if that
@@ -33,17 +14,18 @@ function reasonText(reg) {
 export default function TestPushCard() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
-  const supported = typeof window !== "undefined" && "Notification" in window;
+  const { state, refresh } = useBrowserPushState();
+  const needsStandalone = state === "embedded" || state === "insecure";
+  const report = (message) => setResult({ message, state: getBrowserPushState() });
 
   const run = async () => {
     setBusy(true);
     setResult(null);
     try {
-      if (!isMobileApp() && supported) {
-        if (Notification.permission === "default") await Notification.requestPermission();
-        const reg = await registerPushDevice();
+      if (!isMobileApp()) {
+        const reg = await registerPushDevice({ requestPermission: true });
         if (!reg.ok) {
-          setResult(reasonText(reg));
+          report(pushRegistrationMessage(reg.reason));
           return;
         }
       }
@@ -53,15 +35,16 @@ export default function TestPushCard() {
       });
       const deviceCount = res.devices || 0;
       if (deviceCount === 0 && !res.native) {
-        setResult("This device is not registered yet. Turn notifications on, then try again.");
+        report("This device is not registered yet. Turn notifications on, then try again.");
       } else if (res.sent > 0) {
-        setResult(`Test sent to ${res.sent} registered device${res.sent === 1 ? "" : "s"} (${detectPlatform()}). If nothing appears, check that notifications are allowed for this app in your browser and phone settings.`);
+        report(`The notification service accepted the test for ${res.sent} registered device${res.sent === 1 ? "" : "s"} (${detectPlatform()}). Acceptance does not confirm it appeared on screen.`);
       } else {
-        setResult("The notification could not be delivered to this device.");
+        report("The notification could not be delivered to this device.");
       }
     } catch (e) {
-      setResult(e.message || "Could not send the test notification.");
+      report(e.message || "Could not send the test notification.");
     } finally {
+      refresh();
       setBusy(false);
     }
   };
@@ -72,12 +55,18 @@ export default function TestPushCard() {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">Check this device</p>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {result || "Send yourself a test notification to confirm alerts reach this device."}
+          {needsStandalone ? pushRegistrationMessage(state) : result?.state === state ? result.message : "Send yourself a test notification to confirm alerts reach this device."}
         </p>
       </div>
-      <Button size="sm" onClick={run} disabled={busy} className="shrink-0">
-        {busy ? "Sending..." : "Test"}
-      </Button>
+      {needsStandalone ? (
+        <Button size="sm" asChild className="shrink-0">
+          <a href={browserPushUrl} target="_blank" rel="noopener noreferrer">Open live app</a>
+        </Button>
+      ) : (
+        <Button size="sm" onClick={run} disabled={busy} className="shrink-0">
+          {busy ? "Sending..." : "Test"}
+        </Button>
+      )}
     </div>
   );
 }

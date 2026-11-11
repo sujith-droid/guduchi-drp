@@ -3,33 +3,28 @@ import { BellRing } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { registerPushDevice } from "@/hooks/usePushNotifications";
-import { isMobileApp } from "@/lib/platform";
+import useBrowserPushState from "@/hooks/useBrowserPushState";
+import { pushRegistrationMessage } from "@/lib/push-permission";
 
 // Prompt shown on the Alerts page when this browser has not granted
 // notification permission. Browsers only honour a permission request that
 // follows a real tap, so the user has to press this button.
 export default function EnableNotificationsCard() {
-  const supported = typeof window !== "undefined" && "Notification" in window;
-  const [permission, setPermission] = useState(supported ? Notification.permission : "unsupported");
+  const { state: permission, refresh } = useBrowserPushState();
   const [busy, setBusy] = useState(false);
 
-  if (!supported || isMobileApp() || permission === "granted") return null;
+  if (!["default", "denied"].includes(permission)) return null;
 
   const enable = async () => {
     setBusy(true);
     try {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result === "granted") {
-        const registered = await registerPushDevice();
-        if (registered.ok) toast.success("Notifications are on for this device.");
-        else toast.error("Permission granted, but this device could not be registered. Please try again.");
-      } else {
-        toast.error("Notifications are blocked. Allow them for this site in your browser settings.");
-      }
+      const registered = await registerPushDevice({ requestPermission: true });
+      if (registered.ok) toast.success("Notifications are on for this device.");
+      else toast.error(pushRegistrationMessage(registered.reason));
     } catch {
       toast.error("Could not turn on notifications.");
     } finally {
+      refresh();
       setBusy(false);
     }
   };
@@ -39,19 +34,15 @@ export default function EnableNotificationsCard() {
       <BellRing className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">
-          {permission === "denied" ? "Notifications are blocked" : "Turn on notifications"}
+          {permission === "denied" ? "Website notification permission" : "Turn on notifications"}
         </p>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {permission === "denied"
-            ? "Allow notifications for this site in your browser settings to get alerts on this device."
-            : "Get an alert on this device when a new message or reminder arrives."}
+          {pushRegistrationMessage(permission)}
         </p>
       </div>
-      {permission !== "denied" && (
-        <Button size="sm" onClick={enable} disabled={busy} className="shrink-0">
-          {busy ? "Turning on..." : "Turn on"}
-        </Button>
-      )}
+      <Button size="sm" onClick={enable} disabled={busy} className="shrink-0">
+        {busy ? "Checking..." : permission === "denied" ? "Recheck" : "Turn on"}
+      </Button>
     </div>
   );
 }
