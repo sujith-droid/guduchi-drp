@@ -109,7 +109,19 @@ export default async function(req: Request): Promise<Response> {
           patient_email: userEmail,
           status: 'active',
         });
-        const assignments = normalizeFilterResult(assignResult);
+        // Patients chat with their Health Coach ("doctor" role) only.
+        // Read-only Doctors ("viewer" role) supervise the case but are not a
+        // chat partner, so their assignments are dropped here.
+        const candidateAssignments = normalizeFilterResult(assignResult);
+        const staffEmails = [...new Set(candidateAssignments.map((a) => a.doctor_email).filter(Boolean))];
+        const staffRoleMap = {};
+        if (staffEmails.length > 0) {
+          const staff = normalizeFilterResult(
+            await base44.asServiceRole.entities.User.filter({ email: { $in: staffEmails } })
+          );
+          for (const u of staff) staffRoleMap[u.email] = u.role;
+        }
+        const assignments = candidateAssignments.filter((a) => staffRoleMap[a.doctor_email] === 'doctor');
 
         const [sentResult, receivedResult] = await Promise.all([
           base44.asServiceRole.entities.ChatMessage.filter({ sender_email: userEmail }, "-created_date", 500),
@@ -161,6 +173,19 @@ export default async function(req: Request): Promise<Response> {
       case 'sendMessage': {
         const { receiverEmail, conversationId, message, imageUrl, audioUrl, messageType, replyTo } = payload;
         if (!conversationId) return Response.json({ error: 'conversationId is required' }, { status: 400 });
+        // Patients may message their Health Coach only; read-only Doctors
+        // ("viewer" role) never receive patient messages.
+        if (receiverEmail) {
+          const [receiver] = normalizeFilterResult(
+            await base44.asServiceRole.entities.User.filter({ email: receiverEmail })
+          );
+          if (receiver && receiver.role && receiver.role !== 'doctor') {
+            return Response.json(
+              { error: 'You can only message your Health Coach.' },
+              { status: 403 }
+            );
+          }
+        }
         const msgData = {
           sender_email: userEmail,
           receiver_email: receiverEmail,
