@@ -137,6 +137,63 @@ export default async function(req: Request): Promise<Response> {
         const assignmentResult = await base44.asServiceRole.entities.PatientDoctorAssignment.filter(query);
         const assignments = normalizeFilterResult(assignmentResult);
 
+        // Read-only Doctors ("viewer") never chat themselves: patients only chat
+        // with their Health Coach. So a Doctor sees the patient ↔ Health Coach
+        // conversation of every patient assigned to them.
+        if (session.role === "viewer") {
+          const patientEmails = [...new Set(assignments.map((a) => a.patient_email))].filter(Boolean);
+          let relevant = [];
+          if (patientEmails.length > 0) {
+            const [fromPatients, toPatients] = await Promise.all([
+              base44.asServiceRole.entities.ChatMessage.filter({ sender_email: { $in: patientEmails } }, "-created_date", 500),
+              base44.asServiceRole.entities.ChatMessage.filter({ receiver_email: { $in: patientEmails } }, "-created_date", 500),
+            ]);
+            relevant = [...normalizeFilterResult(fromPatients), ...normalizeFilterResult(toPatients)];
+          }
+
+          // Latest message per conversation, plus which conversation belongs to
+          // each patient (the patient's Health Coach is the other party).
+          const convLatest = {};
+          const patientConv = {};
+          for (const m of relevant) {
+            const cid = m.conversation_id;
+            if (!cid) continue;
+            if (!convLatest[cid] || new Date(m.created_date) > new Date(convLatest[cid].created_date)) {
+              convLatest[cid] = m;
+            }
+            const patientEmail = patientEmails.find((e) => e === m.sender_email || e === m.receiver_email);
+            if (!patientEmail) continue;
+            const coachEmail = m.sender_email === patientEmail ? m.receiver_email : m.sender_email;
+            const prev = patientConv[patientEmail];
+            if (!prev || new Date(m.created_date) > new Date(prev.date)) {
+              patientConv[patientEmail] = { cid, coachEmail, date: m.created_date };
+            }
+          }
+
+          const coachEmails = [...new Set(Object.values(patientConv).map((p) => p.coachEmail))].filter(Boolean);
+          const coachUsers = coachEmails.length > 0
+            ? normalizeFilterResult(await base44.asServiceRole.entities.User.filter({ email: { $in: coachEmails } }))
+            : [];
+          const coachNames = {};
+          for (const u of coachUsers) coachNames[u.email] = u.display_name || u.full_name || u.email;
+
+          const viewerConversations = assignments.map((a) => {
+            const conv = patientConv[a.patient_email];
+            const coachEmail = conv?.coachEmail || a.doctor_email;
+            const lastMsg = conv ? convLatest[conv.cid] : null;
+            return {
+              ...a,
+              doctor_email: coachEmail,
+              doctor_name: coachNames[coachEmail] || a.doctor_name || coachEmail,
+              last_message: lastMsg?.message || (lastMsg?.image_url ? "📷 Photo" : (lastMsg?.audio_url ? "🎤 Voice message" : "")),
+              last_message_date: lastMsg?.created_date,
+              last_message_sender: lastMsg?.sender_email,
+            };
+          }).sort((a, b) => new Date(b.last_message_date || 0) - new Date(a.last_message_date || 0));
+
+          return Response.json({ assignments: viewerConversations, unreadMap: {} });
+        }
+
         // Get all messages involving this doctor (500 per direction is ample
         // for any single doctor's history).
         const [sentResult, receivedResult] = await Promise.all([
