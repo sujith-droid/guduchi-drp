@@ -19,17 +19,22 @@ export async function assignPatientToCoach(base44, {
     status: 'active',
   });
   const existingItems = existing?.items || existing || [];
-  if (existingItems.length >= 3) {
-    return { error: 'A patient can only be assigned to a maximum of 3 Health Coaches.' };
-  }
-  if (existingItems.some((a) => a.doctor_email === doctorEmail)) {
-    return { error: 'This patient is already assigned to this Health Coach.' };
-  }
 
   const patientUsers = await entities.User.filter({ email: patientEmail });
   const doctorUsers = await entities.User.filter({ email: doctorEmail });
   const patient = (patientUsers?.items || patientUsers || [])[0];
   const doctor = (doctorUsers?.items || doctorUsers || [])[0];
+
+  // Read-only Doctors (viewer role) get their own wording, so a duplicate
+  // assignment never tells a Doctor they are a Health Coach.
+  const targetLabel = doctor?.role === 'viewer' ? 'Doctor' : 'Health Coach';
+
+  if (existingItems.length >= 3) {
+    return { error: 'A patient can only be assigned to a maximum of 3 Health Coaches or Doctors.' };
+  }
+  if (existingItems.some((a) => a.doctor_email === doctorEmail)) {
+    return { error: `This patient is already assigned to this ${targetLabel}.` };
+  }
 
   // Staff accounts (Doctors, Health Coaches, admins) are never patients.
   if (patient && ['doctor', 'viewer', 'admin', 'subadmin'].includes(patient.role)) {
@@ -47,8 +52,6 @@ export async function assignPatientToCoach(base44, {
 
   const patientDisplayName = patient?.display_name || patient?.full_name || patientEmail;
   const doctorDisplayName = doctor?.display_name || doctor?.full_name || doctorEmail;
-  // Read-only Doctors (viewer role) are notified as Doctors, everyone else as Health Coaches.
-  const doctorLabel = doctor?.role === 'viewer' ? 'Doctor' : 'Health Coach';
 
   if (!skipDoctorNotification) {
     await entities.Notification.create({
@@ -61,8 +64,8 @@ export async function assignPatientToCoach(base44, {
   }
   await entities.Notification.create({
     user_email: patientEmail,
-    title: `${doctorLabel} Assigned`,
-    message: `${doctorDisplayName} has been assigned as your ${doctorLabel}.`,
+    title: `${targetLabel} Assigned`,
+    message: `${doctorDisplayName} has been assigned as your ${targetLabel}.`,
     type: 'info',
   });
 
