@@ -65,6 +65,13 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
     doctors.find((d) => d.email === email)?.name ||
     email;
 
+  // Show which staff type each person is, so a Doctor is never mistaken for a Health Coach.
+  const staffLabel = (email) => {
+    if (coaches.some((c) => c.email === email)) return `${staffName(email)} · Health Coach`;
+    if (doctors.some((d) => d.email === email)) return `${staffName(email)} · Doctor`;
+    return email;
+  };
+
   const query = search.trim().toLowerCase();
   const matches = !query
     ? []
@@ -96,7 +103,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
         });
         if (data?.warning) warning = data.warning;
       } catch (e) {
-        failures.push(`${staffName(email)}: ${e?.message || "failed"}`);
+        failures.push(`${staffLabel(email)}: ${e?.message || "failed"}`);
       }
     }
     setSaving(false);
@@ -166,7 +173,7 @@ export default function AssignPatientDialog({ open, onClose, onAssigned }) {
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {coaches.map((c) => (
                                   <Badge key={c.doctor_email} variant="outline" className="text-xs">
-                                    {staffName(c.doctor_email)}
+                                    {staffLabel(c.doctor_email)}
                                   </Badge>
                                 ))}
                               </div>

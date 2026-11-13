@@ -59,9 +59,16 @@ export default function CoachPatients() {
   }, []);
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { scrollRef });
 
+  // Health Coaches ("doctor" role) and read-only Doctors ("viewer" role) are
+  // different staff types — every label here says which one it is.
+  const nameOf = (u) => u.display_name || u.full_name || u.email;
+  const coaches = users
+    .filter((u) => u.role === "doctor")
+    .map((u) => ({ ...u, display_name: nameOf(u), staffType: "Health Coach" }));
   const doctors = users
-    .filter((u) => u.role === "doctor" || isViewerRole(u.role))
-    .map((d) => ({ ...d, display_name: d.display_name || d.full_name }));
+    .filter((u) => isViewerRole(u.role))
+    .map((u) => ({ ...u, display_name: nameOf(u), staffType: "Doctor" }));
+  const staffTypeByEmail = new Map([...coaches, ...doctors].map((u) => [u.email, u.staffType]));
 
   // Staff accounts (Doctors, Health Coaches, admins) are never patients.
   const staffEmails = new Set(
@@ -124,12 +131,15 @@ export default function CoachPatients() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <Label>Select Health Coach</Label>
+              <Label>Select Health Coach or Doctor</Label>
               <MobileSelect
                 value={selectedCoachFilter}
                 onValueChange={setSelectedCoachFilter}
-                options={doctors.map((d) => ({ value: d.email, label: d.display_name || d.full_name || d.email }))}
-                placeholder="All Health Coaches"
+                options={[...coaches, ...doctors].map((s) => ({
+                  value: s.email,
+                  label: `${s.display_name} · ${s.staffType}`,
+                }))}
+                placeholder="All Health Coaches and Doctors"
                 triggerClassName="mt-1"
               />
             </div>
@@ -161,7 +171,10 @@ export default function CoachPatients() {
                       })()}
                     </div>
                     {!selectedCoachFilter && (
-                      <p className="text-xs text-muted-foreground">→ {a.doctor_name || a.doctor_email}</p>
+                      <p className="text-xs text-muted-foreground text-right">
+                        → {a.doctor_name || a.doctor_email}
+                        <span className="block">{staffTypeByEmail.get(a.doctor_email) || "Health Coach"}</span>
+                      </p>
                     )}
                   </motion.div>
                 ))}
