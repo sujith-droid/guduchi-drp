@@ -69,6 +69,12 @@ export async function assignPatientToCoach(base44, {
     type: 'info',
   });
 
+  // Read-only Doctors never chat with patients, so no welcome/onboarding chat
+  // messages are sent from them — they only get the assignment notification.
+  if (doctor?.role === 'viewer') {
+    return { success: true };
+  }
+
   try {
     await sendOnboardingMessages(
       base44,
