@@ -24,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/AuthContext";
-import { isPatientRole } from "@/lib/roles";
+import { isPatientRole, roleDisplayLabel, isViewerRole } from "@/lib/roles";
 import { Link } from "react-router-dom";
 
 export default function Profile() {
@@ -152,7 +152,7 @@ export default function Profile() {
     );
   }
 
-  const roleLabel = user?.role === "doctor" ? "Health Coach" : user?.role === "admin" ? "Admin" : "Patient";
+  const roleLabel = roleDisplayLabel(user?.role);
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -209,7 +209,7 @@ export default function Profile() {
               className="mt-1"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              {user?.role === "doctor"
+              {user?.role === "doctor" || isViewerRole(user?.role)
                 ? "Patients will use this number to call you directly."
                 : "Your Health Coach will use this number to call you directly."}
             </p>
