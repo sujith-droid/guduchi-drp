@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { invokeFunction } from "@/lib/invokeFunction";
 import { TrendingUp, TrendingDown, Minus, AlertCircle, Users } from "lucide-react";
 import moment from "moment";
+import PatientStatusList from "@/components/admin/PatientStatusList";
 
 /**
  * Self-contained patient status summary cards.
  * Fetches assignments + recent logs via doctorApi and computes
- * per-patient status counts (Improving, Stable, Needs Attention,
- * Inactive, No Data).
+ * per-patient status (Improving, Stable, Needs Attention, Inactive, No Data).
+ * Clicking a card opens the list of patients in that group.
  */
 export default function PatientStatusCards() {
-  const [counts, setCounts] = useState(null);
+  const [groups, setGroups] = useState(null);
+  const [openStatus, setOpenStatus] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -20,6 +21,8 @@ export default function PatientStatusCards() {
         const data = await invokeFunction("doctorApi", { adminToken, action: "getData" });
         const assignments = data.assignments || [];
         const recentLogs = data.recentLogs || [];
+        const patientPhones = data.patientPhones || {};
+        const patientNames = data.patientNames || {};
 
         const sevenDaysAgo = moment().subtract(7, "days").format("YYYY-MM-DD");
         const patientEmails = new Set(assignments.map((a) => a.patient_email));
@@ -61,12 +64,24 @@ export default function PatientStatusCards() {
           return "Stable";
         };
 
-        const result = { Improving: 0, Stable: 0, "Needs Attention": 0, Inactive: 0, "No Data": 0 };
+        const result = { Improving: [], Stable: [], "Needs Attention": [], Inactive: [], "No Data": [] };
+        const seen = new Set();
         for (const a of assignments) {
-          const s = statusOf(a.patient_email);
-          result[s]++;
+          const email = a.patient_email;
+          if (seen.has(email)) continue;
+          seen.add(email);
+          const latest = (logsMap[email] || [])[0];
+          result[statusOf(email)].push({
+            email,
+            name: patientNames[email] || a.patient_name || "",
+            phone: patientPhones[email] || "",
+            lastLogDate: latest ? moment(latest.date).format("DD MMM YYYY") : "",
+          });
         }
-        setCounts(result);
+        for (const key of Object.keys(result)) {
+          result[key].sort((x, y) => (x.name || x.email).localeCompare(y.name || y.email));
+        }
+        setGroups(result);
       } catch (e) {
         console.error("PatientStatusCards error:", e);
       }
@@ -82,17 +97,32 @@ export default function PatientStatusCards() {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-      {cards.map((c) => {
-        const Icon = c.icon;
-        return (
-          <div key={c.label} className="bg-card rounded-xl border border-border p-3 text-center">
-            <Icon className={`h-5 w-5 mx-auto mb-1 ${c.color}`} />
-            <p className="text-xl font-bold font-heading">{counts ? counts[c.label] : "—"}</p>
-            <p className="text-xs text-muted-foreground">{c.label}</p>
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {cards.map((c) => {
+          const Icon = c.icon;
+          const count = groups ? groups[c.label].length : null;
+          return (
+            <button
+              key={c.label}
+              type="button"
+              onClick={() => setOpenStatus(c.label)}
+              className="bg-card rounded-xl border border-border p-3 text-center transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label={`Show ${c.label} patients`}
+            >
+              <Icon className={`h-5 w-5 mx-auto mb-1 ${c.color}`} />
+              <p className="text-xl font-bold font-heading">{count != null ? count : "—"}</p>
+              <p className="text-xs text-muted-foreground">{c.label}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <PatientStatusList
+        status={openStatus}
+        patients={openStatus && groups ? groups[openStatus] : []}
+        onClose={() => setOpenStatus(null)}
+      />
+    </>
   );
 }
