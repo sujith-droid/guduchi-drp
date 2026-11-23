@@ -312,7 +312,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Patient Status Summary */}
-      <PatientStatusCards />
+      <PatientStatusCards staff={users} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

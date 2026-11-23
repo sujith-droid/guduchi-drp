@@ -33,6 +33,12 @@ export default function PatientStatusList({ status, patients, onClose }) {
                 {p.lastLogDate && (
                   <p className="text-xs text-muted-foreground mt-0.5">Last log: {p.lastLogDate}</p>
                 )}
+                {p.coaches.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Health Coach: {p.coaches.join(", ")}</p>
+                )}
+                {p.doctors.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Doctor: {p.doctors.join(", ")}</p>
+                )}
               </div>
             ))}
           </div>

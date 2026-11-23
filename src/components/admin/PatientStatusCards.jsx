@@ -10,7 +10,7 @@ import PatientStatusList from "@/components/admin/PatientStatusList";
  * per-patient status (Improving, Stable, Needs Attention, Inactive, No Data).
  * Clicking a card opens the list of patients in that group.
  */
-export default function PatientStatusCards() {
+export default function PatientStatusCards({ staff = [] }) {
   const [groups, setGroups] = useState(null);
   const [openStatus, setOpenStatus] = useState(null);
 
@@ -64,6 +64,22 @@ export default function PatientStatusCards() {
           return "Stable";
         };
 
+        // Assigned staff per patient, split into Health Coaches ("doctor") and Doctors ("viewer").
+        const staffByEmail = {};
+        for (const u of staff) {
+          staffByEmail[u.email] = { name: u.display_name || u.full_name || u.email, role: u.role };
+        }
+        const assignedStaff = {};
+        for (const a of assignments) {
+          if (!a.doctor_email) continue;
+          const s = assignedStaff[a.patient_email] || { coaches: [], doctors: [] };
+          const info = staffByEmail[a.doctor_email];
+          const name = info?.name || a.doctor_name || a.doctor_email;
+          const bucket = info?.role === "viewer" ? s.doctors : s.coaches;
+          if (!bucket.includes(name)) bucket.push(name);
+          assignedStaff[a.patient_email] = s;
+        }
+
         const result = { Improving: [], Stable: [], "Needs Attention": [], Inactive: [], "No Data": [] };
         const seen = new Set();
         for (const a of assignments) {
@@ -71,11 +87,14 @@ export default function PatientStatusCards() {
           if (seen.has(email)) continue;
           seen.add(email);
           const latest = (logsMap[email] || [])[0];
+          const assigned = assignedStaff[email] || { coaches: [], doctors: [] };
           result[statusOf(email)].push({
             email,
             name: patientNames[email] || a.patient_name || "",
             phone: patientPhones[email] || "",
             lastLogDate: latest ? moment(latest.date).format("DD MMM YYYY") : "",
+            coaches: assigned.coaches,
+            doctors: assigned.doctors,
           });
         }
         for (const key of Object.keys(result)) {
