@@ -302,9 +302,10 @@ export default function Chat() {
   }, [activeConvId, conversations, user]);
 
   // Fetch the chat partner's phone number so the Call button can dial it.
+  // Patients never see their Health Coach's number, so skip the lookup for them.
   useEffect(() => {
     setPartnerPhone(null);
-    if (!chatPartner?.email) return;
+    if (!chatPartner?.email || isPatientRole(user?.role)) return;
     const adminToken = localStorage.getItem("admin_session_token");
     invokeFunction("getUserPhone", { target_email: chatPartner.email, adminToken })
       .then((data) => {
@@ -772,7 +773,7 @@ export default function Chat() {
           <p className="text-xs text-primary font-medium">ID: {chatPartner.patientId}</p>
         )}
         </div>
-        {partnerPhone ? (
+        {!isPatientRole(user?.role) && (partnerPhone ? (
           <a href={`tel:${partnerPhone}`}>
             <Button size="sm" variant="outline" className="gap-1">
               <Phone className="h-3 w-3" /> Call
@@ -782,7 +783,7 @@ export default function Chat() {
           <Button size="sm" variant="outline" disabled className="gap-1 opacity-50">
             <Phone className="h-3 w-3" /> No Phone
           </Button>
-        )}
+        ))}
       </div>
 
       {/* Messages */}
