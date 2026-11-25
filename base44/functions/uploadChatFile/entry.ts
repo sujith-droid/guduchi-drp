@@ -40,6 +40,36 @@ async function uploadToImgbb(file: File): Promise<string> {
   return url;
 }
 
+// Voice notes are uploaded to Cloudinary when it is configured, because Base44
+// file storage needs integration credits that the workspace may have used up.
+// Cloudinary accepts audio through its "auto" endpoint and returns a direct URL
+// that an <audio> element can play.
+async function uploadToCloudinary(file: File): Promise<string> {
+  const cloud = secrets.get('CLOUDINARY_CLOUD_NAME');
+  const preset = secrets.get('CLOUDINARY_UPLOAD_PRESET');
+  if (!cloud || !preset) throw new Error('Voice messages are not available right now');
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', preset);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloud)}/auto/upload`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(90000),
+  });
+  const json = await res.json().catch(() => ({}));
+  const url = json?.secure_url || json?.url;
+  if (!res.ok || !url) {
+    throw new Error(json?.error?.message || 'Voice message upload failed, please try again');
+  }
+  return url;
+}
+
+function isCloudinaryConfigured(): boolean {
+  return Boolean(secrets.get('CLOUDINARY_CLOUD_NAME') && secrets.get('CLOUDINARY_UPLOAD_PRESET'));
+}
+
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -64,6 +94,12 @@ export default async function(req: Request): Promise<Response> {
     const isImage = typeof file.type === 'string' && file.type.startsWith('image/');
     if (isImage && file.size <= IMGBB_MAX_BYTES) {
       const file_url = await uploadToImgbb(file);
+      return Response.json({ file_url });
+    }
+
+    const isAudio = typeof file.type === 'string' && file.type.startsWith('audio/');
+    if (isAudio && isCloudinaryConfigured()) {
+      const file_url = await uploadToCloudinary(file);
       return Response.json({ file_url });
     }
 
