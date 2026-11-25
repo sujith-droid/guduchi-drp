@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { invokeFunction } from "@/lib/invokeFunction";
 import { Link } from "react-router-dom";
-import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, Phone, QrCode } from "lucide-react";
+import { Droplets, Weight, Footprints, Activity, Plus, ChevronRight, MessageCircle, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatCard from "../components/StatCard";
 import SmartFeedback from "../components/SmartFeedback";
@@ -68,26 +67,17 @@ export default function PatientDashboard() {
         setHba1cImproved(true);
       }
 
-      // Load all assigned doctors' phones
+      // Load the care team (names only — staff phone numbers stay private)
       const assignments = await base44.entities.PatientDoctorAssignment.filter({ patient_email: me.email, status: "active" });
       const patientId = assignments.find((a) => a.patient_id)?.patient_id || null;
       if (patientId) {
         // Show patient ID in greeting area — stored in state
         setPatientIdDisplay(patientId);
       }
-      const doctorList = await Promise.all(
-        assignments.map(async (a) => {
-          let phone = null;
-          try {
-            const res = await invokeFunction('getUserPhone', { target_email: a.doctor_email, adminToken: localStorage.getItem("admin_session_token") });
-            phone = res?.phone || null;
-          } catch (e) {
-            console.error(`Failed to load phone for ${a.doctor_email}:`, e);
-          }
-          return { name: a.doctor_name || a.doctor_email, email: a.doctor_email, phone };
-        })
-      );
-      setAssignedDoctors(doctorList);
+      setAssignedDoctors(assignments.map((a) => ({
+        name: a.doctor_name || a.doctor_email,
+        email: a.doctor_email,
+      })));
     } catch (e) {
       console.error(e);
     } finally {
@@ -193,28 +183,16 @@ export default function PatientDashboard() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground">Your Care Team</h3>
           {assignedDoctors.map((doc) => (
-            doc.phone ? (
-              <a key={doc.email} href={`tel:${doc.phone}`}
-                className="flex items-center gap-3 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 rounded-xl p-4 hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors">
-                <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                  <Phone className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">{doc.name}</p>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-300">{doc.phone} — tap to dial</p>
-                </div>
-              </a>
-            ) : (
-              <div key={doc.email} className="flex items-center gap-3 bg-muted border border-border rounded-xl p-4">
-                <div className="h-10 w-10 rounded-full bg-muted-foreground/20 flex items-center justify-center flex-shrink-0">
-                  <Phone className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">{doc.name}</p>
-                  <p className="text-xs text-muted-foreground">No phone number added yet</p>
-                </div>
+            <Link key={doc.email} to="/chat"
+              className="flex items-center gap-3 bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-700 rounded-xl p-4 hover:bg-emerald-200 dark:hover:bg-emerald-900 transition-colors">
+              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="h-5 w-5 text-white" />
               </div>
-            )
+              <div>
+                <p className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">{doc.name}</p>
+                <p className="text-xs text-emerald-700 dark:text-emerald-300">Chat with your Health Coach</p>
+              </div>
+            </Link>
           ))}
         </motion.div>
       )}

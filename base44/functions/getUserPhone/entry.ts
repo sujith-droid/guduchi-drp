@@ -55,6 +55,17 @@ export default async function(req: Request): Promise<Response> {
 
         const users = await base44.asServiceRole.entities.User.filter({ email: target_email });
         const u = users.length > 0 ? users[0] : null;
+
+        // Patients never receive a staff member's phone number — they reach
+        // their care team through chat instead.
+        const callerRole = (currentUser.role || '').toLowerCase();
+        const isPatientCaller = callerRole === 'user' || callerRole === 'patient';
+        const targetRole = (u?.role || '').toLowerCase();
+        const isStaffTarget = ['admin', 'subadmin', 'doctor', 'viewer'].includes(targetRole);
+        if (isPatientCaller && isStaffTarget) {
+            return Response.json({ phone: null, full_name: u?.full_name || null });
+        }
+
         return Response.json({ phone: u?.phone || null, full_name: u?.full_name || null });
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
