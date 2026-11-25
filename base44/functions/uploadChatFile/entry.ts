@@ -45,8 +45,8 @@ async function uploadToImgbb(file: File): Promise<string> {
 // Cloudinary accepts audio through its "auto" endpoint and returns a direct URL
 // that an <audio> element can play.
 async function uploadToCloudinary(file: File): Promise<string> {
-  const cloud = secrets.get('CLOUDINARY_CLOUD_NAME');
-  const preset = secrets.get('CLOUDINARY_UPLOAD_PRESET');
+  const cloud = secrets.get('CLOUDINARY_CLOUD_NAME')?.trim();
+  const preset = secrets.get('CLOUDINARY_UPLOAD_PRESET')?.trim();
   if (!cloud || !preset) throw new Error('Voice messages are not available right now');
 
   const form = new FormData();
